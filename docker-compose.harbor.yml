@@ -1,0 +1,63 @@
+# Deploy a partir do Harbor (sem build local — só puxa as imagens publicadas).
+#
+# No servidor:
+#   docker login registry.aurora.app.br
+#   docker compose -f docker-compose.harbor.yml pull
+#   docker compose -f docker-compose.harbor.yml up -d
+#
+# Requer um .env ao lado (mesmas variáveis do dev: APP_SECRET_KEY, JWT_SECRET,
+# POSTGRES_*, etc.). Ajuste REGISTRY/IMAGE_TAG/PROXY_PORT se necessário.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aurora}
+      POSTGRES_USER: ${POSTGRES_USER:-aurora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aurora}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aurora}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    image: ${REGISTRY:-registry.aurora.app.br/aurora-nettools}/backend:${IMAGE_TAG:-latest}
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    image: ${REGISTRY:-registry.aurora.app.br/aurora-nettools}/frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  proxy:
+    image: ${REGISTRY:-registry.aurora.app.br/aurora-nettools}/proxy:${IMAGE_TAG:-latest}
+    ports:
+      - "${PROXY_PORT:-8090}:8090"
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  pgdata:

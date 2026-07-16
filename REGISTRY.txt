@@ -1,0 +1,7 @@
+docker tag aurora-suporte-backend  registry.aurora.app.br/aurora-nettools/backend:latest
+docker tag aurora-suporte-frontend registry.aurora.app.br/aurora-nettools/frontend:latest
+docker tag aurora-suporte-proxy    registry.aurora.app.br/aurora-nettools/proxy:latest
+
+docker push registry.aurora.app.br/aurora-nettools/backend:latest   
+docker push registry.aurora.app.br/aurora-nettools/frontend:latest
+docker push registry.aurora.app.br/aurora-nettools/proxy:latest

@@ -1,0 +1,118 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_current_user, require_admin
+from app.api.tenancy import is_master, owned, scope
+from app.core.db import get_session
+from app.core.security import hash_password
+from app.models import Organization, Plan, User, UserGroup
+from app.schemas.user import UserCreate, UserOut, UserUpdate
+
+router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(require_admin)])
+
+ROLES = ("operator", "admin", "master")
+
+
+async def _get(session: AsyncSession, user_id: int, me: User) -> User:
+    u = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if u is None:
+        raise HTTPException(404, "usuário não encontrado")
+    # não-master só enxerga usuários da própria ORG
+    if not is_master(me) and u.org_id != me.org_id:
+        raise HTTPException(404, "usuário não encontrado")
+    return u
+
+
+async def _admin_count(session: AsyncSession, org_id: int | None) -> int:
+    stmt = select(func.count(User.id)).where(User.role.in_(("admin", "master")))
+    if org_id is not None:
+        stmt = stmt.where(User.org_id == org_id)
+    return (await session.execute(stmt)).scalar() or 0
+
+
+async def _user_limit(session: AsyncSession, org_id: int) -> int:
+    """Cota de usuários da ORG (vem do plano). Sem plano → 0 (bloqueia criação)."""
+    org = (await session.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
+    if org is None:
+        return 0
+    if org.plan_id is not None:
+        plan = (await session.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
+        if plan is not None:
+            return plan.max_users
+    return 0
+
+
+@router.get("", response_model=list[UserOut])
+async def list_users(session: AsyncSession = Depends(get_session), me: User = Depends(get_current_user)):
+    return (await session.execute(scope(select(User), User, me).order_by(User.username))).scalars().all()
+
+
+@router.post("", response_model=UserOut, status_code=201)
+async def create_user(payload: UserCreate, session: AsyncSession = Depends(get_session), me: User = Depends(get_current_user)):
+    if (await session.execute(select(User).where(User.username == payload.username))).scalar_one_or_none():
+        raise HTTPException(400, "nome de usuário já existe")
+
+    role = payload.role if payload.role in ROLES else "operator"
+    if is_master(me):
+        org_id = payload.org_id
+    else:
+        org_id = me.org_id  # Administrador cria só na própria ORG
+        if role == "master":
+            raise HTTPException(403, "apenas Master pode criar Master")
+        # Aplica a cota de usuários do plano (Master não é limitado).
+        if org_id is not None:
+            count = (await session.execute(select(func.count(User.id)).where(User.org_id == org_id))).scalar() or 0
+            limit = await _user_limit(session, org_id)
+            if count >= limit:
+                raise HTTPException(403, f"limite de usuários do plano atingido ({count}/{limit})")
+
+    u = User(
+        username=payload.username,
+        password_hash=hash_password(payload.password),
+        role=role,
+        org_id=org_id,
+        is_admin=role in ("admin", "master"),
+    )
+    session.add(u)
+    await session.commit()
+    await session.refresh(u)
+    return u
+
+
+@router.patch("/{user_id}", response_model=UserOut)
+async def update_user(user_id: int, payload: UserUpdate, session: AsyncSession = Depends(get_session), me: User = Depends(get_current_user)):
+    u = await _get(session, user_id, me)
+    if payload.role and payload.role in ROLES:
+        if payload.role == "master" and not is_master(me):
+            raise HTTPException(403, "apenas Master pode promover a Master")
+        if u.role in ("admin", "master") and payload.role == "operator" and await _admin_count(session, u.org_id) <= 1:
+            # Nunca deixar o sistema sem Master; uma ORG pode ficar sem admin se um Master decidir.
+            if u.org_id is None or not is_master(me):
+                raise HTTPException(400, "não é possível remover o último administrador da organização")
+        u.role = payload.role
+        u.is_admin = payload.role in ("admin", "master")
+    if payload.password:
+        u.password_hash = hash_password(payload.password)
+    data = payload.model_dump(exclude_unset=True)
+    if "usergroup_id" in data:
+        ug_id = data["usergroup_id"]
+        if ug_id is not None:
+            g = (await session.execute(select(UserGroup).where(UserGroup.id == ug_id))).scalar_one_or_none()
+            if g is None or (not is_master(me) and g.org_id != me.org_id):
+                raise HTTPException(400, "grupo de usuário inválido")
+        u.usergroup_id = ug_id
+    await session.commit()
+    await session.refresh(u)
+    return u
+
+
+@router.delete("/{user_id}", status_code=204)
+async def delete_user(user_id: int, me: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+    u = await _get(session, user_id, me)
+    if u.id == me.id:
+        raise HTTPException(400, "não é possível excluir a si mesmo")
+    if u.role in ("admin", "master") and await _admin_count(session, u.org_id) <= 1:
+        raise HTTPException(400, "não é possível excluir o último administrador")
+    await session.delete(u)
+    await session.commit()

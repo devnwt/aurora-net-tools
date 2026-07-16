@@ -1,0 +1,44 @@
+# === Segredos / ambiente ===
+.env
+.env.*
+!.env.example
+
+# === Docker Compose local (por-ambiente) ===
+# O compose de dev fica fora do git; use os modelos versionados:
+#   docker-compose.example.yml  (build local)  ·  docker-compose.harbor.yml (deploy)
+docker-compose.yml
+
+# === Python (backend) ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# === Node / Vite (frontend) ===
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+
+# === OS / editores ===
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# === Logs / temporários ===
+*.log
+tmp/
+*.tmp
+
+# === MIBs (assets grandes/estáticos ~339MB) — fora do git p/ manter o repo leve.
+# O build da imagem lê do disco (não do git); quem clonar precisa provê-los.
+backend/mibs/

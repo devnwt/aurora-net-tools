@@ -1,0 +1,17 @@
+# Servidor estático do SPA (build Vite). Substitui o nginx.
+# O proxy (Caddy) na frente trata /api e /mcp; aqui é só o front.
+:80 {
+	root * /srv
+	encode zstd gzip
+
+	# Assets com hash → cache longo, imutável.
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+	# HTML sempre revalida (evita servir um bundle JS antigo).
+	@html not path /assets/*
+	header @html Cache-Control "no-cache, must-revalidate"
+
+	# SPA: qualquer rota cai no index.html.
+	try_files {path} /index.html
+	file_server
+}

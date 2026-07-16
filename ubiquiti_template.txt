@@ -1,0 +1,44 @@
+=====================================================================
+INSTRUÇÕES OBRIGATÓRIAS PARA A INTELIGÊNCIA ARTIFICIAL (DIRETRIZES DE USO)
+=====================================================================
+1. O SISTEMA UBIQUITI AIROS (AirMax) RODA SOBRE UM LINUX EMBARCADO (BusyBox).
+2. Não tente inventar comandos no padrão "Cisco", "Huawei" ou "Mikrotik". O alvo se comporta essencialmente como um terminal Linux padrão.
+3. Para consultar configurações, basta ler os processos do sistema Linux correspondentes ou ler o arquivo /tmp/system.cfg.
+4. Para alterar de forma persitente algo no Ubiquiti via SSH não há modo interativo de roteamento. Deve-se editar o /tmp/system.cfg, aplicar usando `cfgmtd` e dar restart no serviço se aprofundado, portanto EVITE sugerir automações perigosas de edição em massa pelo prompt sem ter certeza das chaves textuais de configuração.
+
+=====================================================================
+                    TEMPLATES DE AUTOMAÇÃO DE REDE (UBIQUITI - airOS)
+=====================================================================
+
+## 1. Verificar Informações da Antena/Rádio e Modulação
+(Leia: Comando principal do AirOS para listar o mac, frequência, sinal RSSI e modulação atual da antena).
+mca-status
+
+## 2. Verificar Status do Cliente Wireless e Autenticação WPA
+(Leia: Ideal para problemas onde o rádio não conecta na torre base).
+wpa_cli status
+
+## 3. Listar Interfaces, IP e Tráfego atual (Linux Padrão)
+(Leia: Ver as interfaces ativas como ath0, br0, wifi0, eth0).
+ifconfig
+
+## 4. Verificar Informação Física do Rádio Padrão
+(Leia: Avaliar SSID, Canal e Frequência crua).
+iwconfig
+
+## 5. Visualizar toda a Configuração atual do Equipamento
+(Leia: Toda a configuração do airOS fica num único arquivo de texto de chave/valor. Use caso queira inspecionar algo específico com grep).
+cat /tmp/system.cfg
+
+## 6. Realizar medição de Throughput com Nomes / Testes de Ping
+(Leia: Você pode rodar comandos linux como o ping normalmente, preencha o IP).
+ping [IP_ALVO] -c 4
+
+## 7. Salvar Mudanças de Forma Permanente
+(Leia: Se de fato você ou o usuário criaram uma linha e injetaram no /tmp/system.cfg, essa é a sintaxe de salvamento seguro que grava o arquivo na memória flash e comita as mudanças do sistema rádio do airOS 6).
+cfgmtd -f /tmp/system.cfg -w
+/usr/etc/rc.d/rc.softrestart save
+
+## 8. Reinicializar Equipamento
+(Leia: Em Ubiquiti o reboot linux funciona de forma limpa gerando reset de hardware e software).
+reboot

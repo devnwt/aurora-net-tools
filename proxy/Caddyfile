@@ -1,0 +1,39 @@
+{
+	# HTTP puro por padrão (proxy interno / atrás de outro LB).
+	# Para HTTPS automático, troque ":8090" abaixo por um domínio
+	# (ex.: aurora.exemplo.com) e remova esta linha.
+	auto_https off
+}
+
+:8090 {
+	encode zstd gzip
+
+	# --- Copilot streaming (SSE) — sem buffer, conexão longa ---
+	@sse path /api/copilot/conversations/*/stream
+	handle @sse {
+		uri strip_prefix /api
+		reverse_proxy backend:8000 {
+			flush_interval -1
+		}
+	}
+
+	# --- MCP (streamable-http) — sem buffer, timeouts longos ---
+	handle /mcp* {
+		reverse_proxy backend:8000 {
+			flush_interval -1
+			transport http {
+				read_timeout 300s
+			}
+		}
+	}
+
+	# --- API REST — strip /api → FastAPI ---
+	handle_path /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# --- SPA (build Vite servido pelo nginx do frontend) ---
+	handle {
+		reverse_proxy frontend:80
+	}
+}

@@ -1,0 +1,78 @@
+# ==========================================================================
+# Aurora Prisma NetTools — Docker Compose (modelo de DEV / build local)
+#
+# Este arquivo é um TEMPLATE versionado. Copie para `docker-compose.yml`
+# (que fica fora do git) e ajuste ao seu ambiente:
+#
+#   cp docker-compose.example.yml docker-compose.yml
+#   cp .env.example .env      # e edite os segredos
+#   docker compose up -d --build
+#
+# Para deploy a partir do Harbor (sem build), use docker-compose.harbor.yml.
+# ==========================================================================
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aurora}
+      POSTGRES_USER: ${POSTGRES_USER:-aurora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aurora}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aurora}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    image: ${REGISTRY:-registry.aurora.app.br/aurora-nettools}/backend:${IMAGE_TAG:-latest}
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+    # MIBs agora são embutidas na imagem (backend/mibs → /app/mibs), sem volume.
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # NOTA (decisão §12): bridge por padrão. Se os equipamentos restringem
+    # SNMP/SSH por IP de origem, comente 'ports' acima e descomente abaixo:
+    # network_mode: host
+
+  frontend:
+    build: ./frontend
+    image: ${REGISTRY:-registry.aurora.app.br/aurora-nettools}/frontend:${IMAGE_TAG:-latest}
+    # Sem porta publicada: o acesso é pelo proxy (Caddy). Para expor direto
+    # em dev, descomente:
+    # ports:
+    #   - "5173:80"
+    depends_on:
+      - backend
+
+  # Caddy como proxy da aplicação: roteia /api e /mcp -> backend e o restante
+  # -> frontend (SPA). Ponto de entrada único em :8090.
+  proxy:
+    build: ./proxy
+    image: ${REGISTRY:-registry.aurora.app.br/aurora-nettools}/proxy:${IMAGE_TAG:-latest}
+    ports:
+      - "${PROXY_PORT:-8090}:8090"
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  pgdata:

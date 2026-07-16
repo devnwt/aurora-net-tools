@@ -1,0 +1,54 @@
+=====================================================================
+INSTRUÇÕES OBRIGATÓRIAS PARA A INTELIGÊNCIA ARTIFICIAL (DIRETRIZES DE USO)
+=====================================================================
+1. OS COMANDOS ABAIXO SÃO APENAS MOLDES / TEMPLATES (Sintaxe de Referência p/ HUAWEI VRP).
+2. NUNCA aplique as configurações cegamente. Faça perguntas ao usuário de forma proativa.
+3. Lembre-se de uma particularidade do HUAWE VRP: para criar portas ou vlans é estritamente OBRIGATÓRIO entrar no modo de configuração global primeiro usando o comando 'system-view'.
+4. Em cada requisição de alteração, gere a lista completa de comandos desde a entrada no sistema até a saída, agrupados e enviados juntos.
+
+=====================================================================
+                    TEMPLATES DE AUTOMAÇÃO DE REDE (HUAWEI)
+=====================================================================
+
+## 1. Listar Interfaces e VLANs (Leitura)
+(Leia: Não precisa de system-view. Use para descobrir as portas atuais antes de sugerir).
+display interface brief
+display vlan
+
+## 2. Criar VLAN Global
+(Leia: Pergunte o ID/Número da VLAN que será criada e opcionalmente uma pequena descrição).
+system-view
+vlan [NUMERO_DA_VLAN]
+ description [NOME_OU_DESCRICAO]
+quit
+
+## 3. Configurar Porta de Acesso Mínima (VLAN Untagged para Clientes, PCs ou Roteadores Finais)
+(Leia: Pergunte qual é a porta alvo (ex: GigabitEthernet0/0/1 ou XGigabitEthernet0/0/2) e a VLAN desejada. Esse modo tira a TAG/marcação da porta para equipamentos que não leem VLAN).
+system-view
+interface [NOME_DA_INTERFACE]
+ port link-type access
+ port default vlan [NUMERO_DA_VLAN_UNTAGGED]
+quit
+
+## 4. Configurar Porta Tronco (Trunk / Uplinks / Passagem Tagged entre equipamentos)
+(Leia: Pergunte a interface matriz. Num Switch Huawei, a porta Trunk exige que você declare explicitamente quais VLANs têm permissão de atravessar com o 'allow-pass').
+system-view
+interface [NOME_DA_INTERFACE]
+ port link-type trunk
+ port trunk allow-pass vlan [NUMERACOES_VLANs_SEPARADAS_POR_ESPACO_OU_all]
+quit
+
+## 5. Configurar Porta Híbrida (Vlan Tagged e Untagged combinadas na mesma interface s/ ser Trunk)
+(Leia: O padrão do VRP na Huawei é porta Híbrida em muitos equipamentos de fábrica. Se o usuário quiser manter as marcações híbridas para voz/dados, sugira esse template).
+system-view
+interface [NOME_DA_INTERFACE]
+ port link-type hybrid
+ port hybrid pvid vlan [VLAN_NATIVA_UNTAGGED]
+ port hybrid untagged vlan [VLAN_NATIVA_UNTAGGED]
+ port hybrid tagged vlan [VLAN_TAGGED]
+quit
+
+## 6. Salvar as Configurações Permanentes (Write/Commit)
+(Leia: Se o usuário pedir para salvar definitivamente, NÃO entre no system-view, rode na raiz).
+save
+(Observação para Inteligência: O comando "save" na Huawei pede confirmação Y/N inerente ao terminal. No netmiko às vezes é preciso passar parâmetros que force a sobreposição como 'save all' ou usar comandos para ignorar perguntas. Se o terminal travar no save, oriente o usuário a conectar e persistir via botão do WebUI dele, pois salvamentos costumam travar I/Os no netmiko caso peçam input terminal).

@@ -1,0 +1,79 @@
+=====================================================================
+INSTRUÇÕES OBRIGATÓRIAS PARA A INTELIGÊNCIA ARTIFICIAL (DIRETRIZES DE USO)
+=====================================================================
+1. OS COMANDOS ABAIXO SÃO APENAS MOLDES / TEMPLATES (Sintaxe de Referência).
+2. NUNCA execute a criação de VPNs, Bridges, DHCP, ou IPs de forma cega.
+3. SEMPRE faça uma pergunta consultiva ao usuário leigo para descobrir e preencher as variáveis faltantes representadas por colchetes [ ], tais como: qual interface de rede, qual número IP desejado, ou qual porta.
+4. Ao receber a resposta do usuário, você DEVE gerar sintaticamente o comando do RouterOS no terminal e enviá-lo via ssh_exec.
+
+=====================================================================
+                    TEMPLATES DE AUTOMAÇÃO DE REDE
+=====================================================================
+
+## 1. Identificar e Listar Interfaces
+/interface print
+/interface ethernet print
+
+## 2. Identificar e comentar interface de Uplink (Internet)
+(Verifique as rotas com '/ip route print' para deduzir qual a porta de saída padrão (0.0.0.0/0) e insira o comentário nela)
+/interface set [NOME_DA_INTERFACE_UPLINK] comment="Uplink"
+
+## 3. Criar uma Bridge
+(Leia: Faça perguntas ao usuário sobre o nome da bridge e quais interfaces ele quer juntar nela, lembrando que a interface de uplink NUNCA deve entrar na bridge).
+(Leia:Usando /ip route print você consegue identificar a interface de uplink. mas geralmente é a ether1 ou pppoe-out1)
+/interface bridge add name=[NOME_DA_BRIDGE]
+/interface bridge port add bridge=[NOME_DA_BRIDGE] interface=[INTERFACE_1]
+/interface bridge port add bridge=[NOME_DA_BRIDGE] interface=[INTERFACE_2]
+
+## 4. Definir endereço IP para uma interface
+(Leia: Pergunte qual IP, qual a máscara da rede e de qual interface estamos falando. se criamos uma bridge, geralmente é a bridge).
+/ip address add address=[IP_E_MASCARA_EX_192.168.0.1/24] interface=[INTERFACE]
+
+## 5. Criar Servidor DHCP
+(Leia: Pergunte qual será a interface de LAN, bloco de rede, gateway e o range inicial e final da piscina).
+/ip pool add name=[NOME_POOL] ranges=[IP_INICIAL-IP_FINAL]
+/ip dhcp-server add name=[NOME_DHCP] interface=[INTERFACE_DA_LAN] address-pool=[NOME_POOL] disabled=no
+/ip dhcp-server network add address=[REDE_E_MASCARA] gateway=[IP_GATEWAY] dns-server=[IP_DNS]
+
+## 6. Criar Regras de NAT (Mascaramento de Saída)
+(Leia: Pergunte se o usuário sabe qual é a interface dedicada que vai para a internet).
+/ip firewall nat add chain=srcnat out-interface=[INTERFACE_DE_SAIDA] action=masquerade
+
+## 7. Criar Regra de NAT para Redirecionamento de Porta (Port Forwarding)
+(Leia: Pergunte a interface externa que receberá, a porta destino no mikrotik, o IP interno do equipamento que receberá e sua porta real).
+/ip firewall nat add chain=dstnat in-interface=[INTERFACE_ENTRADA_UPLINK] protocol=[TCP_OU_UDP] dst-port=[PORTA_EXTERNA] action=dst-nat to-addresses=[IP_PRIVADO_DESTINO] to-ports=[PORTA_PRIVADA_DESTINO]
+
+## 8. Criar Regra de Filtro (Firewall Filter)
+(Leia: Solte perguntas básicas de direcionamento antes de executar o comando ou inferir o padrão seguro).
+/ip firewall filter add chain=[CHAIN_EX_FORWARD] action=[ACTION_EX_DROP] protocol=[PROTOCOLO_TCP] dst-port=[PORTA_DE_DESTINO]
+
+## 9. Criar Servidor VPN (L2TP/IPSEC)
+(Leia: Pergunte a senha do IPSEC compartilhada desejada, e os IPs Locais e Remotos do tunelamento).
+/ip pool add name=[NOME_PISCINA_VPN] ranges=[IP_INICIAL-IP_FINAL]
+/ppp profile add name=[NOME_DO_PROFILE] local-address=[IP_LOCAL_TUNEL] remote-address=[NOME_PISCINA_VPN]
+/interface l2tp-server server set enabled=yes default-profile=[NOME_DO_PROFILE] use-ipsec=yes ipsec-secret=[SENHA_IPSEC]
+
+## 10. Criar Usuários da VPN
+(Leia: Pergunte ao usuário o Username e Senha que ele quer registrar, o tipo a gente já assume como l2tp).
+/ppp secret add name=[NOME_LOGIN_CLIENTE] password=[SENHA] profile=[NOME_DO_PROFILE] service=[TIPO_EX_L2TP]
+
+## 11. Criar VLAN
+(Leia: Descubra com ele a interface raiz onde criaremos e sua identificação/ID virtual).
+/interface vlan add name=[NOME_VLAN] vlan-id=[ID_NUMERICO] interface=[INTERFACE_MATRIZ]
+
+=====================================================================
+                      CONFIGURAÇÕES BÁSICAS DIRETAS
+=====================================================================
+
+## Habilitar SNMP V2 no Mikrotik
+/snmp community set name=noc-nwt-mikrotik numbers=0 disabled=no
+/snmp set trap-community=noc-nwt-mikrotik trap-version=2 enabled=yes
+
+## Configurar TR069
+/tr069-client
+set acs-url=http://acs.nwt.net.br:7547 check-certificate=yes client-certificate=none connection-request-port=7547 enabled=yes password=nwt123456 periodic-inform-enabled=yes periodic-inform-interval=5m username=admin
+
+## 12. Realizar Backup Remoto para Serviço FTP
+(Leia: Crie o nome do arquivo com a data e IP e salve. Depois rode OBRIGATORIAMENTE o MCP tool `get_ftp_credentials` para extrair os dados e injetar nesse comando de upload fetch).
+/system backup save name=[NOME_ARQUIVO.backup]
+/tool fetch address=[IP_FTP] port=[PORTA_FTP] src-path=[NOME_ARQUIVO.backup] user=[USER_FTP] password=[SENHA_FTP] mode=ftp dst-path=[NOME_ARQUIVO.backup] upload=yes
