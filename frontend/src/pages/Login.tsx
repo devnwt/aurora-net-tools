@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button, Input } from "@/components/ui";
+import { FloatingInput } from "@/components/FloatingInput";
 import { AuthShell } from "@/components/AuthShell";
 
 export function Login() {
@@ -64,17 +65,11 @@ export function Login() {
           <button type="button" onClick={() => { setForgot(false); setNote(""); }} className="w-full text-center text-xs text-white/60 hover:text-white cursor-pointer">Voltar ao login</button>
         </form>
       ) : (
-        <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-white/10 bg-black/30 p-6 backdrop-blur-md">
-          <div className="space-y-1">
-            <label htmlFor="u" className="text-xs text-white/60">Usuário</label>
-            <Input id="u" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="p" className="text-xs text-white/60">Senha</label>
-            <Input id="p" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          </div>
+        <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-white/10 bg-black/30 p-8 backdrop-blur-md sm:p-10">
+          <FloatingInput id="u" label="Email ou usuário" type="text" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
+          <FloatingInput id="p" label="Senha" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           {error && <p className="text-sm text-danger">{error}</p>}
-          <Button type="submit" className="w-full justify-center" disabled={busy}>{busy ? "Entrando…" : "Entrar"}</Button>
+          <Button type="submit" className="w-full justify-center py-2.5" disabled={busy}>{busy ? "Entrando…" : "Entrar"}</Button>
           <div className="flex items-center justify-between text-xs">
             <button type="button" onClick={() => setForgot(true)} className="text-white/60 hover:text-white cursor-pointer">Esqueci minha senha</button>
             {regEnabled && <Link to="/register" className="text-primary hover:underline">Criar conta</Link>}

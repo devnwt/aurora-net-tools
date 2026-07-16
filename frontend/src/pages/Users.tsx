@@ -18,7 +18,7 @@ export function Users() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AppUser | null>(null);
-  const [form, setForm] = useState<{ username: string; password: string; role: Role }>({ username: "", password: "", role: "operator" });
+  const [form, setForm] = useState<{ username: string; email: string; password: string; role: Role }>({ username: "", email: "", password: "", role: "operator" });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
@@ -30,13 +30,13 @@ export function Users() {
 
   function openNew() {
     setEditing(null);
-    setForm({ username: "", password: "", role: "operator" });
+    setForm({ username: "", email: "", password: "", role: "operator" });
     setErr("");
     setOpen(true);
   }
   function openEdit(u: AppUser) {
     setEditing(u);
-    setForm({ username: u.username, password: "", role: roleOf(u) });
+    setForm({ username: u.username, email: u.email ?? "", password: "", role: roleOf(u) });
     setErr("");
     setOpen(true);
   }
@@ -48,9 +48,11 @@ export function Users() {
       if (editing) {
         const body: Record<string, unknown> = { role: form.role };
         if (form.password) body.password = form.password;
+        // Só envia e-mail se preenchido e alterado (evita rejeitar contas legadas sem e-mail).
+        if (form.email && form.email !== (editing.email ?? "")) body.email = form.email;
         await api.patch(`/users/${editing.id}`, body);
       } else {
-        await api.post("/users", { username: form.username, password: form.password, role: form.role });
+        await api.post("/users", { username: form.username, email: form.email, password: form.password, role: form.role });
       }
       setOpen(false);
       load();
@@ -87,7 +89,7 @@ export function Users() {
       ) : items.length === 0 ? (
         <EmptyState title="Nenhum usuário" />
       ) : (
-        <Table head={<><Th>Username</Th><Th>Papel</Th><Th className="text-right">Actions</Th></>}>
+        <Table head={<><Th>Username</Th><Th>E-mail</Th><Th>Papel</Th><Th className="text-right">Actions</Th></>}>
           {items.map((u) => {
             const r = roleOf(u);
             return (
@@ -95,6 +97,7 @@ export function Users() {
                 <Td className="font-medium">
                   {u.username} {u.id === me?.id && <Badge tone="muted">você</Badge>}
                 </Td>
+                <Td className="text-muted">{u.email || <span className="text-danger/70">— sem e-mail —</span>}</Td>
                 <Td><Badge tone={r === "master" ? "accent" : r === "admin" ? "primary" : "muted"}>{ROLE_LABEL[r]}</Badge></Td>
                 <Td className="text-right">
                   <div className="flex items-center justify-end gap-2">
@@ -115,7 +118,7 @@ export function Users() {
           footer={
             <>
               <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={save} disabled={saving || (!editing && (!form.username || !form.password))}>
+              <Button onClick={save} disabled={saving || (!editing && (!form.username || !form.email || !form.password))}>
                 {saving ? "Salvando…" : editing ? "Save" : "Create"}
               </Button>
             </>
@@ -124,6 +127,9 @@ export function Users() {
           <div className="space-y-3">
             <Fld label="USERNAME">
               <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} disabled={!!editing} autoFocus={!editing} />
+            </Fld>
+            <Fld label="E-MAIL (login)">
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="voce@empresa.com" />
             </Fld>
             <Fld label={editing ? "NEW PASSWORD (opcional)" : "PASSWORD"}>
               <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editing ? "deixe em branco para manter" : ""} />

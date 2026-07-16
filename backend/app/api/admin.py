@@ -1,5 +1,6 @@
 """Administração do sistema (Master): planos e organizações (ORGs)."""
 
+import re
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -260,7 +261,7 @@ class OrgIn(BaseModel):
     device_limit: int | None = None
     admin_username: str
     admin_password: str
-    admin_email: str | None = None
+    admin_email: str  # obrigatório: será o login (e-mail + senha) do admin da ORG
     send_welcome: bool = False
 
 
@@ -305,17 +306,22 @@ async def list_orgs(session: AsyncSession = Depends(get_session)):
 
 @router.post("/orgs", status_code=201)
 async def create_org(payload: OrgIn, session: AsyncSession = Depends(get_session)):
+    admin_email = payload.admin_email.strip().lower()
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", admin_email):
+        raise HTTPException(400, "e-mail do admin inválido")
     if (await session.execute(select(Organization).where(Organization.name == payload.name))).scalar_one_or_none():
         raise HTTPException(400, "ORG já existe")
     if (await session.execute(select(User).where(User.username == payload.admin_username))).scalar_one_or_none():
         raise HTTPException(400, "nome de usuário do admin já existe")
+    if (await session.execute(select(User.id).where(func.lower(User.email) == admin_email))).first() is not None:
+        raise HTTPException(400, "e-mail do admin já cadastrado")
     org = Organization(name=payload.name, plan_id=payload.plan_id, device_limit=payload.device_limit)
     session.add(org)
     await session.flush()
     session.add(
         User(
             username=payload.admin_username,
-            email=payload.admin_email,
+            email=admin_email,
             password_hash=hash_password(payload.admin_password),
             role="admin",
             is_admin=True,

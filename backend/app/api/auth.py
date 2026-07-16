@@ -1,7 +1,9 @@
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -28,9 +30,13 @@ async def login(
     form: OAuth2PasswordRequestForm = Depends(),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
+    # Login por e-mail (principal) ou username (fallback p/ contas sem e-mail).
+    ident = form.username.strip()
     user = (
-        await session.execute(select(User).where(User.username == form.username))
-    ).scalar_one_or_none()
+        await session.execute(
+            select(User).where(or_(func.lower(User.email) == ident.lower(), User.username == ident))
+        )
+    ).scalars().first()
     if user is None or not verify_password(form.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas"
@@ -43,6 +49,7 @@ async def me(user: User = Depends(get_current_user)) -> dict:
     return {
         "id": user.id,
         "username": user.username,
+        "email": user.email,
         "is_admin": user.is_admin,
         "role": user.role,
         "org_id": user.org_id,
@@ -119,7 +126,7 @@ class RegisterIn(BaseModel):
     org_name: str
     username: str
     password: str
-    email: str | None = None
+    email: str  # obrigatório: será o login (e-mail + senha)
 
 
 @router.post("/register")
@@ -128,19 +135,24 @@ async def register(body: RegisterIn, session: AsyncSession = Depends(get_session
     if not (cfg and cfg.registration_enabled):
         raise HTTPException(403, "cadastro público desabilitado")
     org_name, username = body.org_name.strip(), body.username.strip()
+    email = body.email.strip().lower()
     if not org_name or not username or len(body.password) < 6:
         raise HTTPException(400, "informe organização, usuário e senha (≥6 caracteres)")
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        raise HTTPException(400, "e-mail inválido")
     if (await session.execute(select(Organization).where(Organization.name == org_name))).scalar_one_or_none():
         raise HTTPException(400, "já existe uma organização com esse nome")
     if (await session.execute(select(User).where(User.username == username))).scalar_one_or_none():
         raise HTTPException(400, "nome de usuário já existe")
+    if (await session.execute(select(User.id).where(func.lower(User.email) == email))).first() is not None:
+        raise HTTPException(400, "e-mail já cadastrado")
 
     org = Organization(name=org_name, plan_id=cfg.registration_plan_id)
     session.add(org)
     await session.flush()
     user = User(
         username=username,
-        email=(body.email or None),
+        email=email,
         password_hash=hash_password(body.password),
         role="admin",
         is_admin=True,

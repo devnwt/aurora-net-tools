@@ -26,6 +26,36 @@
   }
 }
 
+/* === Scrollbar custom (combina com o tema dark OLED) ===================== */
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  /* thumb (entre surface-2 e border) · track transparente */
+  scrollbar-color: #2b3648 transparent;
+}
+
+/* WebKit (Chrome / Edge / Safari) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #2b3648;
+  border-radius: 9999px;
+  /* borda transparente + clip no conteúdo = thumb fininho com "respiro" */
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #3b82f6; /* primary no hover */
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* === Particle network background (tela de login) === */
 .particle-network-animation {
   position: fixed;

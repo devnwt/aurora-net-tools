@@ -29,7 +29,7 @@ export function Register() {
     }
   }
 
-  const valid = f.org_name && f.username && f.password.length >= 6;
+  const valid = f.org_name && f.username && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email) && f.password.length >= 6;
 
   return (
     <AuthShell subtitle="Criar conta">
@@ -48,8 +48,8 @@ export function Register() {
               <Input value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-white/60">E-mail</label>
-              <Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="para recuperar a senha" />
+              <label className="text-xs text-white/60">E-mail (login)</label>
+              <Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="voce@empresa.com" />
             </div>
             <div className="space-y-1">
               <label className="text-xs text-white/60">Senha (mín. 6)</label>

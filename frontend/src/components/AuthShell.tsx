@@ -8,18 +8,18 @@ export function AuthShell({ subtitle, children }: { subtitle: string; children: 
   return (
     <div className="relative min-h-screen overflow-hidden">
       <ParticleNetwork />
-      <div className="relative z-10 flex min-h-screen items-center">
-        <div className="w-full max-w-md px-8 sm:pl-16 sm:pr-8">
-          <div className="mb-8 flex items-center gap-3">
-            <img src={logo} alt="Aurora Prisma NetTools" className="h-12 w-12 rounded-lg object-contain" />
+      <div className="relative z-10 flex min-h-screen items-center px-6 sm:px-10 lg:pl-[12vw] lg:pr-10">
+        <div className="w-full max-w-lg">
+          <div className="mb-9 flex items-center gap-3.5">
+            <img src={logo} alt="Aurora Prisma NetTools" className="h-14 w-14 rounded-xl object-contain" />
             <div>
-              <h1 className="text-2xl font-semibold leading-tight tracking-tight text-white">
+              <h1 className="text-3xl font-semibold leading-tight tracking-tight text-white">
                 Aurora Prisma{" "}
                 <span className="bg-gradient-to-r from-primary via-cyan-400 to-accent bg-clip-text font-bold italic text-transparent">
                   NetTools
                 </span>
               </h1>
-              <p className="mt-0.5 text-sm text-white/50">{subtitle}</p>
+              <p className="mt-1 text-sm text-white/50">{subtitle}</p>
             </div>
           </div>
           {children}

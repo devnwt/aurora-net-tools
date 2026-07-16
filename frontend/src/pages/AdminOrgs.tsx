@@ -59,7 +59,7 @@ export function AdminOrgs() {
         const r = await api.post<OrgMeta & { welcome?: { ok: boolean; detail: string } }>("/admin/orgs", {
           name: form.name, plan_id: planId, device_limit: devLimit,
           admin_username: form.admin_username, admin_password: form.admin_password,
-          admin_email: form.admin_email || null, send_welcome: form.send_welcome,
+          admin_email: form.admin_email, send_welcome: form.send_welcome,
         });
         if (r.welcome) setNote(r.welcome.ok ? { ok: true, text: `Boas-vindas: ${r.welcome.detail}` } : { ok: false, text: `Boas-vindas falhou: ${r.welcome.detail}` });
       }
@@ -89,7 +89,7 @@ export function AdminOrgs() {
     }
   }
 
-  const valid = editing ? !!form.name : form.name && form.admin_username && form.admin_password;
+  const valid = editing ? !!form.name : form.name && form.admin_username && form.admin_password && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.admin_email);
 
   return (
     <div>

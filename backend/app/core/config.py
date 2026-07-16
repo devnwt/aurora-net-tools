@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480
     admin_username: str = "admin"
+    admin_email: str = ""  # login por e-mail do Master (semeado no 1º boot)
     admin_password: str = ""
 
     # Backend / MCP

@@ -1,3 +1,5 @@
+import re
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +14,31 @@ from app.schemas.user import UserCreate, UserOut, UserUpdate
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(require_admin)])
 
 ROLES = ("operator", "admin", "master")
+MIN_PASSWORD = 6
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _norm_email(email: str) -> str:
+    """Normaliza o e-mail (trim + lower) para uso como login único."""
+    return email.strip().lower()
+
+
+def _check_password(password: str) -> None:
+    if len(password) < MIN_PASSWORD:
+        raise HTTPException(400, f"a senha deve ter ao menos {MIN_PASSWORD} caracteres")
+
+
+async def _check_email(session: AsyncSession, email: str, exclude_id: int | None = None) -> str:
+    """Valida formato e unicidade do e-mail (login). Retorna o e-mail normalizado."""
+    norm = _norm_email(email)
+    if not _EMAIL_RE.match(norm):
+        raise HTTPException(400, "e-mail inválido")
+    stmt = select(User.id).where(func.lower(User.email) == norm)
+    if exclude_id is not None:
+        stmt = stmt.where(User.id != exclude_id)
+    if (await session.execute(stmt)).first() is not None:
+        raise HTTPException(400, "e-mail já cadastrado")
+    return norm
 
 
 async def _get(session: AsyncSession, user_id: int, me: User) -> User:
@@ -52,6 +79,8 @@ async def list_users(session: AsyncSession = Depends(get_session), me: User = De
 async def create_user(payload: UserCreate, session: AsyncSession = Depends(get_session), me: User = Depends(get_current_user)):
     if (await session.execute(select(User).where(User.username == payload.username))).scalar_one_or_none():
         raise HTTPException(400, "nome de usuário já existe")
+    _check_password(payload.password)
+    email = await _check_email(session, payload.email)
 
     role = payload.role if payload.role in ROLES else "operator"
     if is_master(me):
@@ -69,6 +98,7 @@ async def create_user(payload: UserCreate, session: AsyncSession = Depends(get_s
 
     u = User(
         username=payload.username,
+        email=email,
         password_hash=hash_password(payload.password),
         role=role,
         org_id=org_id,
@@ -92,7 +122,10 @@ async def update_user(user_id: int, payload: UserUpdate, session: AsyncSession =
                 raise HTTPException(400, "não é possível remover o último administrador da organização")
         u.role = payload.role
         u.is_admin = payload.role in ("admin", "master")
+    if payload.email is not None:
+        u.email = await _check_email(session, payload.email, exclude_id=u.id)
     if payload.password:
+        _check_password(payload.password)
         u.password_hash = hash_password(payload.password)
     data = payload.model_dump(exclude_unset=True)
     if "usergroup_id" in data:

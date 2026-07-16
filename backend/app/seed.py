@@ -29,6 +29,7 @@ async def seed() -> None:
                 session.add(
                     User(
                         username=settings.admin_username,
+                        email=(settings.admin_email.strip().lower() or None),
                         password_hash=hash_password(settings.admin_password),
                         is_admin=True,
                         role="master",
