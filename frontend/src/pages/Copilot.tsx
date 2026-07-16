@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import type { CopilotConversation, CopilotDetail, Device, Group } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge, Button, Card, Spinner, Textarea } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 import { cn } from "@/lib/utils";
 
 const errMsg = (e: unknown) => (e instanceof ApiError ? `Erro ${e.status}: ${e.message}` : String(e));
@@ -17,6 +18,7 @@ const MODES = [
 ] as const;
 
 export function Copilot() {
+  const { confirm } = useConfirm();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "master";
   const [convs, setConvs] = useState<CopilotConversation[]>([]);
@@ -142,7 +144,7 @@ export function Copilot() {
   }
 
   async function delConv(id: number) {
-    if (!confirm("Excluir esta conversa?")) return;
+    if (!(await confirm({ title: "Excluir conversa", message: "Excluir esta conversa?" }))) return;
     await api.del(`/copilot/conversations/${id}`);
     if (activeId === id) setActiveId(null);
     loadConvs();
@@ -172,8 +174,8 @@ export function Copilot() {
     <div>
       <PageHeader
         title="Copilot"
-        subtitle="Assistente LLM para operar devices (Settings → LLM)"
-        actions={isAdmin ? <Link to="/settings"><Button variant="ghost"><Wrench className="h-4 w-4" /> Tools (Settings)</Button></Link> : undefined}
+        subtitle="Assistente LLM para operar devices (Configurações → LLM)"
+        actions={isAdmin ? <Link to="/settings"><Button variant="ghost"><Wrench className="h-4 w-4" /> Ferramentas (Configurações)</Button></Link> : undefined}
       />
 
       <div className="grid gap-4 lg:grid-cols-[320px_1fr]">

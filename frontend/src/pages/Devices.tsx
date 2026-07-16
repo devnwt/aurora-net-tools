@@ -57,13 +57,13 @@ export function Devices() {
   return (
     <div>
       <PageHeader
-        title="Devices"
-        subtitle={`${devices.length} device(s)`}
-        actions={<Link to="/devices/new"><Button><Plus className="h-4 w-4" /> Add Device</Button></Link>}
+        title="Dispositivos"
+        subtitle={`${devices.length} dispositivo(s)`}
+        actions={<Link to="/devices/new"><Button><Plus className="h-4 w-4" /> Adicionar Dispositivo</Button></Link>}
       />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or host…" className="max-w-sm" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome ou host…" className="max-w-sm" />
         {FILTERS.map((f) => {
           const meta = STATUS_META[f];
           const on = active === f;
@@ -109,7 +109,7 @@ function DeviceCard({ device, status }: { device: Device; status?: DeviceStatusI
   const v = (x: string | number | null | undefined) => (x == null || x === "" ? "—" : String(x));
   const rows: [string, string][] = [
     ["Host", device.ip],
-    ["Method", methodOf(device)],
+    ["Método", methodOf(device)],
     ["RouterOS", v(status?.version)],
     ["Board", v(status?.board)],
     ["Uptime", v(status?.uptime)],

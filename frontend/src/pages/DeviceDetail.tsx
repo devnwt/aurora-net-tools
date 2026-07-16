@@ -6,6 +6,7 @@ import { rosGet, rosPost } from "@/lib/rosClient";
 import { ForceGraph, type GEdge, type GNode } from "@/components/ForceGraph";
 import type { Device, DeviceSample, Group, NetInfoResp, OverviewResp, RosRecord, TrafficResp } from "@/lib/types";
 import { Badge, Button, Card, Input, Modal, Select, Spinner } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 import { Table, Td, Th } from "@/components/Table";
 import { DeviceImage } from "@/components/DeviceImage";
 import { DeviceMap } from "@/components/DeviceMap";
@@ -40,6 +41,7 @@ function useResource<T>(key: string | null, loader: () => Promise<T>) {
 }
 
 export function DeviceDetail() {
+  const { confirm } = useConfirm();
   const { id } = useParams();
   const did = Number(id);
   const navigate = useNavigate();
@@ -97,13 +99,13 @@ export function DeviceDetail() {
   const status = ov.busy ? "checking" : ov.error ? "not_accessible" : ov.data ? "online" : "unknown";
   const statusMeta = {
     online: { label: "Online", dot: "bg-ok", text: "text-ok" },
-    not_accessible: { label: "Not accessible", dot: "bg-accent", text: "text-accent" },
+    not_accessible: { label: "Inacessível", dot: "bg-accent", text: "text-accent" },
     checking: { label: "Checando…", dot: "bg-muted", text: "text-muted" },
-    unknown: { label: "Unknown", dot: "bg-muted", text: "text-muted" },
+    unknown: { label: "Desconhecido", dot: "bg-muted", text: "text-muted" },
   }[status];
 
   async function remove() {
-    if (!confirm(`Excluir o device "${device!.name}"?`)) return;
+    if (!(await confirm({ title: "Excluir device", message: `Excluir o device "${device!.name}"?` }))) return;
     await api.del(`/devices/${id}`);
     navigate("/devices");
   }
@@ -113,34 +115,34 @@ export function DeviceDetail() {
       {/* Cabeçalho inline */}
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <Link to="/devices" className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted hover:bg-surface-2 hover:text-text cursor-pointer">
-          <ArrowLeft className="h-4 w-4" /> Back
+          <ArrowLeft className="h-4 w-4" /> Voltar
         </Link>
         <h1 className="text-xl font-semibold">{device.name}</h1>
         <span className={cn("inline-flex items-center gap-1.5 text-sm", statusMeta.text)}>
           <span className={cn("h-2 w-2 rounded-full", statusMeta.dot)} /> {statusMeta.label}
         </span>
         <div className="ml-auto flex items-center gap-2">
-          {isRos && <Button variant="ghost" onClick={() => setShowNeighbors(true)}><Share2 className="h-4 w-4" /> Neighbors</Button>}
+          {isRos && <Button variant="ghost" onClick={() => setShowNeighbors(true)}><Share2 className="h-4 w-4" /> Vizinhos</Button>}
           <Button variant="ghost" onClick={ov.reload} disabled={ov.busy}>
-            {ov.busy ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Test Connection
+            {ov.busy ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Testar conexão
           </Button>
-          <Link to={`/devices/${id}/edit`}><Button variant="ghost">Edit</Button></Link>
-          <Button variant="danger" onClick={remove}>Delete</Button>
+          <Link to={`/devices/${id}/edit`}><Button variant="ghost">Editar</Button></Link>
+          <Button variant="danger" onClick={remove}>Excluir</Button>
         </div>
       </div>
 
       {!isRos && (
         <Card className="mb-5 text-sm text-muted">
           Este device é <Badge tone="accent">{device.device_type}</Badge>. As telas ao vivo são específicas de
-          RouterOS — use a aba Command abaixo.
+          RouterOS — use a aba Comando abaixo.
         </Card>
       )}
 
       {/* Cards de saúde */}
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <StatCard label="CPU LOAD" value={s?.cpu_load != null ? `${s.cpu_load}%` : "—"} bar={s?.cpu_load != null ? Number(s.cpu_load) : undefined} />
-        <StatCard label="RAM USED" value={s?.ram_used_pct != null ? `${s.ram_used_pct}%` : "—"} bar={s?.ram_used_pct ?? undefined} />
-        <StatCard label="TEMPERATURE" value={s?.temperature ? `${s.temperature}°C` : "—"} />
+        <StatCard label="CARGA CPU" value={s?.cpu_load != null ? `${s.cpu_load}%` : "—"} bar={s?.cpu_load != null ? Number(s.cpu_load) : undefined} />
+        <StatCard label="RAM USADA" value={s?.ram_used_pct != null ? `${s.ram_used_pct}%` : "—"} bar={s?.ram_used_pct ?? undefined} />
+        <StatCard label="TEMPERATURA" value={s?.temperature ? `${s.temperature}°C` : "—"} />
         <StatCard label="UPTIME" value={s?.uptime ?? "—"} />
         <PingCard deviceId={did} />
       </div>
@@ -150,10 +152,10 @@ export function DeviceDetail() {
         <Card className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
           <Info label="HOST" value={device.ip} mono />
           <Info label="BOARD" value={s?.board ?? "—"} mono />
-          <Info label="ARCHITECTURE" value={s?.architecture ?? "—"} mono />
-          <Info label="METHOD" value={<MethodBadges device={device} />} />
+          <Info label="ARQUITETURA" value={s?.architecture ?? "—"} mono />
+          <Info label="MÉTODO" value={<MethodBadges device={device} />} />
           <Info label="ROUTEROS" value={s?.version ?? "—"} mono />
-          <Info label="LAST CHECK" value={lastCheck || "—"} mono />
+          <Info label="ÚLTIMA VERIFICAÇÃO" value={lastCheck || "—"} mono />
         </Card>
         <Card className="flex items-center justify-center overflow-hidden p-0">
           {geo ? (
@@ -180,7 +182,7 @@ export function DeviceDetail() {
       {/* Services */}
       {isRos && (
         <div className="mb-5 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-muted">Services</span>
+          <span className="text-xs font-semibold text-muted">Serviços</span>
           {ov.busy && services.length === 0 ? (
             <Spinner />
           ) : (
@@ -338,9 +340,9 @@ function ErrorNote({ msg }: { msg: string }) {
 // === Health (série temporal do poller) ===
 
 const METRICS = [
-  { key: "temperature", label: "Cpu Temperature", color: "#22D3EE", unit: "°C" },
-  { key: "cpu_load", label: "Cpu Load", color: "#3B82F6", unit: "%" },
-  { key: "ram_used_pct", label: "Ram Used", color: "#22C55E", unit: "%" },
+  { key: "temperature", label: "Temperatura da CPU", color: "#22D3EE", unit: "°C" },
+  { key: "cpu_load", label: "Carga da CPU", color: "#3B82F6", unit: "%" },
+  { key: "ram_used_pct", label: "RAM usada", color: "#22C55E", unit: "%" },
 ] as const;
 const RANGES = [
   { label: "6h", h: 6 },
@@ -385,7 +387,7 @@ function HealthCard({ deviceId }: { deviceId: number }) {
   return (
     <Card className="mb-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">Health — {metric.label}</h2>
+        <h2 className="text-sm font-semibold">Saúde — {metric.label}</h2>
         <div className="flex gap-1 rounded-lg border border-border p-0.5 text-xs">
           {RANGES.map((r) => (
             <button key={r.h} onClick={() => setHours(r.h)} className={cn("rounded px-2 py-1 cursor-pointer", hours === r.h ? "bg-primary/20 text-primary" : "text-muted")}>
@@ -406,7 +408,7 @@ function HealthCard({ deviceId }: { deviceId: number }) {
         ))}
       </div>
       <p className="mb-2 text-xs text-muted">
-        Current: <span className="text-text">{f(cur)}</span> · min {f(min)} · max {f(max)} · avg {f(avg)}
+        Atual: <span className="text-text">{f(cur)}</span> · mín {f(min)} · máx {f(max)} · méd {f(avg)}
       </p>
       <LineChart series={[{ points, color: metric.color }]} unit={metric.unit} id={`h-${metric.key}`} />
     </Card>
@@ -499,7 +501,7 @@ function LiveTrafficCard({ deviceId, interfaces, iface, onSelect }: { deviceId: 
     <Card className="mb-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
-          Live Traffic — {iface || "—"}
+          Tráfego ao vivo — {iface || "—"}
           {sfp && <Badge tone="accent"><Zap className="mr-0.5 inline h-3 w-3" />óptica</Badge>}
           {poe?.poe && <Badge tone="ok">PoE</Badge>}
         </h2>
@@ -509,7 +511,7 @@ function LiveTrafficCard({ deviceId, interfaces, iface, onSelect }: { deviceId: 
             {candidates.map((i) => <option key={i.name} value={i.name}>{i.name}</option>)}
           </select>
           <button onClick={() => setLive((v) => !v)} className={cn("rounded-lg border px-3 py-1 text-xs cursor-pointer", live ? "border-ok/50 bg-ok/15 text-ok" : "border-border text-muted")}>
-            {live ? "● Live" : "Paused"}
+            {live ? "● Ao vivo" : "Pausado"}
           </button>
         </div>
       </div>
@@ -517,13 +519,13 @@ function LiveTrafficCard({ deviceId, interfaces, iface, onSelect }: { deviceId: 
       {/* Painel óptico (SFP) */}
       {sfp && optics?.optical && (
         <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg border border-accent/30 bg-accent/5 p-3 text-xs sm:grid-cols-4">
-          <Optic label="TX Power" value={optics.data["sfp-tx-power"]} good />
-          <Optic label="RX Power" value={optics.data["sfp-rx-power"]} good />
+          <Optic label="Potência TX" value={optics.data["sfp-tx-power"]} good />
+          <Optic label="Potência RX" value={optics.data["sfp-rx-power"]} good />
           <Optic label="Temp" value={optics.data["sfp-temperature"]} />
-          <Optic label="Voltage" value={optics.data["sfp-supply-voltage"]} />
-          <Optic label="Vendor" value={optics.data["sfp-vendor-name"]} />
-          <Optic label="Part" value={optics.data["sfp-vendor-part-number"]} />
-          <Optic label="Wavelength" value={optics.data["sfp-wavelength"]} />
+          <Optic label="Tensão" value={optics.data["sfp-supply-voltage"]} />
+          <Optic label="Fabricante" value={optics.data["sfp-vendor-name"]} />
+          <Optic label="Modelo" value={optics.data["sfp-vendor-part-number"]} />
+          <Optic label="Comprimento de onda" value={optics.data["sfp-wavelength"]} />
           <Optic label="Bias" value={optics.data["sfp-tx-bias-current"]} />
         </div>
       )}
@@ -532,17 +534,17 @@ function LiveTrafficCard({ deviceId, interfaces, iface, onSelect }: { deviceId: 
       {/* Painel PoE (ether) */}
       {ether && poe?.poe && (
         <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg border border-ok/30 bg-ok/5 p-3 text-xs sm:grid-cols-4">
-          <Optic label="PoE Status" value={poe.data["poe-out-status"]} />
-          <Optic label="Voltage" value={poe.data["poe-out-voltage"]} />
-          <Optic label="Current" value={poe.data["poe-out-current"]} />
-          <Optic label="Power" value={poe.data["poe-out-power"]} good />
+          <Optic label="Status PoE" value={poe.data["poe-out-status"]} />
+          <Optic label="Tensão" value={poe.data["poe-out-voltage"]} />
+          <Optic label="Corrente" value={poe.data["poe-out-current"]} />
+          <Optic label="Potência" value={poe.data["poe-out-power"]} good />
         </div>
       )}
 
       <div className="mb-2 flex flex-wrap gap-4 text-xs">
         <span>RX <span className="font-mono text-ok">{fmtBps(curRx)}</span></span>
         <span>TX <span className="font-mono text-primary">{fmtBps(curTx)}</span></span>
-        <span className="text-muted">Peak <span className="font-mono">{fmtBps(peak)}</span></span>
+        <span className="text-muted">Pico <span className="font-mono">{fmtBps(peak)}</span></span>
       </div>
       <LineChart
         series={[{ points: rx, color: "#22C55E", label: "RX" }, { points: tx, color: "#3B82F6", label: "TX" }]}
@@ -585,7 +587,7 @@ function Port({ r, selected, onSelect }: { r: RosRecord; selected: boolean; onSe
         {sfp && <Zap className="h-2.5 w-2.5" />}{r.name}
       </span>
       <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-pre rounded-md border border-border bg-bg px-2 py-1 text-[11px] font-mono shadow-lg group-hover:block">
-        {`${r.name} — ${off ? "disabled" : up ? "link-ok" : "down"}${sfp ? " (óptica)" : ""}${r["mac-address"] ? "\n" + r["mac-address"] : ""}`}
+        {`${r.name} — ${off ? "desabilitada" : up ? "link-ok" : "inativa"}${sfp ? " (óptica)" : ""}${r["mac-address"] ? "\n" + r["mac-address"] : ""}`}
       </div>
     </button>
   );
@@ -639,11 +641,11 @@ function InterfaceMap({ rows, selected, onSelect }: { rows: RosRecord[]; selecte
     <div className="space-y-5">
       {physical.length > 0 && (
         <div>
-          <p className="mb-2 text-[11px] uppercase tracking-wide text-muted">Ethernet / Physical <span className="text-muted/70">({physical.length})</span></p>
+          <p className="mb-2 text-[11px] uppercase tracking-wide text-muted">Ethernet / Físicas <span className="text-muted/70">({physical.length})</span></p>
           <div className="flex flex-wrap gap-3">{physical.map((r, i) => <Port key={i} r={r} selected={r.name === selected} onSelect={onSelect} />)}</div>
           <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-muted">
-            <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-surface-2 ring-1 ring-border" /> Down</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-ok/40" /> Up</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-surface-2 ring-1 ring-border" /> Inativa</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-ok/40" /> Ativa</span>
             <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded bg-accent/40" /> <Zap className="h-3 w-3 text-accent" /> SFP / óptica</span>
           </div>
         </div>
@@ -790,13 +792,13 @@ function NeighborsModal({ deviceId, deviceName, onClose }: { deviceId: number; d
 
 type Tab = "ip_addr" | "services" | "fw_filter" | "fw_nat" | "dhcp_servers" | "dhcp_leases" | "routes";
 const TABS: { key: Tab; label: string }[] = [
-  { key: "ip_addr", label: "IP · Addresses" },
-  { key: "services", label: "Services" },
-  { key: "fw_filter", label: "Firewall · Filter" },
+  { key: "ip_addr", label: "IP · Endereços" },
+  { key: "services", label: "Serviços" },
+  { key: "fw_filter", label: "Firewall · Filtro" },
   { key: "fw_nat", label: "Firewall · NAT" },
-  { key: "dhcp_servers", label: "DHCP · Servers" },
-  { key: "dhcp_leases", label: "DHCP · Leases" },
-  { key: "routes", label: "Routes" },
+  { key: "dhcp_servers", label: "DHCP · Servidores" },
+  { key: "dhcp_leases", label: "DHCP · Concessões" },
+  { key: "routes", label: "Rotas" },
 ];
 
 const actionBadge = (v: string) => {
@@ -842,7 +844,7 @@ function Toolbar({ onReload, busy, children }: { onReload: () => void; busy?: bo
     <div className="mb-3 flex items-center gap-2">
       {children}
       <Button variant="ghost" className="ml-auto" onClick={onReload} disabled={busy}>
-        {busy ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Reload
+        {busy ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Atualizar
       </Button>
     </div>
   );
@@ -916,6 +918,7 @@ function SelectField({ label, value, onChange, options }: { label: string; value
 // --- IP · Addresses ---
 
 function IpAddressesTab({ deviceId, ifaces, wan }: { deviceId: number } & IfaceProps) {
+  const { confirm } = useConfirm();
   const { res, rows, err, busy, write } = useConfigList(deviceId, "ipaddr", "/ip/addresses", "addresses");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ address: "", interface: "", comment: "" });
@@ -927,12 +930,14 @@ function IpAddressesTab({ deviceId, ifaces, wan }: { deviceId: number } & IfaceP
     }
   }
   const toggle = (r: RosRecord) => write("/ip/addresses/toggle", { address: r.address, interface: r.interface, disable: !isDisabled(r) });
-  const remove = (r: RosRecord) => confirm(`Remover ${r.address} de ${r.interface}?`) && write("/ip/addresses/remove", { address: r.address, interface: r.interface });
+  const remove = async (r: RosRecord) => {
+    if (await confirm({ title: "Remover", message: `Remover ${r.address} de ${r.interface}?` })) write("/ip/addresses/remove", { address: r.address, interface: r.interface });
+  };
 
   return (
     <div>
       <Toolbar onReload={res.reload} busy={res.busy || busy}>
-        <Button onClick={() => setOpen(true)}><Play className="h-3.5 w-3.5" /> Add address</Button>
+        <Button onClick={() => setOpen(true)}><Play className="h-3.5 w-3.5" /> Adicionar endereço</Button>
       </Toolbar>
       {err && <ErrorNote msg={err} />}
       {res.busy && !res.data ? (
@@ -943,20 +948,20 @@ function IpAddressesTab({ deviceId, ifaces, wan }: { deviceId: number } & IfaceP
         <p className="py-4 text-xs text-muted">Sem endereços IP.</p>
       ) : (
         <div className="overflow-x-auto">
-          <Table head={<><Th>Address</Th><Th>Network</Th><Th>Interface</Th><Th>Comment</Th><Th className="text-right">Ações</Th></>}>
+          <Table head={<><Th>Endereço</Th><Th>Rede</Th><Th>Interface</Th><Th>Comentário</Th><Th className="text-right">Ações</Th></>}>
             {rows.map((r, i) => (
               <tr key={i} className={cn("hover:bg-surface-2", isDisabled(r) && "opacity-50")}>
                 <Td className="font-mono">{r.address}</Td>
                 <Td className="font-mono text-muted">{r.network ?? "—"}</Td>
-                <Td className="font-mono"><span className="inline-flex items-center gap-1">{r.interface} <WanTag name={r.interface} wan={wan} />{isDyn(r) && <Badge tone="muted">dynamic</Badge>}</span></Td>
+                <Td className="font-mono"><span className="inline-flex items-center gap-1">{r.interface} <WanTag name={r.interface} wan={wan} />{isDyn(r) && <Badge tone="muted">dinâmico</Badge>}</span></Td>
                 <Td className="text-xs text-muted">{r.comment ?? ""}</Td>
                 <Td className="text-right">
                   {isDyn(r) ? (
                     <span className="text-xs text-muted">—</span>
                   ) : (
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" onClick={() => toggle(r)} disabled={busy}>{isDisabled(r) ? "Enable" : "Disable"}</Button>
-                      <Button variant="danger" onClick={() => remove(r)} disabled={busy}>Remove</Button>
+                      <Button variant="ghost" onClick={() => toggle(r)} disabled={busy}>{isDisabled(r) ? "Habilitar" : "Desabilitar"}</Button>
+                      <Button variant="danger" onClick={() => remove(r)} disabled={busy}>Remover</Button>
                     </div>
                   )}
                 </Td>
@@ -968,14 +973,14 @@ function IpAddressesTab({ deviceId, ifaces, wan }: { deviceId: number } & IfaceP
 
       {open && (
         <Modal
-          title="Add IP address"
+          title="Adicionar endereço IP"
           onClose={() => setOpen(false)}
-          footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={add} disabled={busy || !form.address || !form.interface}>{busy ? "…" : "Add"}</Button></>}
+          footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={add} disabled={busy || !form.address || !form.interface}>{busy ? "…" : "Adicionar"}</Button></>}
         >
           <div className="space-y-3">
-            <Fld label="ADDRESS (CIDR)"><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="192.168.88.1/24" className="font-mono" autoFocus /></Fld>
+            <Fld label="ENDEREÇO (CIDR)"><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="192.168.88.1/24" className="font-mono" autoFocus /></Fld>
             <Fld label="INTERFACE"><IfaceSelect value={form.interface} onChange={(v) => setForm({ ...form, interface: v })} ifaces={ifaces} wan={wan} allowEmpty /></Fld>
-            <Fld label="COMMENT"><Input value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} placeholder="opcional" /></Fld>
+            <Fld label="COMENTÁRIO"><Input value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} placeholder="opcional" /></Fld>
           </div>
         </Modal>
       )}
@@ -1008,7 +1013,7 @@ function ServicesTab({ deviceId }: { deviceId: number }) {
       {err && <ErrorNote msg={err} />}
       <p className="mb-3 text-xs text-muted">
         Serviços de acesso ao roteador (<span className="font-mono">/ip service</span>). Desative os inseguros
-        (<span className="text-accent">telnet, ftp, www, api</span>) e restrinja o acesso por rede em <em>Available From</em>.
+        (<span className="text-accent">telnet, ftp, www, api</span>) e restrinja o acesso por rede em <em>Disponível de</em>.
       </p>
       {res.busy && !res.data ? (
         <div className="flex justify-center py-8"><Spinner className="h-6 w-6" /></div>
@@ -1018,7 +1023,7 @@ function ServicesTab({ deviceId }: { deviceId: number }) {
         <p className="py-4 text-xs text-muted">Sem serviços.</p>
       ) : (
         <div className="overflow-x-auto">
-          <Table head={<><Th>Service</Th><Th>Port</Th><Th>Available From</Th><Th>Certificate</Th><Th>Status</Th><Th className="text-right">Ações</Th></>}>
+          <Table head={<><Th>Serviço</Th><Th>Porta</Th><Th>Disponível de</Th><Th>Certificado</Th><Th>Status</Th><Th className="text-right">Ações</Th></>}>
             {rows.map((r, i) => {
               const off = isDisabled(r);
               const insecure = INSECURE.has(r.name ?? "");
@@ -1033,11 +1038,11 @@ function ServicesTab({ deviceId }: { deviceId: number }) {
                   <Td className="font-mono">{r.port ?? "—"}</Td>
                   <Td className="font-mono text-xs text-muted">{r.address || "qualquer"}</Td>
                   <Td className="font-mono text-xs text-muted">{r.certificate && r.certificate !== "none" ? r.certificate : "—"}</Td>
-                  <Td><Badge tone={off ? "muted" : "ok"}>{off ? "disabled" : "enabled"}</Badge></Td>
+                  <Td><Badge tone={off ? "muted" : "ok"}>{off ? "desabilitado" : "habilitado"}</Badge></Td>
                   <Td className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" onClick={() => openEdit(r)} disabled={busy}>Edit</Button>
-                      <Button variant="ghost" onClick={() => toggle(r)} disabled={busy}>{off ? "Enable" : "Disable"}</Button>
+                      <Button variant="ghost" onClick={() => openEdit(r)} disabled={busy}>Editar</Button>
+                      <Button variant="ghost" onClick={() => toggle(r)} disabled={busy}>{off ? "Habilitar" : "Desabilitar"}</Button>
                     </div>
                   </Td>
                 </tr>
@@ -1051,11 +1056,11 @@ function ServicesTab({ deviceId }: { deviceId: number }) {
         <Modal
           title={`Editar serviço "${edit.name}"`}
           onClose={() => setEdit(null)}
-          footer={<><Button variant="ghost" onClick={() => setEdit(null)}>Cancel</Button><Button onClick={save} disabled={busy}>{busy ? "…" : "Salvar"}</Button></>}
+          footer={<><Button variant="ghost" onClick={() => setEdit(null)}>Cancelar</Button><Button onClick={save} disabled={busy}>{busy ? "…" : "Salvar"}</Button></>}
         >
           <div className="space-y-3">
-            <Fld label="PORT"><Input value={form.port} onChange={(e) => setForm({ ...form, port: e.target.value })} placeholder="ex.: 22" className="font-mono" inputMode="numeric" /></Fld>
-            <Fld label="AVAILABLE FROM (redes permitidas)"><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="ex.: 10.0.0.0/8,192.168.0.0/16 (vazio = qualquer)" className="font-mono text-xs" /></Fld>
+            <Fld label="PORTA"><Input value={form.port} onChange={(e) => setForm({ ...form, port: e.target.value })} placeholder="ex.: 22" className="font-mono" inputMode="numeric" /></Fld>
+            <Fld label="DISPONÍVEL DE (redes permitidas)"><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="ex.: 10.0.0.0/8,192.168.0.0/16 (vazio = qualquer)" className="font-mono text-xs" /></Fld>
           </div>
         </Modal>
       )}
@@ -1066,6 +1071,7 @@ function ServicesTab({ deviceId }: { deviceId: number }) {
 // --- DHCP · Servers ---
 
 function DhcpServersTab({ deviceId, ifaces, wan }: { deviceId: number } & IfaceProps) {
+  const { confirm } = useConfirm();
   const { res, rows, err, busy, write } = useConfigList(deviceId, "dhcpsrv", "/dhcp/servers", "servers");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", interface: "", address_pool: "", lease_time: "" });
@@ -1077,12 +1083,14 @@ function DhcpServersTab({ deviceId, ifaces, wan }: { deviceId: number } & IfaceP
     }
   }
   const toggle = (r: RosRecord) => write("/dhcp/servers/toggle", { name: r.name, disable: !isDisabled(r) });
-  const remove = (r: RosRecord) => confirm(`Remover o DHCP server "${r.name}"?`) && write("/dhcp/servers/remove", { name: r.name });
+  const remove = async (r: RosRecord) => {
+    if (await confirm({ title: "Remover", message: `Remover o DHCP server "${r.name}"?` })) write("/dhcp/servers/remove", { name: r.name });
+  };
 
   return (
     <div>
       <Toolbar onReload={res.reload} busy={res.busy || busy}>
-        <Button onClick={() => setOpen(true)}><Play className="h-3.5 w-3.5" /> Add server</Button>
+        <Button onClick={() => setOpen(true)}><Play className="h-3.5 w-3.5" /> Adicionar servidor</Button>
       </Toolbar>
       {err && <ErrorNote msg={err} />}
       {res.busy && !res.data ? (
@@ -1093,7 +1101,7 @@ function DhcpServersTab({ deviceId, ifaces, wan }: { deviceId: number } & IfaceP
         <p className="py-4 text-xs text-muted">Sem servidores DHCP.</p>
       ) : (
         <div className="overflow-x-auto">
-          <Table head={<><Th>Name</Th><Th>Interface</Th><Th>Pool</Th><Th>Lease</Th><Th className="text-right">Ações</Th></>}>
+          <Table head={<><Th>Nome</Th><Th>Interface</Th><Th>Pool</Th><Th>Lease</Th><Th className="text-right">Ações</Th></>}>
             {rows.map((r, i) => (
               <tr key={i} className={cn("hover:bg-surface-2", isDisabled(r) && "opacity-50")}>
                 <Td className="font-medium">{r.name}</Td>
@@ -1102,8 +1110,8 @@ function DhcpServersTab({ deviceId, ifaces, wan }: { deviceId: number } & IfaceP
                 <Td className="font-mono text-muted">{r["lease-time"] ?? "—"}</Td>
                 <Td className="text-right">
                   <div className="flex justify-end gap-1">
-                    <Button variant="ghost" onClick={() => toggle(r)} disabled={busy}>{isDisabled(r) ? "Enable" : "Disable"}</Button>
-                    <Button variant="danger" onClick={() => remove(r)} disabled={busy}>Remove</Button>
+                    <Button variant="ghost" onClick={() => toggle(r)} disabled={busy}>{isDisabled(r) ? "Habilitar" : "Desabilitar"}</Button>
+                    <Button variant="danger" onClick={() => remove(r)} disabled={busy}>Remover</Button>
                   </div>
                 </Td>
               </tr>
@@ -1114,12 +1122,12 @@ function DhcpServersTab({ deviceId, ifaces, wan }: { deviceId: number } & IfaceP
 
       {open && (
         <Modal
-          title="Add DHCP server"
+          title="Adicionar servidor DHCP"
           onClose={() => setOpen(false)}
-          footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={add} disabled={busy || !form.name || !form.interface}>{busy ? "…" : "Add"}</Button></>}
+          footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={add} disabled={busy || !form.name || !form.interface}>{busy ? "…" : "Adicionar"}</Button></>}
         >
           <div className="space-y-3">
-            <Fld label="NAME"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="font-mono" autoFocus /></Fld>
+            <Fld label="NOME"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="font-mono" autoFocus /></Fld>
             <Fld label="INTERFACE"><IfaceSelect value={form.interface} onChange={(v) => setForm({ ...form, interface: v })} ifaces={ifaces} wan={wan} allowEmpty /></Fld>
             <Fld label="ADDRESS POOL"><Input value={form.address_pool} onChange={(e) => setForm({ ...form, address_pool: e.target.value })} placeholder="opcional (ex.: dhcp_pool0)" className="font-mono" /></Fld>
             <Fld label="LEASE TIME"><Input value={form.lease_time} onChange={(e) => setForm({ ...form, lease_time: e.target.value })} placeholder="opcional (ex.: 30m, 1d)" className="font-mono" /></Fld>
@@ -1133,6 +1141,7 @@ function DhcpServersTab({ deviceId, ifaces, wan }: { deviceId: number } & IfaceP
 // --- DHCP · Leases ---
 
 function DhcpLeasesTab({ deviceId }: { deviceId: number }) {
+  const { confirm } = useConfirm();
   const { res, rows, err, busy, write } = useConfigList(deviceId, "dhcplease", "/dhcp/leases", "leases");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ address: "", mac_address: "", server: "" });
@@ -1144,12 +1153,14 @@ function DhcpLeasesTab({ deviceId }: { deviceId: number }) {
     }
   }
   const makeStatic = (r: RosRecord) => write("/dhcp/leases/make-static", { address: r.address });
-  const remove = (r: RosRecord) => confirm(`Remover a lease ${r.address}?`) && write("/dhcp/leases/remove", { address: r.address });
+  const remove = async (r: RosRecord) => {
+    if (await confirm({ title: "Remover", message: `Remover a lease ${r.address}?` })) write("/dhcp/leases/remove", { address: r.address });
+  };
 
   return (
     <div>
       <Toolbar onReload={res.reload} busy={res.busy || busy}>
-        <Button onClick={() => setOpen(true)}><Play className="h-3.5 w-3.5" /> Add static lease</Button>
+        <Button onClick={() => setOpen(true)}><Play className="h-3.5 w-3.5" /> Adicionar lease estática</Button>
       </Toolbar>
       {err && <ErrorNote msg={err} />}
       {res.busy && !res.data ? (
@@ -1160,18 +1171,18 @@ function DhcpLeasesTab({ deviceId }: { deviceId: number }) {
         <p className="py-4 text-xs text-muted">Sem leases.</p>
       ) : (
         <div className="overflow-x-auto">
-          <Table head={<><Th>Address</Th><Th>MAC</Th><Th>Host</Th><Th>Status</Th><Th>Server</Th><Th className="text-right">Ações</Th></>}>
+          <Table head={<><Th>Endereço</Th><Th>MAC</Th><Th>Host</Th><Th>Status</Th><Th>Servidor</Th><Th className="text-right">Ações</Th></>}>
             {rows.map((r, i) => (
               <tr key={i} className="hover:bg-surface-2">
                 <Td className="font-mono">{r.address}</Td>
                 <Td className="font-mono text-xs">{r["mac-address"] ?? "—"}</Td>
                 <Td className="text-xs">{r["host-name"] ?? "—"}</Td>
-                <Td><Badge tone={r.status === "bound" ? "ok" : "muted"}>{r.status || "—"}</Badge>{isDyn(r) && <Badge tone="muted">dynamic</Badge>}</Td>
+                <Td><Badge tone={r.status === "bound" ? "ok" : "muted"}>{r.status || "—"}</Badge>{isDyn(r) && <Badge tone="muted">dinâmico</Badge>}</Td>
                 <Td className="font-mono text-muted">{r.server ?? "—"}</Td>
                 <Td className="text-right">
                   <div className="flex justify-end gap-1">
-                    {isDyn(r) && <Button variant="ghost" onClick={() => makeStatic(r)} disabled={busy}>Make static</Button>}
-                    <Button variant="danger" onClick={() => remove(r)} disabled={busy}>Remove</Button>
+                    {isDyn(r) && <Button variant="ghost" onClick={() => makeStatic(r)} disabled={busy}>Tornar estática</Button>}
+                    <Button variant="danger" onClick={() => remove(r)} disabled={busy}>Remover</Button>
                   </div>
                 </Td>
               </tr>
@@ -1182,14 +1193,14 @@ function DhcpLeasesTab({ deviceId }: { deviceId: number }) {
 
       {open && (
         <Modal
-          title="Add static lease"
+          title="Adicionar lease estática"
           onClose={() => setOpen(false)}
-          footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={add} disabled={busy || !form.address || !form.mac_address}>{busy ? "…" : "Add"}</Button></>}
+          footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={add} disabled={busy || !form.address || !form.mac_address}>{busy ? "…" : "Adicionar"}</Button></>}
         >
           <div className="space-y-3">
-            <Fld label="ADDRESS (IP)"><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="192.168.88.10" className="font-mono" autoFocus /></Fld>
-            <Fld label="MAC ADDRESS"><Input value={form.mac_address} onChange={(e) => setForm({ ...form, mac_address: e.target.value })} placeholder="AA:BB:CC:DD:EE:FF" className="font-mono" /></Fld>
-            <Fld label="SERVER"><Input value={form.server} onChange={(e) => setForm({ ...form, server: e.target.value })} placeholder="opcional (ex.: defconf)" className="font-mono" /></Fld>
+            <Fld label="ENDEREÇO (IP)"><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="192.168.88.10" className="font-mono" autoFocus /></Fld>
+            <Fld label="ENDEREÇO MAC"><Input value={form.mac_address} onChange={(e) => setForm({ ...form, mac_address: e.target.value })} placeholder="AA:BB:CC:DD:EE:FF" className="font-mono" /></Fld>
+            <Fld label="SERVIDOR"><Input value={form.server} onChange={(e) => setForm({ ...form, server: e.target.value })} placeholder="opcional (ex.: defconf)" className="font-mono" /></Fld>
           </div>
         </Modal>
       )}
@@ -1207,6 +1218,7 @@ const ACTIONS = {
 const PROTOCOLS = ["", "tcp", "udp", "icmp", "icmpv6", "gre", "ipsec-esp", "ipsec-ah"];
 
 function FirewallTab({ deviceId, kind, ifaces, wan }: { deviceId: number; kind: "filter" | "nat" } & IfaceProps) {
+  const { confirm } = useConfirm();
   const { res, rows, err, busy, write } = useConfigList(deviceId, `fw_${kind}`, `/firewall/${kind}`, "rules");
   const [open, setOpen] = useState(false);
   const blank = {
@@ -1225,7 +1237,9 @@ function FirewallTab({ deviceId, kind, ifaces, wan }: { deviceId: number; kind: 
     }
   }
   const toggle = (r: RosRecord) => write(`/firewall/${kind}/toggle`, { number: Number(r["#"]), disable: !isDisabled(r) });
-  const remove = (r: RosRecord) => confirm(`Remover a regra #${r["#"]} (${r.chain}/${r.action})?`) && write(`/firewall/${kind}/remove`, { number: Number(r["#"]) });
+  const remove = async (r: RosRecord) => {
+    if (await confirm({ title: "Remover", message: `Remover a regra #${r["#"]} (${r.chain}/${r.action})?` })) write(`/firewall/${kind}/remove`, { number: Number(r["#"]) });
+  };
 
   const ifaceCell = (r: RosRecord) => {
     const parts: React.ReactNode[] = [];
@@ -1237,7 +1251,7 @@ function FirewallTab({ deviceId, kind, ifaces, wan }: { deviceId: number; kind: 
   return (
     <div>
       <Toolbar onReload={res.reload} busy={res.busy || busy}>
-        <Button onClick={() => setOpen(true)}><Play className="h-3.5 w-3.5" /> Add rule</Button>
+        <Button onClick={() => setOpen(true)}><Play className="h-3.5 w-3.5" /> Adicionar regra</Button>
       </Toolbar>
       {err && <ErrorNote msg={err} />}
       {res.busy && !res.data ? (
@@ -1248,7 +1262,7 @@ function FirewallTab({ deviceId, kind, ifaces, wan }: { deviceId: number; kind: 
         <p className="py-4 text-xs text-muted">Sem regras estáticas.</p>
       ) : (
         <div className="overflow-x-auto">
-          <Table head={<><Th>#</Th><Th>Chain</Th><Th>Action</Th><Th>Proto</Th><Th>Src</Th><Th>Dst</Th><Th>Interfaces</Th><Th>Extra</Th><Th className="text-right">Ações</Th></>}>
+          <Table head={<><Th>#</Th><Th>Chain</Th><Th>Ação</Th><Th>Proto</Th><Th>Src</Th><Th>Dst</Th><Th>Interfaces</Th><Th>Extra</Th><Th className="text-right">Ações</Th></>}>
             {rows.map((r, i) => (
               <tr key={i} className={cn("hover:bg-surface-2", isDisabled(r) && "opacity-50")}>
                 <Td className="font-mono text-muted">{r["#"]}</Td>
@@ -1261,8 +1275,8 @@ function FirewallTab({ deviceId, kind, ifaces, wan }: { deviceId: number; kind: 
                 <Td className="font-mono text-xs text-muted">{kind === "nat" ? (r["to-addresses"] || r["to-ports"] || "—") : (r["dst-port"] || "—")}</Td>
                 <Td className="text-right">
                   <div className="flex justify-end gap-1">
-                    <Button variant="ghost" onClick={() => toggle(r)} disabled={busy}>{isDisabled(r) ? "Enable" : "Disable"}</Button>
-                    <Button variant="danger" onClick={() => remove(r)} disabled={busy}>Remove</Button>
+                    <Button variant="ghost" onClick={() => toggle(r)} disabled={busy}>{isDisabled(r) ? "Habilitar" : "Desabilitar"}</Button>
+                    <Button variant="danger" onClick={() => remove(r)} disabled={busy}>Remover</Button>
                   </div>
                 </Td>
               </tr>
@@ -1273,29 +1287,29 @@ function FirewallTab({ deviceId, kind, ifaces, wan }: { deviceId: number; kind: 
 
       {open && (
         <Modal
-          title={`Add ${kind} rule`}
+          title={`Adicionar regra ${kind}`}
           onClose={() => setOpen(false)}
-          footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={add} disabled={busy || !form.chain || !form.action}>{busy ? "…" : "Add"}</Button></>}
+          footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={add} disabled={busy || !form.chain || !form.action}>{busy ? "…" : "Adicionar"}</Button></>}
         >
           <div className="grid grid-cols-2 gap-3">
             <SelectField label="Chain" value={form.chain} onChange={(v) => set("chain", v)} options={CHAINS[kind]} />
-            <SelectField label="Action" value={form.action} onChange={(v) => set("action", v)} options={ACTIONS[kind]} />
-            <SelectField label="Protocol" value={form.protocol} onChange={(v) => set("protocol", v)} options={PROTOCOLS} />
-            <Fld label="Src address"><Input value={form.src_address} onChange={(e) => set("src_address", e.target.value)} className="font-mono text-xs" placeholder="0.0.0.0/0" /></Fld>
-            <Fld label="Dst address"><Input value={form.dst_address} onChange={(e) => set("dst_address", e.target.value)} className="font-mono text-xs" placeholder="0.0.0.0/0" /></Fld>
+            <SelectField label="Ação" value={form.action} onChange={(v) => set("action", v)} options={ACTIONS[kind]} />
+            <SelectField label="Protocolo" value={form.protocol} onChange={(v) => set("protocol", v)} options={PROTOCOLS} />
+            <Fld label="Endereço de origem"><Input value={form.src_address} onChange={(e) => set("src_address", e.target.value)} className="font-mono text-xs" placeholder="0.0.0.0/0" /></Fld>
+            <Fld label="Endereço de destino"><Input value={form.dst_address} onChange={(e) => set("dst_address", e.target.value)} className="font-mono text-xs" placeholder="0.0.0.0/0" /></Fld>
             {kind === "filter" ? (
-              <Fld label="Dst port"><Input value={form.dst_port} onChange={(e) => set("dst_port", e.target.value)} className="font-mono text-xs" placeholder="80,443" /></Fld>
+              <Fld label="Porta de destino"><Input value={form.dst_port} onChange={(e) => set("dst_port", e.target.value)} className="font-mono text-xs" placeholder="80,443" /></Fld>
             ) : (
               <>
-                <Fld label="To addresses"><Input value={form.to_addresses} onChange={(e) => set("to_addresses", e.target.value)} className="font-mono text-xs" /></Fld>
-                <Fld label="To ports"><Input value={form.to_ports} onChange={(e) => set("to_ports", e.target.value)} className="font-mono text-xs" /></Fld>
+                <Fld label="Endereços de destino (NAT)"><Input value={form.to_addresses} onChange={(e) => set("to_addresses", e.target.value)} className="font-mono text-xs" /></Fld>
+                <Fld label="Portas de destino (NAT)"><Input value={form.to_ports} onChange={(e) => set("to_ports", e.target.value)} className="font-mono text-xs" /></Fld>
               </>
             )}
             {kind === "filter" && (
-              <Fld label="In interface"><IfaceSelect value={form.in_interface} onChange={(v) => set("in_interface", v)} ifaces={ifaces} wan={wan} allowEmpty /></Fld>
+              <Fld label="Interface de entrada"><IfaceSelect value={form.in_interface} onChange={(v) => set("in_interface", v)} ifaces={ifaces} wan={wan} allowEmpty /></Fld>
             )}
-            <Fld label="Out interface"><IfaceSelect value={form.out_interface} onChange={(v) => set("out_interface", v)} ifaces={ifaces} wan={wan} allowEmpty /></Fld>
-            <Fld label="Comment"><Input value={form.comment} onChange={(e) => set("comment", e.target.value)} className="text-xs" /></Fld>
+            <Fld label="Interface de saída"><IfaceSelect value={form.out_interface} onChange={(v) => set("out_interface", v)} ifaces={ifaces} wan={wan} allowEmpty /></Fld>
+            <Fld label="Comentário"><Input value={form.comment} onChange={(e) => set("comment", e.target.value)} className="text-xs" /></Fld>
           </div>
         </Modal>
       )}
@@ -1306,6 +1320,7 @@ function FirewallTab({ deviceId, kind, ifaces, wan }: { deviceId: number; kind: 
 // --- Rotas estáticas com escrita ---
 
 function RoutesTab({ deviceId }: { deviceId: number }) {
+  const { confirm } = useConfirm();
   const { res, rows, err, busy, write } = useConfigList(deviceId, "routes", "/routes", "routes");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ dst_address: "", gateway: "", distance: "", comment: "" });
@@ -1316,12 +1331,14 @@ function RoutesTab({ deviceId }: { deviceId: number }) {
       setForm({ dst_address: "", gateway: "", distance: "", comment: "" });
     }
   }
-  const remove = (r: RosRecord) => confirm(`Remover a rota ${r["dst-address"]} via ${r.gateway}?`) && write("/routes/remove", { dst_address: r["dst-address"], gateway: r.gateway });
+  const remove = async (r: RosRecord) => {
+    if (await confirm({ title: "Remover", message: `Remover a rota ${r["dst-address"]} via ${r.gateway}?` })) write("/routes/remove", { dst_address: r["dst-address"], gateway: r.gateway });
+  };
 
   return (
     <div>
       <Toolbar onReload={res.reload} busy={res.busy || busy}>
-        <Button onClick={() => setOpen(true)}><Play className="h-3.5 w-3.5" /> Add route</Button>
+        <Button onClick={() => setOpen(true)}><Play className="h-3.5 w-3.5" /> Adicionar rota</Button>
       </Toolbar>
       {err && <ErrorNote msg={err} />}
       {res.busy && !res.data ? (
@@ -1332,7 +1349,7 @@ function RoutesTab({ deviceId }: { deviceId: number }) {
         <p className="py-4 text-xs text-muted">Sem rotas.</p>
       ) : (
         <div className="overflow-x-auto">
-          <Table head={<><Th>Flags</Th><Th>Dst</Th><Th>Gateway</Th><Th>Dist</Th><Th>Comment</Th><Th className="text-right">Ações</Th></>}>
+          <Table head={<><Th>Flags</Th><Th>Dst</Th><Th>Gateway</Th><Th>Dist</Th><Th>Comentário</Th><Th className="text-right">Ações</Th></>}>
             {rows.map((r, i) => {
               const removable = !isDyn(r) && r["dst-address"] && r.gateway;
               return (
@@ -1344,7 +1361,7 @@ function RoutesTab({ deviceId }: { deviceId: number }) {
                   <Td className="text-xs text-muted">{r.comment ?? ""}</Td>
                   <Td className="text-right">
                     {removable ? (
-                      <Button variant="danger" onClick={() => remove(r)} disabled={busy}>Remove</Button>
+                      <Button variant="danger" onClick={() => remove(r)} disabled={busy}>Remover</Button>
                     ) : (
                       <span className="text-xs text-muted">—</span>
                     )}
@@ -1358,15 +1375,15 @@ function RoutesTab({ deviceId }: { deviceId: number }) {
 
       {open && (
         <Modal
-          title="Add static route"
+          title="Adicionar rota estática"
           onClose={() => setOpen(false)}
-          footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={add} disabled={busy || !form.dst_address || !form.gateway}>{busy ? "…" : "Add"}</Button></>}
+          footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={add} disabled={busy || !form.dst_address || !form.gateway}>{busy ? "…" : "Adicionar"}</Button></>}
         >
           <div className="space-y-3">
             <Fld label="DST-ADDRESS (CIDR)"><Input value={form.dst_address} onChange={(e) => setForm({ ...form, dst_address: e.target.value })} placeholder="10.0.0.0/24" className="font-mono" autoFocus /></Fld>
             <Fld label="GATEWAY"><Input value={form.gateway} onChange={(e) => setForm({ ...form, gateway: e.target.value })} placeholder="192.168.88.1 ou ether1" className="font-mono" /></Fld>
-            <Fld label="DISTANCE"><Input value={form.distance} onChange={(e) => setForm({ ...form, distance: e.target.value })} placeholder="opcional (ex.: 1)" className="font-mono" /></Fld>
-            <Fld label="COMMENT"><Input value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} placeholder="opcional" /></Fld>
+            <Fld label="DISTÂNCIA"><Input value={form.distance} onChange={(e) => setForm({ ...form, distance: e.target.value })} placeholder="opcional (ex.: 1)" className="font-mono" /></Fld>
+            <Fld label="COMENTÁRIO"><Input value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} placeholder="opcional" /></Fld>
           </div>
         </Modal>
       )}
@@ -1394,7 +1411,7 @@ function CommandPanel({ deviceId }: { deviceId: number }) {
 
   return (
     <Card>
-      <h2 className="mb-3 text-sm font-semibold">Command (somente leitura)</h2>
+      <h2 className="mb-3 text-sm font-semibold">Comando (somente leitura)</h2>
       <div className="flex gap-2">
         <Input
           value={command}
@@ -1404,7 +1421,7 @@ function CommandPanel({ deviceId }: { deviceId: number }) {
           className="font-mono"
         />
         <Button onClick={run} disabled={busy || !command}>
-          {busy ? <Spinner /> : <Play className="h-4 w-4" />} Run
+          {busy ? <Spinner /> : <Play className="h-4 w-4" />} Executar
         </Button>
       </div>
       <p className="mt-2 text-xs text-muted">Comandos de escrita são recusados pela allowlist.</p>

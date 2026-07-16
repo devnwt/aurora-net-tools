@@ -124,7 +124,7 @@ export function CopilotToolsManager() {
         )}
         {kind !== "skill" && (
           <>
-            <Input value={form.auth_header} onChange={(e) => setForm({ ...form, auth_header: e.target.value })} placeholder="header auth (opcional)" className="text-xs" />
+            <Input value={form.auth_header} onChange={(e) => setForm({ ...form, auth_header: e.target.value })} placeholder="cabeçalho de auth (opcional)" className="text-xs" />
             <Input type="password" value={form.auth_value} onChange={(e) => setForm({ ...form, auth_value: e.target.value })} placeholder="valor do header (opcional)" className="text-xs" />
           </>
         )}

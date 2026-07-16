@@ -46,10 +46,10 @@ export function Upgrades() {
   return (
     <div>
       <PageHeader
-        title="Upgrades"
+        title="Atualizações"
         actions={
           <Button onClick={() => checkAll(devices)}>
-            <RefreshCw className="h-4 w-4" /> Check for Updates
+            <RefreshCw className="h-4 w-4" /> Verificar Atualizações
           </Button>
         }
       />
@@ -63,7 +63,7 @@ export function Upgrades() {
       ) : ros.length === 0 ? (
         <EmptyState title="Nenhum RouterOS" hint="Cadastre um device RouterOS." />
       ) : (
-        <Table head={<><Th>Device</Th><Th>Current ROS</Th><Th>Current FW</Th><Th>Upgrade FW</Th><Th>Status</Th></>}>
+        <Table head={<><Th>Dispositivo</Th><Th>ROS Atual</Th><Th>FW Atual</Th><Th>FW de Upgrade</Th><Th>Status</Th></>}>
           {ros.map((d) => {
             const row = rows[d.id];
             const s = row?.summary;
@@ -80,9 +80,9 @@ export function Upgrades() {
                   ) : row?.error ? (
                     <Badge tone="danger">{row.error}</Badge>
                   ) : pending ? (
-                    <Badge tone="danger">FW pending</Badge>
+                    <Badge tone="danger">FW pendente</Badge>
                   ) : s ? (
-                    <Badge tone="ok">up to date</Badge>
+                    <Badge tone="ok">atualizado</Badge>
                   ) : (
                     <span className="text-muted">—</span>
                   )}

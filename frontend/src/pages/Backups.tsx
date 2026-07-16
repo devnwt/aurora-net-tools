@@ -5,6 +5,7 @@ import type { BackupFull, BackupMeta, Device } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Button, Card, EmptyState, Modal, Select, Spinner } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 
 const fmtSize = (n: number) => (n >= 1024 ? `${(n / 1024).toFixed(1)} KB` : `${n} B`);
 
@@ -18,6 +19,7 @@ interface BackupCreated {
 }
 
 export function Backups() {
+  const { confirm } = useConfirm();
   const [items, setItems] = useState<BackupMeta[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +72,7 @@ export function Backups() {
   }
 
   async function remove(b: BackupMeta) {
-    if (!confirm(`Excluir o backup de ${b.device_name} (${new Date(b.created_at).toLocaleString("pt-BR")})?`)) return;
+    if (!(await confirm({ title: "Excluir backup", message: `Excluir o backup de ${b.device_name} (${new Date(b.created_at).toLocaleString("pt-BR")})?` }))) return;
     await api.del(`/backups/${b.id}`);
     load();
   }
@@ -95,7 +97,7 @@ export function Backups() {
             Enviar por MinIO/S3
           </label>
           <Button onClick={create} disabled={creating || !target}>
-            {creating ? <Spinner /> : <Save className="h-4 w-4" />} Create backup
+            {creating ? <Spinner /> : <Save className="h-4 w-4" />} Criar backup
           </Button>
         </div>
         <p className="mt-2 text-xs text-muted">Configure os destinos em <span className="font-mono">Settings → FTP / MinIO</span>.</p>
@@ -120,7 +122,7 @@ export function Backups() {
       ) : items.length === 0 ? (
         <EmptyState title="Nenhum backup" hint="Crie um backup selecionando um device acima." />
       ) : (
-        <Table head={<><Th>Device</Th><Th>Created</Th><Th>Size</Th><Th className="text-right">Actions</Th></>}>
+        <Table head={<><Th>Device</Th><Th>Criado em</Th><Th>Tamanho</Th><Th className="text-right">Ações</Th></>}>
           {items.map((b) => (
             <tr key={b.id} className="hover:bg-surface-2 transition-colors duration-200">
               <Td className="font-medium">{b.device_name}</Td>
@@ -128,9 +130,9 @@ export function Backups() {
               <Td className="font-mono text-muted">{fmtSize(b.size)}</Td>
               <Td className="text-right">
                 <div className="flex items-center justify-end gap-2">
-                  <Button variant="ghost" onClick={() => view(b)}><Eye className="h-4 w-4" /> View</Button>
-                  <Button variant="ghost" onClick={() => download(b)}><Download className="h-4 w-4" /> Download</Button>
-                  <Button variant="danger" onClick={() => remove(b)}>Delete</Button>
+                  <Button variant="ghost" onClick={() => view(b)}><Eye className="h-4 w-4" /> Ver</Button>
+                  <Button variant="ghost" onClick={() => download(b)}><Download className="h-4 w-4" /> Baixar</Button>
+                  <Button variant="danger" onClick={() => remove(b)}>Excluir</Button>
                 </div>
               </Td>
             </tr>

@@ -40,31 +40,31 @@ interface NavItem {
 
 const groups: { title: string; items: NavItem[] }[] = [
   {
-    title: "OVERVIEW",
+    title: "VISÃO GERAL",
     items: [
-      { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-      { to: "/devices", label: "Devices", icon: Monitor },
+      { to: "/", label: "Painel", icon: LayoutDashboard, end: true },
+      { to: "/devices", label: "Dispositivos", icon: Monitor },
       { to: "/sites", label: "Sites", icon: MapPin },
-      { to: "/racks", label: "Racks & Map", icon: Boxes },
+      { to: "/racks", label: "Racks e Mapa", icon: Boxes },
     ],
   },
   {
-    title: "ACTIONS",
+    title: "AÇÕES",
     items: [
       { to: "/copilot", label: "Copilot", icon: Bot },
-      { to: "/commands", label: "Commands", icon: Terminal },
-      { to: "/templates", label: "Templates", icon: FileText },
-      { to: "/upgrades", label: "Upgrades", icon: ArrowUpCircle },
-      { to: "/scan", label: "Scan Network", icon: Globe },
-      { to: "/topology", label: "Topology", icon: Workflow },
+      { to: "/commands", label: "Comandos", icon: Terminal },
+      { to: "/templates", label: "Modelos", icon: FileText },
+      { to: "/upgrades", label: "Atualizações", icon: ArrowUpCircle },
+      { to: "/scan", label: "Escanear Rede", icon: Globe },
+      { to: "/topology", label: "Topologia", icon: Workflow },
       { to: "/backups", label: "Backups", icon: Archive },
       { to: "/logs", label: "Logs", icon: ScrollText },
-      { to: "/security", label: "Security", icon: ShieldCheck },
+      { to: "/security", label: "Segurança", icon: ShieldCheck },
     ],
   },
   {
     title: "FIBERHOME",
-    items: [{ to: "/controllers", label: "Controllers", icon: Server }],
+    items: [{ to: "/controllers", label: "Controladoras", icon: Server }],
   },
   {
     title: "ADMIN",
@@ -73,14 +73,14 @@ const groups: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
-    title: "SYSTEM",
+    title: "SISTEMA",
     items: [
-      { to: "/activity", label: "Activity", icon: Activity },
-      { to: "/credentials", label: "Credentials", icon: KeyRound },
-      { to: "/users", label: "Users", icon: UsersIcon, adminOnly: true },
-      { to: "/apikeys", label: "API Keys", icon: KeySquare, adminOnly: true },
+      { to: "/activity", label: "Atividade", icon: Activity },
+      { to: "/credentials", label: "Credenciais", icon: KeyRound },
+      { to: "/users", label: "Usuários", icon: UsersIcon, adminOnly: true },
+      { to: "/apikeys", label: "Chaves de API", icon: KeySquare, adminOnly: true },
       { to: "/webhooks", label: "Webhooks", icon: WebhookIcon, adminOnly: true },
-      { to: "/settings", label: "Settings", icon: Settings },
+      { to: "/settings", label: "Configurações", icon: Settings },
     ],
   },
 ];
@@ -99,7 +99,7 @@ export function Layout() {
               Aurora Prisma{" "}
               <span className="bg-gradient-to-r from-primary via-cyan-400 to-accent bg-clip-text font-bold italic text-transparent">NetTools</span>
             </p>
-            <p className="text-xs text-muted">NOC Manager</p>
+            <p className="text-xs text-muted">Gerência de NOC</p>
           </div>
         </div>
 

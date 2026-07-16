@@ -70,7 +70,7 @@ export function Logs() {
           </Select>
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filtrar mensagem/tópico…" className="max-w-xs" />
           <Button variant="ghost" onClick={() => load(target)} disabled={!target || busy}>
-            {busy ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Refresh
+            {busy ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Atualizar
           </Button>
           {rows && <span className="text-xs text-muted">{filtered.length} entrada(s)</span>}
         </div>
@@ -84,7 +84,7 @@ export function Logs() {
       ) : filtered.length === 0 ? (
         <EmptyState title="Sem entradas" />
       ) : (
-        <Table head={<><Th>Time</Th><Th>Topics</Th><Th>Message</Th></>}>
+        <Table head={<><Th>Hora</Th><Th>Tópicos</Th><Th>Mensagem</Th></>}>
           {filtered.map((r, i) => (
             <tr key={i} className="hover:bg-surface-2 transition-colors duration-200">
               <Td className="whitespace-nowrap font-mono text-xs text-muted">{r.time ?? "—"}</Td>

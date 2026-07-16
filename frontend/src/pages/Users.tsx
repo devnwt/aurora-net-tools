@@ -6,12 +6,14 @@ import type { AppUser } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Badge, Button, EmptyState, Input, Modal, Select, Spinner } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 
 type Role = "operator" | "admin" | "master";
 const ROLE_LABEL: Record<Role, string> = { operator: "Operador", admin: "Administrador", master: "Master" };
 const roleOf = (u: AppUser): Role => (u.role as Role) ?? (u.is_admin ? "admin" : "operator");
 
 export function Users() {
+  const { confirm, alert } = useConfirm();
   const { user: me } = useAuth();
   const isMaster = me?.role === "master";
   const [items, setItems] = useState<AppUser[]>([]);
@@ -64,12 +66,14 @@ export function Users() {
   }
 
   async function remove(u: AppUser) {
-    if (!confirm(`Excluir o usuário "${u.username}"?`)) return;
+    const label = ROLE_LABEL[roleOf(u)];
+    const who = `${label} "${u.username}"${u.email ? ` (${u.email})` : ""}`;
+    if (!(await confirm({ title: "Excluir usuário", message: `Excluir ${who}?\n\nEsta ação é permanente e não pode ser desfeita.` }))) return;
     try {
       await api.del(`/users/${u.id}`);
       load();
     } catch (e) {
-      alert(e instanceof ApiError ? e.message : String(e));
+      await alert({ title: "Erro", message: `Não foi possível excluir: ${e instanceof ApiError ? e.message : String(e)}`, tone: "danger" });
     }
   }
 
@@ -79,9 +83,9 @@ export function Users() {
   return (
     <div>
       <PageHeader
-        title="Users"
+        title="Usuários"
         subtitle="Contas de acesso ao Aurora"
-        actions={<Button onClick={openNew}><Plus className="h-4 w-4" /> Add User</Button>}
+        actions={<Button onClick={openNew}><Plus className="h-4 w-4" /> Adicionar usuário</Button>}
       />
 
       {loading ? (
@@ -89,7 +93,7 @@ export function Users() {
       ) : items.length === 0 ? (
         <EmptyState title="Nenhum usuário" />
       ) : (
-        <Table head={<><Th>Username</Th><Th>E-mail</Th><Th>Papel</Th><Th className="text-right">Actions</Th></>}>
+        <Table head={<><Th>Usuário</Th><Th>E-mail</Th><Th>Papel</Th><Th className="text-right">Ações</Th></>}>
           {items.map((u) => {
             const r = roleOf(u);
             return (
@@ -101,8 +105,8 @@ export function Users() {
                 <Td><Badge tone={r === "master" ? "accent" : r === "admin" ? "primary" : "muted"}>{ROLE_LABEL[r]}</Badge></Td>
                 <Td className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" onClick={() => openEdit(u)}>Edit</Button>
-                    <Button variant="danger" onClick={() => remove(u)} disabled={u.id === me?.id}>Delete</Button>
+                    <Button variant="ghost" onClick={() => openEdit(u)}>Editar</Button>
+                    <Button variant="danger" onClick={() => remove(u)} disabled={u.id === me?.id}>Excluir</Button>
                   </div>
                 </Td>
               </tr>
@@ -113,25 +117,25 @@ export function Users() {
 
       {open && (
         <Modal
-          title={editing ? `Edit ${editing.username}` : "Add User"}
+          title={editing ? `Editar ${editing.username}` : "Adicionar usuário"}
           onClose={() => setOpen(false)}
           footer={
             <>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
               <Button onClick={save} disabled={saving || (!editing && (!form.username || !form.email || !form.password))}>
-                {saving ? "Salvando…" : editing ? "Save" : "Create"}
+                {saving ? "Salvando…" : editing ? "Salvar" : "Criar"}
               </Button>
             </>
           }
         >
           <div className="space-y-3">
-            <Fld label="USERNAME">
+            <Fld label="USUÁRIO">
               <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} disabled={!!editing} autoFocus={!editing} />
             </Fld>
             <Fld label="E-MAIL (login)">
               <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="voce@empresa.com" />
             </Fld>
-            <Fld label={editing ? "NEW PASSWORD (opcional)" : "PASSWORD"}>
+            <Fld label={editing ? "NOVA SENHA (opcional)" : "SENHA"}>
               <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editing ? "deixe em branco para manter" : ""} />
             </Fld>
             <Fld label="PAPEL">

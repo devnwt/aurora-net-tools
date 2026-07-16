@@ -176,7 +176,7 @@ export function DeviceForm() {
           </label>
           {form.api_enabled && (
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
-              <Field label="Base URL">
+              <Field label="URL base">
                 <Input value={form.api_base_url} onChange={(e) => set("api_base_url", e.target.value)} className="font-mono" />
               </Field>
               <Field label="Credencial">

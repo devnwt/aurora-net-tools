@@ -10,11 +10,11 @@ import { Badge, Button, Card, Spinner } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 const STAT_CARDS: { key: DeviceStatus | "total" | "sites"; label: string; color: string }[] = [
-  { key: "total", label: "Total Devices", color: "text-text" },
+  { key: "total", label: "Total de Dispositivos", color: "text-text" },
   { key: "online", label: "Online", color: "text-ok" },
-  { key: "not_accessible", label: "Not accessible", color: "text-accent" },
+  { key: "not_accessible", label: "Inacessível", color: "text-accent" },
   { key: "offline", label: "Offline", color: "text-danger" },
-  { key: "unknown", label: "Unknown", color: "text-muted" },
+  { key: "unknown", label: "Desconhecido", color: "text-muted" },
   { key: "sites", label: "Sites", color: "text-primary" },
 ];
 
@@ -59,10 +59,10 @@ export function Dashboard() {
   return (
     <div>
       <PageHeader
-        title="Dashboard"
+        title="Painel"
         actions={
           <Button onClick={load} disabled={loading}>
-            {loading ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Refresh All
+            {loading ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Atualizar Tudo
           </Button>
         }
       />
@@ -77,10 +77,10 @@ export function Dashboard() {
       </div>
 
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Devices by Site</h2>
+        <h2 className="text-sm font-semibold">Dispositivos por Site</h2>
         <div className="flex gap-1 rounded-lg border border-border p-0.5 text-xs">
           <button onClick={() => setOrder("az")} className={cn("rounded px-2 py-1 cursor-pointer", order === "az" ? "bg-surface-2 text-text" : "text-muted")}>A-Z</button>
-          <button onClick={() => setOrder("count")} className={cn("rounded px-2 py-1 cursor-pointer", order === "count" ? "bg-surface-2 text-text" : "text-muted")}>By count</button>
+          <button onClick={() => setOrder("count")} className={cn("rounded px-2 py-1 cursor-pointer", order === "count" ? "bg-surface-2 text-text" : "text-muted")}>Por quantidade</button>
         </div>
       </div>
 
@@ -90,7 +90,7 @@ export function Dashboard() {
         <Table
           head={
             <>
-              <Th>Device</Th><Th>Host</Th><Th>Status</Th><Th>Method</Th><Th>RouterOS</Th>
+              <Th>Dispositivo</Th><Th>Host</Th><Th>Status</Th><Th>Método</Th><Th>RouterOS</Th>
               <Th>Board</Th><Th>CPU</Th><Th>RAM</Th><Th>Temp</Th><Th>Uptime</Th>
             </>
           }

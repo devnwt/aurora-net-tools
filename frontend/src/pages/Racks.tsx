@@ -6,6 +6,7 @@ import type { AppUser, Device, Group, Rack, RackLink, UserGroup } from "@/lib/ty
 import { ForceGraph, type GEdge, type GNode } from "@/components/ForceGraph";
 import { PageHeader } from "@/components/PageHeader";
 import { Button, Card, EmptyState, Input, Select, Spinner } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 
 const COLOR: Record<string, string> = {
   site: "#3B82F6",
@@ -16,6 +17,7 @@ const COLOR: Record<string, string> = {
 };
 
 export function Racks() {
+  const { confirm, alert } = useConfirm();
   const { user: me } = useAuth();
   const isAdmin = me?.role === "admin" || me?.role === "master";
 
@@ -96,7 +98,7 @@ export function Racks() {
     }
   }
   async function delRack(r: Rack) {
-    if (!confirm(`Excluir o rack "${r.name}"? Os devices ficam sem rack.`)) return;
+    if (!(await confirm({ title: "Excluir rack", message: `Excluir o rack "${r.name}"? Os devices ficam sem rack.` }))) return;
     await api.del(`/racks/${r.id}`);
     reload();
   }
@@ -117,7 +119,7 @@ export function Racks() {
       setLinkForm({ rack_a_id: "", iface_a: "", rack_b_id: "", iface_b: "" });
       reload();
     } catch (e) {
-      alert(String(e));
+      await alert({ title: "Erro", message: String(e), tone: "danger" });
     } finally {
       setBusy(false);
     }
@@ -134,13 +136,13 @@ export function Racks() {
       setUgForm({ name: "", parent_id: "" });
       reload();
     } catch (e) {
-      alert(String(e));
+      await alert({ title: "Erro", message: String(e), tone: "danger" });
     } finally {
       setBusy(false);
     }
   }
   async function delUgroup(g: UserGroup) {
-    if (!confirm(`Excluir o grupo "${g.name}"? Os usuários ficam sem grupo.`)) return;
+    if (!(await confirm({ title: "Excluir grupo", message: `Excluir o grupo "${g.name}"? Os usuários ficam sem grupo.` }))) return;
     await api.del(`/user-groups/${g.id}`);
     reload();
   }
@@ -153,7 +155,7 @@ export function Racks() {
 
   return (
     <div>
-      <PageHeader title="Racks & Map" subtitle="Site → Rack → Device e ligações entre racks" />
+      <PageHeader title="Racks & Mapa" subtitle="Site → Rack → Device e ligações entre racks" />
 
       <Card className="mb-5">
         <div className="mb-2 flex items-center gap-4 text-xs text-muted">
@@ -181,7 +183,7 @@ export function Racks() {
               {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </Select>
             <Input value={rackForm.name} onChange={(e) => setRackForm({ ...rackForm, name: e.target.value })} placeholder="nome do rack" className="max-w-[160px]" />
-            <Button onClick={addRack} disabled={busy || !rackForm.site_id || !rackForm.name}><Plus className="h-4 w-4" /> Add</Button>
+            <Button onClick={addRack} disabled={busy || !rackForm.site_id || !rackForm.name}><Plus className="h-4 w-4" /> Adicionar</Button>
           </div>
           {sites.length === 0 && <p className="text-xs text-muted">Crie um Site primeiro (menu Sites).</p>}
           {sites.map((s) => {
@@ -194,7 +196,7 @@ export function Racks() {
                   {rs.map((r) => (
                     <div key={r.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-1.5 text-sm">
                       <span>{r.name} <span className="text-xs text-muted">({devices.filter((d) => d.rack_id === r.id).length} devices)</span></span>
-                      <Button variant="danger" onClick={() => delRack(r)}>Delete</Button>
+                      <Button variant="danger" onClick={() => delRack(r)}>Excluir</Button>
                     </div>
                   ))}
                 </div>
@@ -238,7 +240,7 @@ export function Racks() {
               {racks.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </Select>
             <Input value={linkForm.iface_b} onChange={(e) => setLinkForm({ ...linkForm, iface_b: e.target.value })} placeholder="iface B (ex.: ether1)" className="max-w-[150px] font-mono" />
-            <Button onClick={addLink} disabled={busy || !linkForm.rack_a_id || !linkForm.rack_b_id}><Plus className="h-4 w-4" /> Link</Button>
+            <Button onClick={addLink} disabled={busy || !linkForm.rack_a_id || !linkForm.rack_b_id}><Plus className="h-4 w-4" /> Ligar</Button>
           </div>
           {links.length === 0 ? (
             <p className="text-xs text-muted">Sem ligações.</p>
@@ -249,7 +251,7 @@ export function Racks() {
                   <span className="font-mono text-xs">
                     {rackName(l.rack_a_id)} <span className="text-accent">{l.iface_a || "?"}</span> ↔ <span className="text-accent">{l.iface_b || "?"}</span> {rackName(l.rack_b_id)}
                   </span>
-                  <Button variant="danger" onClick={() => delLink(l)}>Delete</Button>
+                  <Button variant="danger" onClick={() => delLink(l)}>Excluir</Button>
                 </div>
               ))}
             </div>
@@ -266,7 +268,7 @@ export function Racks() {
                 <option value="">— sem pai —</option>
                 {ugroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </Select>
-              <Button onClick={addUgroup} disabled={busy || !ugForm.name}><Plus className="h-4 w-4" /> Add</Button>
+              <Button onClick={addUgroup} disabled={busy || !ugForm.name}><Plus className="h-4 w-4" /> Adicionar</Button>
             </div>
             {ugroups.length === 0 ? (
               <p className="text-xs text-muted">Nenhum grupo. Crie grupos aninháveis para organizar usuários.</p>
@@ -279,7 +281,7 @@ export function Racks() {
                       {g.parent_id && <span className="text-xs text-muted"> ⊂ {ugroups.find((p) => p.id === g.parent_id)?.name ?? g.parent_id}</span>}
                       <span className="text-xs text-muted"> ({members.filter((u) => u.usergroup_id === g.id).length} usuários)</span>
                     </span>
-                    <Button variant="danger" onClick={() => delUgroup(g)}>Delete</Button>
+                    <Button variant="danger" onClick={() => delUgroup(g)}>Excluir</Button>
                   </div>
                 ))}
               </div>

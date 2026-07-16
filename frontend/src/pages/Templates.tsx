@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import type { Template } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge, Button, Card, EmptyState, Input, Modal, Select, Spinner, Textarea } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 
 const CATEGORIES = ["Security", "Network", "Monitoring", "Maintenance", "Other"];
 const BLANK = { name: "", description: "", category: "Security", type: "commands", body: "", enabled: true };
@@ -13,6 +14,7 @@ function toneOf(cat: string): "primary" | "accent" | "ok" | "muted" | "danger" {
 }
 
 export function Templates() {
+  const { confirm } = useConfirm();
   const [items, setItems] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -50,7 +52,7 @@ export function Templates() {
   }
 
   async function remove(t: Template) {
-    if (!confirm(`Excluir o template "${t.name}"?`)) return;
+    if (!(await confirm({ title: "Excluir template", message: `Excluir o template "${t.name}"?` }))) return;
     await api.del(`/templates/${t.id}`);
     load();
   }
@@ -59,12 +61,12 @@ export function Templates() {
 
   return (
     <div>
-      <PageHeader title="Command Templates" actions={<Button onClick={openNew}><Plus className="h-4 w-4" /> Add Template</Button>} />
+      <PageHeader title="Modelos de Comando" actions={<Button onClick={openNew}><Plus className="h-4 w-4" /> Adicionar Modelo</Button>} />
 
       {loading ? (
         <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>
       ) : items.length === 0 ? (
-        <EmptyState title="No templates yet" hint="Crie conjuntos de comandos predefinidos para configuração rápida." />
+        <EmptyState title="Nenhum modelo ainda" hint="Crie conjuntos de comandos predefinidos para configuração rápida." />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {items.map((t) => (
@@ -75,16 +77,16 @@ export function Templates() {
               </div>
               {t.description && <p className="mb-2 text-xs text-muted">{t.description}</p>}
               <div className="mb-2 flex items-center gap-2 text-[11px] text-muted">
-                <Badge>{t.type === "script" ? "Script" : "Commands"}</Badge>
+                <Badge>{t.type === "script" ? "Script" : "Comandos"}</Badge>
                 <span>{lines(t)} linha(s)</span>
-                {!t.enabled && <Badge tone="muted">disabled</Badge>}
+                {!t.enabled && <Badge tone="muted">desabilitado</Badge>}
               </div>
               <pre className="mb-3 max-h-28 overflow-auto rounded-lg border border-border bg-bg p-2 font-mono text-[11px] text-muted whitespace-pre-wrap">
                 {t.body || "(vazio)"}
               </pre>
               <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => openEdit(t)}>Edit</Button>
-                <Button variant="danger" onClick={() => remove(t)}>Delete</Button>
+                <Button variant="ghost" onClick={() => openEdit(t)}>Editar</Button>
+                <Button variant="danger" onClick={() => remove(t)}>Excluir</Button>
               </div>
             </Card>
           ))}
@@ -93,34 +95,34 @@ export function Templates() {
 
       {open && (
         <Modal
-          title={editing ? "Edit Template" : "New Template"}
+          title={editing ? "Editar Modelo" : "Novo Modelo"}
           onClose={() => setOpen(false)}
           footer={
             <>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={save} disabled={saving || !form.name || !form.body.trim()}>{saving ? "Salvando…" : editing ? "Save" : "Create"}</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button onClick={save} disabled={saving || !form.name || !form.body.trim()}>{saving ? "Salvando…" : editing ? "Salvar" : "Criar"}</Button>
             </>
           }
         >
           <div className="space-y-3">
-            <Field label="NAME"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Secure Services" autoFocus /></Field>
-            <Field label="DESCRIPTION"><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional description" /></Field>
-            <Field label="CATEGORY">
+            <Field label="NOME"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="ex.: Serviços Seguros" autoFocus /></Field>
+            <Field label="DESCRIÇÃO"><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descrição opcional" /></Field>
+            <Field label="CATEGORIA">
               <Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </Select>
             </Field>
-            <Field label="TYPE">
+            <Field label="TIPO">
               <div className="flex gap-4 text-sm">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" checked={form.type === "commands"} onChange={() => setForm({ ...form, type: "commands" })} /> Commands (one per line)
+                  <input type="radio" checked={form.type === "commands"} onChange={() => setForm({ ...form, type: "commands" })} /> Comandos (um por linha)
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" checked={form.type === "script"} onChange={() => setForm({ ...form, type: "script" })} /> Script (/system/script)
                 </label>
               </div>
             </Field>
-            <Field label={form.type === "script" ? "SCRIPT" : "COMMANDS (ONE PER LINE)"}>
+            <Field label={form.type === "script" ? "SCRIPT" : "COMANDOS (UM POR LINHA)"}>
               <Textarea
                 rows={7}
                 value={form.body}
@@ -130,7 +132,7 @@ export function Templates() {
               />
             </Field>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /> Enabled
+              <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /> Habilitado
             </label>
           </div>
         </Modal>

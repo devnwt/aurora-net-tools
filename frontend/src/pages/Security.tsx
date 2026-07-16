@@ -42,7 +42,7 @@ export function Security() {
 
   return (
     <div>
-      <PageHeader title="Security" subtitle="Checagens de hardening do RouterOS" />
+      <PageHeader title="Segurança" subtitle="Checagens de hardening do RouterOS" />
 
       <Card className="mb-5">
         <div className="flex flex-wrap items-center gap-2">

@@ -4,6 +4,7 @@ import type { Credential, Group } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Button, Card, EmptyState, Input, Select, Spinner } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 
 const BLANK = {
   name: "",
@@ -13,6 +14,7 @@ const BLANK = {
 };
 
 export function Groups() {
+  const { confirm } = useConfirm();
   const [items, setItems] = useState<Group[]>([]);
   const [creds, setCreds] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,7 @@ export function Groups() {
   }
 
   async function remove(id: number) {
-    if (!confirm("Excluir este grupo? Devices ficam sem grupo.")) return;
+    if (!(await confirm({ title: "Excluir grupo", message: "Excluir este grupo? Devices ficam sem grupo." }))) return;
     await api.del(`/groups/${id}`);
     if (editingId === id) reset();
     load();

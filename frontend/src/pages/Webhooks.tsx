@@ -5,15 +5,17 @@ import type { Webhook } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Badge, Button, EmptyState, Input, Modal, Spinner } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 
 const EVENTS = [
-  { key: "device.online", label: "Device online" },
-  { key: "device.offline", label: "Device offline / não-acessível" },
+  { key: "device.online", label: "Dispositivo online" },
+  { key: "device.offline", label: "Dispositivo offline / não-acessível" },
 ];
 
 const BLANK = { name: "", url: "", events: "", secret: "", enabled: true };
 
 export function Webhooks() {
+  const { confirm } = useConfirm();
   const [items, setItems] = useState<Webhook[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -80,7 +82,7 @@ export function Webhooks() {
   }
 
   async function remove(w: Webhook) {
-    if (!confirm(`Excluir o webhook "${w.name}"?`)) return;
+    if (!(await confirm({ title: "Excluir webhook", message: `Excluir o webhook "${w.name}"?` }))) return;
     await api.del(`/webhooks/${w.id}`);
     load();
   }
@@ -89,8 +91,8 @@ export function Webhooks() {
     <div>
       <PageHeader
         title="Webhooks"
-        subtitle="Notificações HTTP em eventos (ex.: device caiu / voltou)"
-        actions={<Button onClick={openNew}><Plus className="h-4 w-4" /> Add Webhook</Button>}
+        subtitle="Notificações HTTP em eventos (ex.: dispositivo caiu / voltou)"
+        actions={<Button onClick={openNew}><Plus className="h-4 w-4" /> Adicionar Webhook</Button>}
       />
 
       {loading ? (
@@ -98,19 +100,19 @@ export function Webhooks() {
       ) : items.length === 0 ? (
         <EmptyState title="Nenhum webhook" hint="Crie um para receber notificações de eventos." />
       ) : (
-        <Table head={<><Th>Name</Th><Th>URL</Th><Th>Events</Th><Th>Status</Th><Th className="text-right">Actions</Th></>}>
+        <Table head={<><Th>Nome</Th><Th>URL</Th><Th>Eventos</Th><Th>Status</Th><Th className="text-right">Ações</Th></>}>
           {items.map((w) => (
             <tr key={w.id} className="hover:bg-surface-2 transition-colors duration-200">
-              <Td className="font-medium">{w.name} {w.has_secret && <Badge tone="muted">signed</Badge>}</Td>
+              <Td className="font-medium">{w.name} {w.has_secret && <Badge tone="muted">assinado</Badge>}</Td>
               <Td className="max-w-xs truncate font-mono text-xs text-muted" title={w.url}>{w.url}</Td>
               <Td className="text-xs text-muted">{w.events || "todos"}</Td>
-              <Td>{w.enabled ? <Badge tone="ok">on</Badge> : <Badge tone="muted">off</Badge>}</Td>
+              <Td>{w.enabled ? <Badge tone="ok">ativo</Badge> : <Badge tone="muted">inativo</Badge>}</Td>
               <Td className="text-right">
                 <div className="flex items-center justify-end gap-2">
                   {tested[w.id] && <span className="text-xs text-muted">{tested[w.id]}</span>}
-                  <Button variant="ghost" onClick={() => test(w)}>Test</Button>
-                  <Button variant="ghost" onClick={() => openEdit(w)}>Edit</Button>
-                  <Button variant="danger" onClick={() => remove(w)}>Delete</Button>
+                  <Button variant="ghost" onClick={() => test(w)}>Testar</Button>
+                  <Button variant="ghost" onClick={() => openEdit(w)}>Editar</Button>
+                  <Button variant="danger" onClick={() => remove(w)}>Excluir</Button>
                 </div>
               </Td>
             </tr>
@@ -120,19 +122,19 @@ export function Webhooks() {
 
       {open && (
         <Modal
-          title={editing ? "Edit Webhook" : "Add Webhook"}
+          title={editing ? "Editar Webhook" : "Adicionar Webhook"}
           onClose={() => setOpen(false)}
           footer={
             <>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={save} disabled={saving || !form.name || !form.url}>{saving ? "Salvando…" : editing ? "Save" : "Create"}</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button onClick={save} disabled={saving || !form.name || !form.url}>{saving ? "Salvando…" : editing ? "Salvar" : "Criar"}</Button>
             </>
           }
         >
           <div className="space-y-3">
-            <Fld label="NAME"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus /></Fld>
+            <Fld label="NOME"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus /></Fld>
             <Fld label="URL"><Input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://exemplo.com/hook" className="font-mono" /></Fld>
-            <Fld label="EVENTS (vazio = todos)">
+            <Fld label="EVENTOS (vazio = todos)">
               <div className="flex flex-col gap-1">
                 {EVENTS.map((ev) => (
                   <label key={ev.key} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -141,11 +143,11 @@ export function Webhooks() {
                 ))}
               </div>
             </Fld>
-            <Fld label={editing ? "SECRET (opcional — em branco mantém)" : "SECRET (opcional, HMAC-SHA256)"}>
+            <Fld label={editing ? "SEGREDO (opcional — em branco mantém)" : "SEGREDO (opcional, HMAC-SHA256)"}>
               <Input value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} placeholder="assina o corpo se preenchido" className="font-mono" />
             </Fld>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /> Enabled
+              <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /> Habilitado
             </label>
             {err && <p className="rounded-lg border border-danger/40 bg-danger/10 p-2 text-sm text-danger">{err}</p>}
           </div>

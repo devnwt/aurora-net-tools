@@ -1,4 +1,5 @@
 import re
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -60,9 +61,12 @@ async def me(user: User = Depends(get_current_user)) -> dict:
 
 
 def _origin(request: Request) -> str:
-    o = request.headers.get("origin") or request.headers.get("referer")
-    if o:
-        return o.rstrip("/")
+    # Sempre reduz a esquema+host (referer pode trazer um path, ex.: /login,
+    # que quebraria o link de reset).
+    raw = request.headers.get("origin") or request.headers.get("referer") or str(request.base_url)
+    p = urlsplit(raw)
+    if p.scheme and p.netloc:
+        return f"{p.scheme}://{p.netloc}"
     return str(request.base_url).rstrip("/")
 
 
@@ -75,8 +79,9 @@ async def forgot_password(body: ForgotIn, request: Request, session: AsyncSessio
     ident = body.identifier.strip()
     user = None
     if ident:
+        # E-mail case-insensitive (igual ao login); username exato.
         user = (await session.execute(
-            select(User).where(or_(User.username == ident, User.email == ident))
+            select(User).where(or_(User.username == ident, func.lower(User.email) == ident.lower()))
         )).scalars().first()
     # Resposta genérica (não revela se a conta existe).
     if user and user.email:

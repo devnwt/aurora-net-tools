@@ -5,11 +5,13 @@ import type { Device, Group } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Button, EmptyState, Input, Modal, Spinner } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 import { DeviceMap } from "@/components/DeviceMap";
 
 const BLANK = { name: "", location: "", description: "", latitude: "", longitude: "" };
 
 export function Sites() {
+  const { confirm } = useConfirm();
   const [groups, setGroups] = useState<Group[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,7 @@ export function Sites() {
   }
 
   async function remove(g: Group) {
-    if (!confirm(`Excluir o site "${g.name}"?`)) return;
+    if (!(await confirm({ title: "Excluir site", message: `Excluir o site "${g.name}"?` }))) return;
     await api.del(`/groups/${g.id}`);
     load();
   }
@@ -75,15 +77,15 @@ export function Sites() {
     <div>
       <PageHeader
         title="Sites"
-        actions={<Button onClick={openNew}><Plus className="h-4 w-4" /> Add Site</Button>}
+        actions={<Button onClick={openNew}><Plus className="h-4 w-4" /> Adicionar Site</Button>}
       />
 
       {loading ? (
         <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>
       ) : groups.length === 0 ? (
-        <EmptyState title="Nenhum site" hint="Crie um site para agrupar seus devices." />
+        <EmptyState title="Nenhum site" hint="Crie um site para agrupar seus dispositivos." />
       ) : (
-        <Table head={<><Th>Name</Th><Th>Location</Th><Th>Description</Th><Th>Devices</Th><Th className="text-right">Actions</Th></>}>
+        <Table head={<><Th>Nome</Th><Th>Local</Th><Th>Descrição</Th><Th>Dispositivos</Th><Th className="text-right">Ações</Th></>}>
           {groups.map((g) => (
             <tr key={g.id} className="hover:bg-surface-2 transition-colors duration-200">
               <Td className="font-medium">{g.name}</Td>
@@ -92,8 +94,8 @@ export function Sites() {
               <Td className="font-mono">{counts[g.id] ?? 0}</Td>
               <Td className="text-right">
                 <div className="flex items-center justify-end gap-2">
-                  <Button variant="ghost" onClick={() => openEdit(g)}>Edit</Button>
-                  <Button variant="danger" onClick={() => remove(g)}>Delete</Button>
+                  <Button variant="ghost" onClick={() => openEdit(g)}>Editar</Button>
+                  <Button variant="danger" onClick={() => remove(g)}>Excluir</Button>
                 </div>
               </Td>
             </tr>
@@ -103,24 +105,24 @@ export function Sites() {
 
       {open && (
         <Modal
-          title={editing ? "Edit Site" : "Add Site"}
+          title={editing ? "Editar Site" : "Adicionar Site"}
           onClose={() => setOpen(false)}
           footer={
             <>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={save} disabled={saving || !form.name}>{saving ? "Salvando…" : editing ? "Save" : "Add Site"}</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button onClick={save} disabled={saving || !form.name}>{saving ? "Salvando…" : editing ? "Salvar" : "Adicionar Site"}</Button>
             </>
           }
         >
           <div className="space-y-3">
-            <Field label="NAME">
+            <Field label="NOME">
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
             </Field>
-            <Field label="LOCATION">
-              <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="e.g. Vitória, POP Centro" />
+            <Field label="LOCAL">
+              <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="ex.: Vitória, POP Centro" />
             </Field>
-            <Field label="DESCRIPTION">
-              <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional description" />
+            <Field label="DESCRIÇÃO">
+              <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descrição opcional" />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="LATITUDE">

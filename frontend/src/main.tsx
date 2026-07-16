@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { ConfirmProvider } from "@/lib/confirm";
 import { Layout } from "@/components/Layout";
 import { Spinner } from "@/components/ui";
 import { Login } from "@/pages/Login";
@@ -44,6 +45,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
+        <ConfirmProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -85,6 +87,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </ConfirmProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>,

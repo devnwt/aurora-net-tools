@@ -157,7 +157,7 @@ export function OltExplorer() {
   return (
     <div>
       <Link to="/controllers" className="mb-3 inline-flex items-center gap-1 text-sm text-muted hover:text-text cursor-pointer">
-        <ArrowLeft className="h-4 w-4" /> Controllers
+        <ArrowLeft className="h-4 w-4" /> Controladoras
       </Link>
       <PageHeader
         title={controllerName || "OLTs"}

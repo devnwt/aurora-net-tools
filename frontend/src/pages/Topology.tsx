@@ -124,7 +124,7 @@ export function Topology() {
   return (
     <div>
       <PageHeader
-        title="Topology"
+        title="Topologia"
         actions={
           <div className="flex items-center gap-2">
             <Select value={site} onChange={(e) => setSite(e.target.value)} className="w-44">
@@ -132,15 +132,15 @@ export function Topology() {
               {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
             </Select>
             <button onClick={() => setShowUnmanaged((v) => !v)} className={cn("rounded-lg border px-3 py-2 text-sm cursor-pointer", showUnmanaged ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted")}>
-              Unmanaged: {showUnmanaged ? "On" : "Off"}
+              Não-gerenciados: {showUnmanaged ? "Sim" : "Não"}
             </button>
             <button onClick={() => shown.forEach(probe)} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-muted hover:bg-surface-2 cursor-pointer">
-              <RefreshCw className="h-4 w-4" /> Refresh
+              <RefreshCw className="h-4 w-4" /> Atualizar
             </button>
           </div>
         }
       />
-      <p className="mb-4 text-xs text-muted">{shown.length} devices · {ghosts.length} unmanaged · {links} links</p>
+      <p className="mb-4 text-xs text-muted">{shown.length} dispositivos · {ghosts.length} não-gerenciados · {links} enlaces</p>
 
       <div className="overflow-auto rounded-lg border border-border bg-surface/40 p-2">
         <div className="relative" style={{ width, height, minWidth: "100%" }}>
@@ -202,7 +202,7 @@ export function Topology() {
             return (
               <div key={g.key} className="absolute rounded-lg border border-dashed border-border bg-surface-2/60 p-2" style={{ left: p.x, top: p.y, width: GHOST_W, height: GHOST_H }}>
                 <p className="truncate text-sm">{g.label}</p>
-                <p className="truncate font-mono text-[11px] text-muted">{g.sub || "unmanaged"}</p>
+                <p className="truncate font-mono text-[11px] text-muted">{g.sub || "não-gerenciado"}</p>
                 {g.board && <p className="truncate font-mono text-[11px] text-muted">board: <span className="text-text">{g.board}</span></p>}
                 {g.version && <p className="truncate font-mono text-[11px] text-muted">ver: <span className="text-text">{g.version}</span></p>}
               </div>

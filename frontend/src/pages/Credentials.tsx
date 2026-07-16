@@ -4,10 +4,12 @@ import type { Credential } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Badge, Button, Card, EmptyState, Input, Select, Spinner } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 
 const BLANK = { name: "", kind: "ssh", username: "", secret: "" };
 
 export function Credentials() {
+  const { confirm } = useConfirm();
   const [items, setItems] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(BLANK);
@@ -47,7 +49,7 @@ export function Credentials() {
   }
 
   async function remove(id: number) {
-    if (!confirm("Excluir esta credencial?")) return;
+    if (!(await confirm({ title: "Excluir credencial", message: "Excluir esta credencial?" }))) return;
     await api.del(`/credentials/${id}`);
     if (editingId === id) reset();
     load();

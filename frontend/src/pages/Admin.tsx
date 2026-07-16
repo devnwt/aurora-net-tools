@@ -14,12 +14,12 @@ const errMsg = (e: unknown) => (e instanceof ApiError ? `Erro ${e.status}: ${e.m
 
 type Tab = "orgs" | "plans" | "smtp" | "llm" | "s3" | "copilot";
 const TABS: { key: Tab; label: string; icon: typeof Building2 }[] = [
-  { key: "orgs", label: "Organizations", icon: Building2 },
-  { key: "plans", label: "Plans", icon: Package },
+  { key: "orgs", label: "Organizações", icon: Building2 },
+  { key: "plans", label: "Planos", icon: Package },
   { key: "smtp", label: "SMTP Global", icon: Mail },
   { key: "llm", label: "LLM Global", icon: Sparkles },
   { key: "s3", label: "MinIO / S3", icon: Database },
-  { key: "copilot", label: "Copilot Tools", icon: Bot },
+  { key: "copilot", label: "Ferramentas do Copilot", icon: Bot },
 ];
 
 export function Admin() {

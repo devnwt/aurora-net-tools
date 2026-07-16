@@ -5,10 +5,12 @@ import type { Controller, Credential } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Button, Card, EmptyState, Input, Select, Spinner } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 
 const BLANK = { name: "", host: "", port: 3337, credential_id: "" as string };
 
 export function Controllers() {
+  const { confirm } = useConfirm();
   const [items, setItems] = useState<Controller[]>([]);
   const [creds, setCreds] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +57,7 @@ export function Controllers() {
   }
 
   async function remove(id: number) {
-    if (!confirm("Excluir este controller?")) return;
+    if (!(await confirm({ title: "Excluir controladora", message: "Excluir esta controladora?" }))) return;
     await api.del(`/controllers/${id}`);
     if (editingId === id) reset();
     load();
@@ -75,13 +77,13 @@ export function Controllers() {
 
   return (
     <div>
-      <PageHeader title="Controllers" subtitle="EMS/controladoras (ex.: UNM2000 Fiberhome)" />
+      <PageHeader title="Controladoras" subtitle="EMS/controladoras (ex.: UNM2000 Fiberhome)" />
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         <div>
           {loading ? (
             <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>
           ) : items.length === 0 ? (
-            <EmptyState title="Nenhum controller" hint="Cadastre um EMS ao lado." />
+            <EmptyState title="Nenhuma controladora" hint="Cadastre um EMS ao lado." />
           ) : (
             <Table head={<><Th>Nome</Th><Th>Host</Th><Th>Porta</Th><Th /></>}>
               {items.map((c) => (
@@ -110,7 +112,7 @@ export function Controllers() {
           )}
         </div>
         <Card>
-          <h2 className="mb-3 text-sm font-semibold">{editingId ? "Editar controller" : "Novo controller (UNM2000)"}</h2>
+          <h2 className="mb-3 text-sm font-semibold">{editingId ? "Editar controladora" : "Nova controladora (UNM2000)"}</h2>
           <form onSubmit={submit} className="space-y-3">
             <div className="space-y-1">
               <label htmlFor="cnm" className="text-xs text-muted">Nome</label>

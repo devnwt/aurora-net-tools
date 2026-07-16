@@ -6,10 +6,12 @@ import type { Device, Group } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Badge, Button, EmptyState, Select, Spinner } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 
 const typeTone = { routeros: "primary", cisco: "accent", huawei: "ok" } as const;
 
 export function Inventory() {
+  const { confirm } = useConfirm();
   const [devices, setDevices] = useState<Device[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +29,7 @@ export function Inventory() {
   useEffect(load, []);
 
   async function remove(id: number, name: string) {
-    if (!confirm(`Excluir o equipamento "${name}"?`)) return;
+    if (!(await confirm({ title: "Excluir equipamento", message: `Excluir o equipamento "${name}"?` }))) return;
     await api.del(`/devices/${id}`);
     load();
   }

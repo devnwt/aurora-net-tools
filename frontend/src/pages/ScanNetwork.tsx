@@ -69,29 +69,29 @@ export function ScanNetwork() {
 
   return (
     <div>
-      <PageHeader title="Scan Network" />
+      <PageHeader title="Escanear Rede" />
       <Card className="mb-5">
-        <h2 className="mb-4 text-sm font-semibold">Scan Configuration</h2>
+        <h2 className="mb-4 text-sm font-semibold">Configuração do Scan</h2>
 
         <div className="space-y-1">
-          <label className="text-[11px] uppercase tracking-wide text-muted">IP Range</label>
-          <Input value={form.range} onChange={(e) => set("range", e.target.value)} placeholder="192.168.88.1-254 or 192.168.88.0/24" className="font-mono" />
+          <label className="text-[11px] uppercase tracking-wide text-muted">Faixa de IP</label>
+          <Input value={form.range} onChange={(e) => set("range", e.target.value)} placeholder="192.168.88.1-254 ou 192.168.88.0/24" className="font-mono" />
           <p className="text-xs text-muted">CIDR (192.168.88.0/24), range (192.168.88.1-254), ou IP único · máx. 512 hosts</p>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Labeled label="Username"><Input value={form.username} onChange={(e) => set("username", e.target.value)} /></Labeled>
-          <Labeled label="Password"><Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} /></Labeled>
+          <Labeled label="Usuário"><Input value={form.username} onChange={(e) => set("username", e.target.value)} /></Labeled>
+          <Labeled label="Senha"><Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} /></Labeled>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <Labeled label="SSH Port"><Input value={form.sshPort} onChange={(e) => set("sshPort", e.target.value)} className="font-mono" /></Labeled>
-          <Labeled label="API Port (HTTPS)"><Input value={form.apiHttps} onChange={(e) => set("apiHttps", e.target.value)} className="font-mono" /></Labeled>
-          <Labeled label="API Port (HTTP)"><Input value={form.apiHttp} onChange={(e) => set("apiHttp", e.target.value)} className="font-mono" /></Labeled>
+          <Labeled label="Porta SSH"><Input value={form.sshPort} onChange={(e) => set("sshPort", e.target.value)} className="font-mono" /></Labeled>
+          <Labeled label="Porta API (HTTPS)"><Input value={form.apiHttps} onChange={(e) => set("apiHttps", e.target.value)} className="font-mono" /></Labeled>
+          <Labeled label="Porta API (HTTP)"><Input value={form.apiHttp} onChange={(e) => set("apiHttp", e.target.value)} className="font-mono" /></Labeled>
         </div>
 
         <Button className="mt-4" onClick={startScan} disabled={busy || !form.range}>
-          {busy ? <Spinner /> : <Globe className="h-4 w-4" />} {busy ? "Scanning…" : "Start Scan"}
+          {busy ? <Spinner /> : <Globe className="h-4 w-4" />} {busy ? "Escaneando…" : "Iniciar Scan"}
         </Button>
         {error && <p className="mt-3 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">{error}</p>}
       </Card>
@@ -104,7 +104,7 @@ export function ScanNetwork() {
           {result.found.length === 0 ? (
             <EmptyState title="Nenhum RouterOS encontrado" hint="Verifique faixa, porta e credenciais." />
           ) : (
-            <Table head={<><Th>IP</Th><Th>Identity</Th><Th>Board</Th><Th>RouterOS</Th><Th className="text-right">Ação</Th></>}>
+            <Table head={<><Th>IP</Th><Th>Identidade</Th><Th>Board</Th><Th>RouterOS</Th><Th className="text-right">Ação</Th></>}>
               {result.found.map((f) => (
                 <tr key={f.ip} className="hover:bg-surface-2 transition-colors duration-200">
                   <Td className="font-mono">{f.ip}</Td>
@@ -113,7 +113,7 @@ export function ScanNetwork() {
                   <Td className="font-mono text-muted">{f.version || "—"}</Td>
                   <Td className="text-right">
                     <Button variant="ghost" onClick={() => importDevice(f)} disabled={adding !== null}>
-                      {adding === f.ip ? <Spinner /> : <Plus className="h-4 w-4" />} Add
+                      {adding === f.ip ? <Spinner /> : <Plus className="h-4 w-4" />} Adicionar
                     </Button>
                   </Td>
                 </tr>

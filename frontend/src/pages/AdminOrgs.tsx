@@ -4,10 +4,12 @@ import { api, ApiError } from "@/lib/api";
 import type { OrgMeta, Plan } from "@/lib/types";
 import { Table, Td, Th } from "@/components/Table";
 import { Badge, Button, Card, EmptyState, Input, Modal, Select, Spinner } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : String(e));
 
 export function AdminOrgs() {
+  const { confirm } = useConfirm();
   const [items, setItems] = useState<OrgMeta[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,13 +75,13 @@ export function AdminOrgs() {
   }
 
   async function remove(o: OrgMeta) {
-    if (!confirm(`Excluir a ORG "${o.name}"? Isso remove seus devices, sites, credenciais e usuários.`)) return;
+    if (!(await confirm({ title: "Excluir organização", message: `Excluir a ORG "${o.name}"? Isso remove seus devices, sites, credenciais e usuários.` }))) return;
     await api.del(`/admin/orgs/${o.id}`);
     load();
   }
 
   async function resendLogin(o: OrgMeta) {
-    if (!confirm(`Redefinir a senha do admin de "${o.name}" e enviar por e-mail (${o.admin_email ?? "sem e-mail"})?`)) return;
+    if (!(await confirm({ title: "Redefinir senha", message: `Redefinir a senha do admin de "${o.name}" e enviar por e-mail (${o.admin_email ?? "sem e-mail"})?`, tone: "primary" }))) return;
     setNote(null);
     try {
       const r = await api.post<{ ok: boolean; detail: string }>(`/admin/orgs/${o.id}/resend-login`, {});
@@ -118,7 +120,7 @@ export function AdminOrgs() {
 
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm text-muted">Organizações (tenants), planos, cotas e admins.</p>
-        <Button onClick={openNew}><Plus className="h-4 w-4" /> Add Org</Button>
+        <Button onClick={openNew}><Plus className="h-4 w-4" /> Adicionar Org</Button>
       </div>
 
       {note && <p className={`mb-3 rounded-lg border p-2 text-sm ${note.ok ? "border-ok/40 bg-ok/10 text-ok" : "border-danger/40 bg-danger/10 text-danger"}`}>{note.text}</p>}
@@ -128,7 +130,7 @@ export function AdminOrgs() {
       ) : items.length === 0 ? (
         <EmptyState title="Nenhuma ORG" hint="Crie uma organização e seu administrador." />
       ) : (
-        <Table head={<><Th>Name</Th><Th>Admin</Th><Th>Plan</Th><Th>Devices</Th><Th>Users</Th><Th className="text-right">Actions</Th></>}>
+        <Table head={<><Th>Nome</Th><Th>Admin</Th><Th>Plano</Th><Th>Dispositivos</Th><Th>Usuários</Th><Th className="text-right">Ações</Th></>}>
           {items.map((o) => (
             <tr key={o.id} className="hover:bg-surface-2 transition-colors duration-200">
               <Td className="font-medium">{o.name}</Td>
@@ -142,8 +144,8 @@ export function AdminOrgs() {
               <Td className="text-right">
                 <div className="flex items-center justify-end gap-2">
                   <Button variant="ghost" onClick={() => resendLogin(o)} title="Redefinir senha e enviar por e-mail"><KeyRound className="h-4 w-4" /> Reenviar login</Button>
-                  <Button variant="ghost" onClick={() => openEdit(o)}>Edit</Button>
-                  <Button variant="danger" onClick={() => remove(o)}>Delete</Button>
+                  <Button variant="ghost" onClick={() => openEdit(o)}>Editar</Button>
+                  <Button variant="danger" onClick={() => remove(o)}>Excluir</Button>
                 </div>
               </Td>
             </tr>
@@ -153,27 +155,27 @@ export function AdminOrgs() {
 
       {open && (
         <Modal
-          title={editing ? `Edit ${editing.name}` : "Add Organization"}
+          title={editing ? `Editar ${editing.name}` : "Adicionar organização"}
           onClose={() => setOpen(false)}
-          footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save} disabled={saving || !valid}>{saving ? "…" : editing ? "Save" : "Create"}</Button></>}
+          footer={<><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={save} disabled={saving || !valid}>{saving ? "…" : editing ? "Salvar" : "Criar"}</Button></>}
         >
           <div className="space-y-3">
-            <Fld label="NAME"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus /></Fld>
-            <Fld label="PLAN">
+            <Fld label="NOME"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus /></Fld>
+            <Fld label="PLANO">
               <Select value={form.plan_id} onChange={(e) => setForm({ ...form, plan_id: e.target.value })}>
                 <option value="">— sem plano —</option>
                 {plans.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.max_devices} devices)</option>)}
               </Select>
             </Fld>
-            <Fld label="DEVICE LIMIT (override, opcional)"><Input type="number" value={form.device_limit} onChange={(e) => setForm({ ...form, device_limit: e.target.value })} placeholder="usa o do plano se vazio" className="font-mono" /></Fld>
+            <Fld label="LIMITE DE DISPOSITIVOS (override, opcional)"><Input type="number" value={form.device_limit} onChange={(e) => setForm({ ...form, device_limit: e.target.value })} placeholder="usa o do plano se vazio" className="font-mono" /></Fld>
             <div className="border-t border-border pt-3 text-xs font-semibold text-muted">ADMINISTRADOR DA ORG</div>
             {!editing && (
               <>
-                <Fld label="ADMIN USERNAME"><Input value={form.admin_username} onChange={(e) => setForm({ ...form, admin_username: e.target.value })} /></Fld>
-                <Fld label="ADMIN PASSWORD"><Input type="password" value={form.admin_password} onChange={(e) => setForm({ ...form, admin_password: e.target.value })} /></Fld>
+                <Fld label="USUÁRIO DO ADMIN"><Input value={form.admin_username} onChange={(e) => setForm({ ...form, admin_username: e.target.value })} /></Fld>
+                <Fld label="SENHA DO ADMIN"><Input type="password" value={form.admin_password} onChange={(e) => setForm({ ...form, admin_password: e.target.value })} /></Fld>
               </>
             )}
-            <Fld label="ADMIN E-MAIL"><Input type="email" value={form.admin_email} onChange={(e) => setForm({ ...form, admin_email: e.target.value })} placeholder="admin@empresa.com" /></Fld>
+            <Fld label="E-MAIL DO ADMIN"><Input type="email" value={form.admin_email} onChange={(e) => setForm({ ...form, admin_email: e.target.value })} placeholder="admin@empresa.com" /></Fld>
             {!editing && (
               <label className="inline-flex items-center gap-2 text-sm text-muted">
                 <input type="checkbox" checked={form.send_welcome} onChange={(e) => setForm({ ...form, send_welcome: e.target.checked })} className="h-4 w-4 accent-primary" />

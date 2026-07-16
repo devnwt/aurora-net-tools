@@ -68,11 +68,11 @@ export function Commands() {
 
   return (
     <div>
-      <PageHeader title="Mass Commands" />
+      <PageHeader title="Comandos em Massa" />
 
       <Card className="mb-5">
-        <h2 className="mb-3 text-sm font-semibold">Execute Command</h2>
-        <label className="text-[11px] uppercase tracking-wide text-muted">Command</label>
+        <h2 className="mb-3 text-sm font-semibold">Executar Comando</h2>
+        <label className="text-[11px] uppercase tracking-wide text-muted">Comando</label>
         <Input
           value={command}
           onChange={(e) => setCommand(e.target.value)}
@@ -82,9 +82,9 @@ export function Commands() {
         <p className="mt-1 text-xs text-muted">Somente leitura — comandos de escrita são recusados pela allowlist.</p>
 
         <div className="mt-4 mb-2 flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wide text-muted">Select Devices</span>
-          <Button variant="ghost" onClick={selectAll}>Select All</Button>
-          <Button variant="ghost" onClick={deselectAll}>Deselect All</Button>
+          <span className="text-[11px] uppercase tracking-wide text-muted">Selecionar Dispositivos</span>
+          <Button variant="ghost" onClick={selectAll}>Selecionar Todos</Button>
+          <Button variant="ghost" onClick={deselectAll}>Desmarcar Todos</Button>
         </div>
         <div className="rounded-lg border border-border p-3">
           {sites.map((site) => (
@@ -104,7 +104,7 @@ export function Commands() {
         </div>
 
         <Button className="mt-4" onClick={execute} disabled={running || selected.size === 0 || !command}>
-          {running ? <Spinner /> : <Play className="h-4 w-4" />} Execute ({selected.size})
+          {running ? <Spinner /> : <Play className="h-4 w-4" />} Executar ({selected.size})
         </Button>
       </Card>
 
@@ -129,11 +129,11 @@ export function Commands() {
       )}
 
       <Card>
-        <h2 className="mb-3 text-sm font-semibold">Command History</h2>
+        <h2 className="mb-3 text-sm font-semibold">Histórico de Comandos</h2>
         {history.length === 0 ? (
-          <p className="text-xs text-muted">No commands yet</p>
+          <p className="text-xs text-muted">Nenhum comando ainda</p>
         ) : (
-          <Table head={<><Th>Command</Th><Th>Proto</Th><Th>Result</Th><Th>ms</Th><Th>Date</Th></>}>
+          <Table head={<><Th>Comando</Th><Th>Proto</Th><Th>Resultado</Th><Th>ms</Th><Th>Data</Th></>}>
             {history.map((a) => (
               <tr key={a.id} className="hover:bg-surface-2 transition-colors duration-200">
                 <Td className="max-w-md truncate font-mono text-xs" title={a.command}>{a.command}</Td>

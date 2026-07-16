@@ -146,6 +146,9 @@ async def delete_user(user_id: int, me: User = Depends(get_current_user), sessio
     if u.id == me.id:
         raise HTTPException(400, "não é possível excluir a si mesmo")
     if u.role in ("admin", "master") and await _admin_count(session, u.org_id) <= 1:
-        raise HTTPException(400, "não é possível excluir o último administrador")
+        # Nunca deixar o sistema sem Master; mas o Master (super admin) pode excluir
+        # administradores de uma ORG — inclusive o último dela (a ORG fica sem admin).
+        if u.org_id is None or not is_master(me):
+            raise HTTPException(400, "não é possível excluir o último administrador")
     await session.delete(u)
     await session.commit()

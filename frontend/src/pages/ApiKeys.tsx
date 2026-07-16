@@ -5,8 +5,10 @@ import type { ApiKeyCreated, ApiKeyMeta } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Button, EmptyState, Input, Modal, Spinner } from "@/components/ui";
+import { useConfirm } from "@/lib/confirm";
 
 export function ApiKeys() {
+  const { confirm } = useConfirm();
   const [items, setItems] = useState<ApiKeyMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -40,7 +42,7 @@ export function ApiKeys() {
   }
 
   async function remove(k: ApiKeyMeta) {
-    if (!confirm(`Revogar a chave "${k.name}"? Integrações que a usam deixarão de funcionar.`)) return;
+    if (!(await confirm({ title: "Revogar chave", message: `Revogar a chave "${k.name}"? Integrações que a usam deixarão de funcionar.` }))) return;
     await api.del(`/apikeys/${k.id}`);
     load();
   }
@@ -53,9 +55,9 @@ export function ApiKeys() {
   return (
     <div>
       <PageHeader
-        title="API Keys"
+        title="Chaves de API"
         subtitle="Tokens para acesso programático à API (header X-API-Key)"
-        actions={<Button onClick={() => { setName(""); setErr(""); setOpen(true); }}><Plus className="h-4 w-4" /> Create Key</Button>}
+        actions={<Button onClick={() => { setName(""); setErr(""); setOpen(true); }}><Plus className="h-4 w-4" /> Criar Chave</Button>}
       />
 
       {loading ? (
@@ -63,14 +65,14 @@ export function ApiKeys() {
       ) : items.length === 0 ? (
         <EmptyState title="Nenhuma chave" hint="Crie uma chave para integrar automações." />
       ) : (
-        <Table head={<><Th>Name</Th><Th>Prefix</Th><Th>Created</Th><Th>Last used</Th><Th className="text-right">Actions</Th></>}>
+        <Table head={<><Th>Nome</Th><Th>Prefixo</Th><Th>Criada</Th><Th>Último uso</Th><Th className="text-right">Ações</Th></>}>
           {items.map((k) => (
             <tr key={k.id} className="hover:bg-surface-2 transition-colors duration-200">
               <Td className="font-medium">{k.name}</Td>
               <Td className="font-mono text-muted">{k.prefix}…</Td>
               <Td className="whitespace-nowrap text-xs text-muted">{new Date(k.created_at).toLocaleString("pt-BR")}</Td>
               <Td className="whitespace-nowrap text-xs text-muted">{k.last_used_at ? new Date(k.last_used_at).toLocaleString("pt-BR") : "nunca"}</Td>
-              <Td className="text-right"><Button variant="danger" onClick={() => remove(k)}>Revoke</Button></Td>
+              <Td className="text-right"><Button variant="danger" onClick={() => remove(k)}>Revogar</Button></Td>
             </tr>
           ))}
         </Table>
@@ -78,17 +80,17 @@ export function ApiKeys() {
 
       {open && (
         <Modal
-          title="Create API Key"
+          title="Criar Chave de API"
           onClose={() => setOpen(false)}
           footer={
             <>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={create} disabled={saving || !name}>{saving ? "Criando…" : "Create"}</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button onClick={create} disabled={saving || !name}>{saving ? "Criando…" : "Criar"}</Button>
             </>
           }
         >
           <div className="space-y-1">
-            <label className="text-[11px] uppercase tracking-wide text-muted">NAME</label>
+            <label className="text-[11px] uppercase tracking-wide text-muted">NOME</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. automation, mcp, ci" autoFocus />
             {err && <p className="mt-2 rounded-lg border border-danger/40 bg-danger/10 p-2 text-sm text-danger">{err}</p>}
           </div>

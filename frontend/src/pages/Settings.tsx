@@ -18,7 +18,7 @@ interface Info {
 
 type Tab = "home" | "ftp";
 const TABS: { key: Tab; label: string }[] = [
-  { key: "home", label: "Home" },
+  { key: "home", label: "Início" },
   { key: "ftp", label: "FTP" },
 ];
 
@@ -28,7 +28,7 @@ export function Settings() {
   const [tab, setTab] = useState<Tab>("home");
   return (
     <div>
-      <PageHeader title="Settings" subtitle="Sistema, poller e integrações" />
+      <PageHeader title="Configurações" subtitle="Sistema, poller e integrações" />
       <div className="mb-5 flex flex-wrap items-center gap-1 border-b border-border">
         {TABS.map((t) => (
           <button
@@ -110,7 +110,7 @@ function HomeTab() {
         <Card>
           <h2 className="mb-3 text-sm font-semibold">Dados coletados</h2>
           <div className="grid grid-cols-3 gap-3 text-center">
-            <Stat label="Devices" value={info.counts.devices} />
+            <Stat label="Dispositivos" value={info.counts.devices} />
             <Stat label="Status" value={info.counts.statuses} />
             <Stat label="Amostras" value={info.counts.samples} />
           </div>
