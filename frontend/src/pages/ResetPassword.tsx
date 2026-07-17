@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "@/lib/api";
 import { Button, Input } from "@/components/ui";
 import { AuthShell } from "@/components/AuthShell";
+import { PASSWORD_HINT, passwordError } from "@/lib/password";
 
 export function ResetPassword() {
   const [params] = useSearchParams();
@@ -17,7 +18,8 @@ export function ResetPassword() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr("");
-    if (pw.length < 6) return setErr("A senha deve ter ao menos 6 caracteres.");
+    const pe = passwordError(pw);
+    if (pe) return setErr(pe);
     if (pw !== pw2) return setErr("As senhas não coincidem.");
     setBusy(true);
     try {
@@ -43,6 +45,7 @@ export function ResetPassword() {
             <div className="space-y-1">
               <label htmlFor="pw" className="text-xs text-white/60">Nova senha</label>
               <Input id="pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
+              <p className={`text-[11px] ${pw && passwordError(pw) ? "text-danger" : "text-white/40"}`}>{PASSWORD_HINT}</p>
             </div>
             <div className="space-y-1">
               <label htmlFor="pw2" className="text-xs text-white/60">Confirmar senha</label>

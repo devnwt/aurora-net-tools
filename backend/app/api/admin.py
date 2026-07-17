@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_master
 from app.core.crypto import decrypt, encrypt
 from app.core.db import get_session
-from app.core.security import hash_password
+from app.core.security import hash_password, password_error
 from app.models import Device, Organization, Plan, User
 from app.services import integrations
 
@@ -309,6 +309,9 @@ async def create_org(payload: OrgIn, session: AsyncSession = Depends(get_session
     admin_email = payload.admin_email.strip().lower()
     if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", admin_email):
         raise HTTPException(400, "e-mail do admin inválido")
+    pw_err = password_error(payload.admin_password)
+    if pw_err:
+        raise HTTPException(400, pw_err)
     if (await session.execute(select(Organization).where(Organization.name == payload.name))).scalar_one_or_none():
         raise HTTPException(400, "ORG já existe")
     if (await session.execute(select(User).where(User.username == payload.admin_username))).scalar_one_or_none():

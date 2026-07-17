@@ -5,6 +5,7 @@ import type { OrgMeta, Plan } from "@/lib/types";
 import { Table, Td, Th } from "@/components/Table";
 import { Badge, Button, Card, EmptyState, Input, Modal, Select, Spinner } from "@/components/ui";
 import { useConfirm } from "@/lib/confirm";
+import { PASSWORD_HINT, passwordError } from "@/lib/password";
 
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : String(e));
 
@@ -91,7 +92,7 @@ export function AdminOrgs() {
     }
   }
 
-  const valid = editing ? !!form.name : form.name && form.admin_username && form.admin_password && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.admin_email);
+  const valid = editing ? !!form.name : form.name && form.admin_username && !passwordError(form.admin_password) && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.admin_email);
 
   return (
     <div>
@@ -172,7 +173,10 @@ export function AdminOrgs() {
             {!editing && (
               <>
                 <Fld label="USUÁRIO DO ADMIN"><Input value={form.admin_username} onChange={(e) => setForm({ ...form, admin_username: e.target.value })} /></Fld>
-                <Fld label="SENHA DO ADMIN"><Input type="password" value={form.admin_password} onChange={(e) => setForm({ ...form, admin_password: e.target.value })} /></Fld>
+                <Fld label="SENHA DO ADMIN">
+                  <Input type="password" value={form.admin_password} onChange={(e) => setForm({ ...form, admin_password: e.target.value })} />
+                  <p className={`mt-1 text-[11px] ${form.admin_password && passwordError(form.admin_password) ? "text-danger" : "text-muted"}`}>{PASSWORD_HINT}</p>
+                </Fld>
               </>
             )}
             <Fld label="E-MAIL DO ADMIN"><Input type="email" value={form.admin_email} onChange={(e) => setForm({ ...form, admin_email: e.target.value })} placeholder="admin@empresa.com" /></Fld>

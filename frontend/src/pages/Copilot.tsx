@@ -77,6 +77,29 @@ export function Copilot() {
     setStarting(true);
     setErr("");
     try {
+      // Antes de iniciar, oferece backup dos dispositivos selecionados (RouterOS).
+      const routeros = devices.filter((d) => sel.has(d.id) && d.device_type === "routeros");
+      if (routeros.length > 0) {
+        const names = routeros.map((d) => d.name).join(", ");
+        const doBackup = await confirm({
+          title: "Backup antes de iniciar",
+          message: `Deseja fazer backup ${routeros.length > 1 ? "dos dispositivos" : "do dispositivo"} ${names} antes de iniciar a conversa?`,
+          confirmText: "Fazer backup",
+          cancelText: "Pular",
+          tone: "primary",
+        });
+        if (doBackup) {
+          const fails: string[] = [];
+          for (const d of routeros) {
+            try {
+              await api.post("/backups", { device_id: d.id, send_ftp: false, send_s3: false });
+            } catch (e) {
+              fails.push(`${d.name} (${errMsg(e)})`);
+            }
+          }
+          if (fails.length) setErr(`Backup falhou em: ${fails.join("; ")}`);
+        }
+      }
       const c = await api.post<CopilotConversation>("/copilot/conversations", { mode, device_ids: [...sel] });
       loadConvs();
       setActiveId(c.id);

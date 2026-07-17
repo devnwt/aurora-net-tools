@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# === MCP local (contém API keys, ex.: Plane) ===
+.mcp.json
+
 # === Docker Compose local (por-ambiente) ===
 # O compose de dev fica fora do git; use os modelos versionados:
 #   docker-compose.example.yml  (build local)  ·  docker-compose.harbor.yml (deploy)

@@ -7,14 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user, require_admin
 from app.api.tenancy import is_master, owned, scope
 from app.core.db import get_session
-from app.core.security import hash_password
+from app.core.security import hash_password, password_error
 from app.models import Organization, Plan, User, UserGroup
 from app.schemas.user import UserCreate, UserOut, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(require_admin)])
 
 ROLES = ("operator", "admin", "master")
-MIN_PASSWORD = 6
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -24,8 +23,9 @@ def _norm_email(email: str) -> str:
 
 
 def _check_password(password: str) -> None:
-    if len(password) < MIN_PASSWORD:
-        raise HTTPException(400, f"a senha deve ter ao menos {MIN_PASSWORD} caracteres")
+    err = password_error(password)
+    if err:
+        raise HTTPException(400, err)
 
 
 async def _check_email(session: AsyncSession, email: str, exclude_id: int | None = None) -> str:

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api, ApiError, tokenStore } from "@/lib/api";
 import { Button, Input } from "@/components/ui";
 import { AuthShell } from "@/components/AuthShell";
+import { PASSWORD_HINT, passwordError } from "@/lib/password";
 
 export function Register() {
   const [f, setF] = useState({ org_name: "", username: "", email: "", password: "" });
@@ -29,7 +30,7 @@ export function Register() {
     }
   }
 
-  const valid = f.org_name && f.username && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email) && f.password.length >= 6;
+  const valid = f.org_name && f.username && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email) && !passwordError(f.password);
 
   return (
     <AuthShell subtitle="Criar conta">
@@ -52,8 +53,9 @@ export function Register() {
               <Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="voce@empresa.com" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-white/60">Senha (mín. 6)</label>
+              <label className="text-xs text-white/60">Senha</label>
               <Input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
+              <p className={`text-[11px] ${f.password && passwordError(f.password) ? "text-danger" : "text-white/40"}`}>{PASSWORD_HINT}</p>
             </div>
             {err && <p className="text-sm text-danger">{err}</p>}
             <Button type="submit" className="w-full justify-center" disabled={busy || !valid}>{busy ? "Criando…" : "Criar conta e entrar"}</Button>

@@ -1,4 +1,5 @@
 import hashlib
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -11,6 +12,19 @@ settings = get_settings()
 
 # bcrypt limita a senha a 72 bytes; truncamos explicitamente.
 _BCRYPT_MAX = 72
+
+# Política de senha (usada em criação, troca e redefinição).
+PASSWORD_MIN = 6
+PASSWORD_RULE = f"A senha deve ter ao menos {PASSWORD_MIN} caracteres, incluindo letras e números."
+
+
+def password_error(password: str) -> str | None:
+    """Valida a política de senha. Retorna a mensagem de erro, ou None se OK."""
+    if len(password) < PASSWORD_MIN:
+        return PASSWORD_RULE
+    if not re.search(r"[A-Za-z]", password) or not re.search(r"\d", password):
+        return PASSWORD_RULE
+    return None
 
 
 def hash_password(password: str) -> str:

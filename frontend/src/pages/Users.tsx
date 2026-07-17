@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Badge, Button, EmptyState, Input, Modal, Select, Spinner } from "@/components/ui";
 import { useConfirm } from "@/lib/confirm";
+import { PASSWORD_HINT, passwordError } from "@/lib/password";
 
 type Role = "operator" | "admin" | "master";
 const ROLE_LABEL: Record<Role, string> = { operator: "Operador", admin: "Administrador", master: "Master" };
@@ -46,6 +47,11 @@ export function Users() {
   async function save() {
     setSaving(true);
     setErr("");
+    // Valida a política de senha (criar: obrigatória; editar: só se for trocar).
+    if (!editing || form.password) {
+      const pe = passwordError(form.password);
+      if (pe) { setErr(pe); setSaving(false); return; }
+    }
     try {
       if (editing) {
         const body: Record<string, unknown> = { role: form.role };
@@ -137,6 +143,9 @@ export function Users() {
             </Fld>
             <Fld label={editing ? "NOVA SENHA (opcional)" : "SENHA"}>
               <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editing ? "deixe em branco para manter" : ""} />
+              {form.password
+                ? passwordError(form.password) && <p className="mt-1 text-[11px] text-danger">{PASSWORD_HINT}</p>
+                : !editing && <p className="mt-1 text-[11px] text-muted">{PASSWORD_HINT}</p>}
             </Fld>
             <Fld label="PAPEL">
               <Select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>

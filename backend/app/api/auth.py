@@ -15,6 +15,7 @@ from app.core.security import (
     create_scoped_token,
     decode_scoped_token,
     hash_password,
+    password_error,
     verify_password,
 )
 from app.models import Organization, User
@@ -108,8 +109,9 @@ async def reset_password(body: ResetIn, session: AsyncSession = Depends(get_sess
     uid = decode_scoped_token(body.token, _RESET_PURPOSE)
     if not uid:
         raise HTTPException(400, "link inválido ou expirado")
-    if len(body.new_password) < 6:
-        raise HTTPException(400, "a senha deve ter ao menos 6 caracteres")
+    pw_err = password_error(body.new_password)
+    if pw_err:
+        raise HTTPException(400, pw_err)
     user = (await session.execute(select(User).where(User.id == int(uid)))).scalar_one_or_none()
     if user is None:
         raise HTTPException(400, "usuário não encontrado")
@@ -141,8 +143,11 @@ async def register(body: RegisterIn, session: AsyncSession = Depends(get_session
         raise HTTPException(403, "cadastro público desabilitado")
     org_name, username = body.org_name.strip(), body.username.strip()
     email = body.email.strip().lower()
-    if not org_name or not username or len(body.password) < 6:
-        raise HTTPException(400, "informe organização, usuário e senha (≥6 caracteres)")
+    if not org_name or not username:
+        raise HTTPException(400, "informe organização e usuário")
+    pw_err = password_error(body.password)
+    if pw_err:
+        raise HTTPException(400, pw_err)
     if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
         raise HTTPException(400, "e-mail inválido")
     if (await session.execute(select(Organization).where(Organization.name == org_name))).scalar_one_or_none():
