@@ -65,7 +65,7 @@ export function Login() {
           <button type="button" onClick={() => { setForgot(false); setNote(""); }} className="w-full text-center text-xs text-white/60 hover:text-white cursor-pointer">Voltar ao login</button>
         </form>
       ) : (
-        <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-white/10 bg-black/30 p-8 backdrop-blur-md sm:p-10">
+        <form onSubmit={onSubmit} className="flex aspect-square w-full max-w-sm flex-col justify-center space-y-5 rounded-2xl border border-white/10 bg-black/30 p-8 backdrop-blur-md">
           <FloatingInput id="u" label="Email ou usuário" type="text" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
           <FloatingInput id="p" label="Senha" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           {error && <p className="text-sm text-danger">{error}</p>}
