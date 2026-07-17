@@ -1,0 +1,46 @@
+name: CI
+
+# Lint em toda abertura/atualização de PR (feature/* -> develop, develop -> main)
+# e em push direto na develop. A main é protegida e só recebe via PR aprovado.
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-backend:
+    name: Lint backend (ruff)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instala ferramentas de lint
+        run: pip install -r requirements-dev.txt
+      - name: ruff check
+        run: ruff check .
+
+  lint-frontend:
+    name: Lint frontend (typecheck)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Instala dependências
+        run: npm install
+      - name: Typecheck (tsc --noEmit)
+        run: npm run lint

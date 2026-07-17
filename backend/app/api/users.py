@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_admin
-from app.api.tenancy import is_master, owned, scope
+from app.api.tenancy import is_master, scope
 from app.core.db import get_session
 from app.core.security import hash_password, password_error
 from app.models import Organization, Plan, User, UserGroup

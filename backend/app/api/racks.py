@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.tenancy import is_master, new_org_id, owned, scope
+from app.api.tenancy import new_org_id, owned, scope
 from app.core.db import get_session
 from app.models import Device, DeviceGroup, Rack, RackLink, User, UserGroup
 
