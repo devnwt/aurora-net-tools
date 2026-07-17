@@ -1,39 +1,46 @@
-name: Deploy (produção)
+name: Deploy Produção
 
-# Só roda quando algo entra na main (via PR aprovado). A main é a fonte de
-# produção: o runner self-hosted na prod puxa o código e sobe os containers.
+# Roda quando algo entra na main (via PR aprovado) + permite redeploy manual.
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch: {}
 
-# Evita dois deploys simultâneos (não cancela o que já está subindo).
+# Um deploy por vez; NÃO cancela um deploy que já está em andamento.
 concurrency:
   group: deploy-prod
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Deploy no runner self-hosted
-    runs-on: [self-hosted, aurora-agent-prod]
+    # 'self-hosted' é o label padrão de qualquer runner self-hosted.
+    # (aurora-agent-prod é o NOME do runner, não um label — por isso não vai aqui.
+    #  Só use um label extra se você tiver adicionado um label custom no runner.)
+    runs-on: self-hosted
+    timeout-minutes: 20
+
     env:
-      # Diretório do clone de produção no host do runner. Ajuste se necessário.
-      APP_DIR: /opt/apps/Aurora-Suporte
+      APP_DIR: /opt/aurora-net-tools
+
     steps:
-      - name: Atualiza o código (git pull da main)
+      - name: Atualizar código
         run: |
           cd "$APP_DIR"
-          git fetch --all --prune
-          git checkout main
+          git fetch origin main --prune
+          git checkout -f main
           git reset --hard origin/main
 
-      - name: Build + up dos serviços
+      - name: Deploy
         # Usa o docker-compose.yml e o .env de produção (fora do git), presentes no host.
         run: |
           cd "$APP_DIR"
-          docker compose up -d --build
+          docker compose up -d --build --remove-orphans
 
-      - name: Estado dos containers
+      - name: Verificar containers
         run: |
           cd "$APP_DIR"
           docker compose ps
+
+      - name: Limpar imagens órfãs (higiene de disco no runner)
+        run: docker image prune -f
