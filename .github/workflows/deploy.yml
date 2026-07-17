@@ -1,0 +1,39 @@
+name: Deploy (produção)
+
+# Só roda quando algo entra na main (via PR aprovado). A main é a fonte de
+# produção: o runner self-hosted na prod puxa o código e sobe os containers.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Evita dois deploys simultâneos (não cancela o que já está subindo).
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy no runner self-hosted
+    runs-on: [self-hosted, aurora-agent-prod]
+    env:
+      # Diretório do clone de produção no host do runner. Ajuste se necessário.
+      APP_DIR: /opt/apps/Aurora-Suporte
+    steps:
+      - name: Atualiza o código (git pull da main)
+        run: |
+          cd "$APP_DIR"
+          git fetch --all --prune
+          git checkout main
+          git reset --hard origin/main
+
+      - name: Build + up dos serviços
+        # Usa o docker-compose.yml e o .env de produção (fora do git), presentes no host.
+        run: |
+          cd "$APP_DIR"
+          docker compose up -d --build
+
+      - name: Estado dos containers
+        run: |
+          cd "$APP_DIR"
+          docker compose ps
