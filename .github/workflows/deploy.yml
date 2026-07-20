@@ -52,11 +52,12 @@ jobs:
           chmod +x push-harbor.sh
           ./push-harbor.sh
 
-      - name: Deploy (pull do Harbor + up)
-        # Pull-based: sobe exatamente as imagens publicadas no Harbor.
+      - name: Deploy (up com as imagens recém-buildadas)
+        # Sem 'pull': o push-harbor.sh acabou de buildar as imagens localmente com
+        # as MESMAS tags do Harbor, então o up usa elas direto (não precisa de auth
+        # no registry — era isso que dava 401 no job).
         run: |
           cd "$APP_DIR"
-          docker compose -f docker-compose.harbor.yml pull
           docker compose -f docker-compose.harbor.yml up -d --remove-orphans
 
       - name: Verificar containers
