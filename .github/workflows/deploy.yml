@@ -25,11 +25,13 @@ jobs:
 
     steps:
       - name: Atualizar código
+        # Fetch autenticado pelo GITHUB_TOKEN do job (o usuário do runner não tem
+        # credencial de git própria; o token evita depender de SSH key/helper).
         run: |
           cd "$APP_DIR"
-          git fetch origin main --prune
-          git checkout -f main
-          git reset --hard origin/main
+          git fetch --prune "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" main
+          git checkout -f main 2>/dev/null || git checkout -B main
+          git reset --hard FETCH_HEAD
 
       - name: Login no Harbor
         # Usa os secrets HARBOR_* se existirem; senão, cai no login já persistido no host.
