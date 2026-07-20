@@ -14,14 +14,14 @@ concurrency:
 
 jobs:
   deploy:
-    # 'self-hosted' é o label padrão de qualquer runner self-hosted.
-    # (aurora-agent-prod é o NOME do runner, não um label — por isso não vai aqui.
-    #  Só use um label extra se você tiver adicionado um label custom no runner.)
+    # 'self-hosted' é o label padrão do runner de produção (aurora-agent-prod).
     runs-on: self-hosted
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     env:
+      # Diretório do clone de produção no host do runner.
       APP_DIR: /opt/aurora-net-tools
+      HARBOR_HOST: registry.aurora.app.br
 
     steps:
       - name: Atualizar código
@@ -31,16 +31,36 @@ jobs:
           git checkout -f main
           git reset --hard origin/main
 
-      - name: Deploy
-        # Usa o docker-compose.yml e o .env de produção (fora do git), presentes no host.
+      - name: Login no Harbor
+        # Usa os secrets HARBOR_* se existirem; senão, cai no login já persistido no host.
+        env:
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+        run: |
+          if [ -n "$HARBOR_USERNAME" ]; then
+            echo "$HARBOR_PASSWORD" | docker login "$HARBOR_HOST" -u "$HARBOR_USERNAME" --password-stdin
+          else
+            echo "Sem secrets HARBOR_* — usando o docker login já configurado no host."
+          fi
+
+      - name: Build + push das imagens (push-harbor.sh)
+        # Reaproveita a lógica existente: docker compose build + push p/ o Harbor.
         run: |
           cd "$APP_DIR"
-          docker compose up -d --build --remove-orphans
+          chmod +x push-harbor.sh
+          ./push-harbor.sh
+
+      - name: Deploy (pull do Harbor + up)
+        # Pull-based: sobe exatamente as imagens publicadas no Harbor.
+        run: |
+          cd "$APP_DIR"
+          docker compose -f docker-compose.harbor.yml pull
+          docker compose -f docker-compose.harbor.yml up -d --remove-orphans
 
       - name: Verificar containers
         run: |
           cd "$APP_DIR"
-          docker compose ps
+          docker compose -f docker-compose.harbor.yml ps
 
       - name: Limpar imagens órfãs (higiene de disco no runner)
         run: docker image prune -f
