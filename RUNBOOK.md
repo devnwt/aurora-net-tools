@@ -16,6 +16,28 @@ docker compose ps        # postgres, redis, backend, frontend
 
 O entrypoint do backend roda `alembic upgrade head` + `python -m app.seed` a cada boot (idempotente).
 
+## Deploy e rollback em produção
+
+O GitHub Actions **não implanta** — ele só publica as imagens no Harbor, tagueadas com o SHA curto do commit. O deploy é um ato manual, no servidor:
+
+```bash
+docker login registry.aurora.app.br     # uma vez por servidor
+./deploy/deploy.sh a1b2c3d              # tag do resumo do job "Build & Push"
+```
+
+O script: puxa as imagens → `up -d` → valida `/api/health` (checando `status:ok` **e** que nenhuma dependência está `false`) e a SPA em `/`. Falhou? **reverte sozinho** para a versão anterior e revalida.
+
+| Situação | Comportamento |
+|---|---|
+| Tag não existe no Harbor / sem login | Aborta **antes** de tocar na stack |
+| Stack nova não sobe ou falha no smoke | Reverte para a versão anterior, revalida, sai `1` |
+| Versão anterior não identificável (stack parada, ou rodando `:latest`) | Não reverte; instrui a reversão manual |
+| `deploy.sh latest` | Recusado — `latest` é alias móvel e apaga o alvo do rollback |
+
+**Rollback** = implantar uma tag anterior (são imutáveis): `./deploy/deploy.sh 9f8e7d6`.
+
+`PROXY_PORT` precisa estar fixado no `.env` do servidor. O smoke test descobre a porta via `docker compose port` (não pelo `.env`) justamente porque já houve caso do proxy ficar `Up`, o Caddy logar `server running` e **nenhuma porta ser publicada** por colisão com outro stack.
+
 ## Variáveis de ambiente críticas (`.env`)
 
 | Var | Papel | Observação |
@@ -74,3 +96,5 @@ Endpoint streamable-http em `http://<host>:8000/mcp` (ou via frontend `:5173/mcp
 | `400` "nenhuma credencial" | device e grupo sem credencial p/ o protocolo | atribuir perfil de credencial |
 | OLTs demoram ~30s | consulta TL1 ao vivo | normal; 2ª chamada vem do cache (TTL) |
 | seed não cria admin | `ADMIN_PASSWORD` vazio | definir no `.env` e reiniciar backend |
+| `deploy.sh`: "proxy não publicou a porta 8090" | colisão de porta no host | `ss -ltnp \| grep 8090`; ajustar `PROXY_PORT` no `.env` |
+| build do backend: `mibs:1 not found` | imagem-base das MIBs ausente/sem login no Harbor | `docker login registry.aurora.app.br`; ver `backend/mibs.Dockerfile` |

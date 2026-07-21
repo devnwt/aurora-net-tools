@@ -1,0 +1,28 @@
+# ==========================================================================
+# Definição de BUILD das imagens publicadas no Harbor — é o que o
+# `push-harbor.sh` usa (e, por tabela, o workflow "Build & Push").
+#
+# Por que separado do docker-compose.yml: aquele é o compose de dev, está
+# FORA do git (.gitignore) e declara `env_file: .env`, portas e os serviços
+# postgres/redis. Num runner limpo o compose falharia na validação — arquivo
+# inexistente, .env inexistente — antes de buildar qualquer coisa.
+#
+# Aqui só existe o necessário para buildar e empurrar: nada de runtime, nada
+# de segredo. O deploy usa docker-compose.harbor.yml (só `image:`).
+# ==========================================================================
+services:
+  backend:
+    build:
+      context: ./backend
+      args:
+        # MIBs vêm de uma imagem-base (ver backend/mibs.Dockerfile).
+        MIBS_IMAGE: ${MIBS_IMAGE:-registry.aurora.app.br/aurora-nettools/mibs:1}
+    image: ${REGISTRY:-registry.aurora.app.br/aurora-nettools}/backend:${IMAGE_TAG:-latest}
+
+  frontend:
+    build: ./frontend
+    image: ${REGISTRY:-registry.aurora.app.br/aurora-nettools}/frontend:${IMAGE_TAG:-latest}
+
+  proxy:
+    build: ./proxy
+    image: ${REGISTRY:-registry.aurora.app.br/aurora-nettools}/proxy:${IMAGE_TAG:-latest}

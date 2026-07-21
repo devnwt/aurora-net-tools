@@ -1,3 +1,11 @@
+# As MIBs vêm de uma imagem-base publicada no Harbor (ver mibs.Dockerfile), não
+# do contexto de build: elas ficam fora do git e, lidas do disco, o backend só
+# buildava numa máquina com a pasta provisionada. Assim qualquer runner builda.
+# ARG antes do primeiro FROM para poder apontar outra tag/registry via
+# --build-arg sem editar este arquivo.
+ARG MIBS_IMAGE=registry.aurora.app.br/aurora-nettools/mibs:1
+FROM ${MIBS_IMAGE} AS mibs
+
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -16,7 +24,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # MIBs (grandes e estáticas) numa camada própria — embutidas na imagem
 # (self-contained para o registry Harbor). O entrypoint monta MIDIRS a partir
 # dos subdiretórios de /app/mibs.
-COPY mibs /app/mibs
+COPY --from=mibs /mibs /app/mibs
 ENV MIBDIRS=/app/mibs
 
 # Código da aplicação (camada separada — não invalida a das MIBs em rebuilds).
