@@ -56,7 +56,7 @@ async def _execute(binary: str, device: Device, credential: Credential, oid: str
             *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         out, err = await asyncio.wait_for(proc.communicate(), timeout=30)
-    except asyncio.TimeoutError as e:
+    except TimeoutError as e:
         raise DriverError(f"SNMP timeout em {target} (oid {oid})") from e
     except FileNotFoundError as e:
         raise DriverError(f"binário {binary} não encontrado (net-snmp instalado?)") from e

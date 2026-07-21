@@ -21,8 +21,8 @@ if "test" not in os.environ["POSTGRES_DB"].lower():
         f"Recusando rodar testes em POSTGRES_DB={os.environ['POSTGRES_DB']!r} — use um banco *test*."
     )
 
-import pytest_asyncio  # noqa: E402
-from httpx import ASGITransport, AsyncClient  # noqa: E402
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -41,8 +41,8 @@ async def _schema():
         await sys_conn.execute(f'CREATE DATABASE "{test_db}"')
     await sys_conn.close()
 
-    from app.core.db import Base, engine
     import app.models  # noqa: F401
+    from app.core.db import Base, engine
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)

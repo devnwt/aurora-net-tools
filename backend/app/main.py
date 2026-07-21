@@ -20,13 +20,15 @@ from app.api import (
     groups,
     health,
     mikrotik,
-    scan,
     racks,
-    settings as settings_api,
+    scan,
     templates,
     user_groups,
     users,
     webhooks,
+)
+from app.api import (
+    settings as settings_api,
 )
 from app.core.config import get_settings
 from app.core.logging import configure_logging

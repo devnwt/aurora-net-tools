@@ -7,7 +7,7 @@ from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
 from app.core.db import Base
-import app.models  # noqa: F401  (importa todos os modelos para o autogenerate)
+import app.models
 
 config = context.config
 if config.config_file_name is not None:

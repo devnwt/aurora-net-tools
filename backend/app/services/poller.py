@@ -7,7 +7,7 @@ Por ciclo, consulta cada device RouterOS (system+health numa sessão) e grava o
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, select
 
@@ -32,7 +32,7 @@ async def _upsert(session, device_id: int, **fields) -> str | None:
         await session.execute(select(DeviceStatus).where(DeviceStatus.device_id == device_id))
     ).scalar_one_or_none()
     old = row.status if row else None
-    fields["checked_at"] = datetime.now(timezone.utc)
+    fields["checked_at"] = datetime.now(UTC)
     if row is None:
         session.add(DeviceStatus(device_id=device_id, **fields))
     else:
@@ -122,7 +122,7 @@ async def poll_device(device: Device) -> None:
         session.add(
             DeviceSample(
                 device_id=device.id,
-                ts=datetime.now(timezone.utc),
+                ts=datetime.now(UTC),
                 cpu_load=_int(s["cpu_load"]),
                 ram_used_pct=s["ram_used_pct"],
                 temperature=_float(s["temperature"]),
@@ -133,7 +133,7 @@ async def poll_device(device: Device) -> None:
 
 
 async def _prune_samples() -> None:
-    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.sample_retention_days)
+    cutoff = datetime.now(UTC) - timedelta(days=settings.sample_retention_days)
     async with SessionLocal() as session:
         await session.execute(delete(DeviceSample).where(DeviceSample.ts < cutoff))
         await session.commit()

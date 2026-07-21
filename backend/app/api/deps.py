@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -38,7 +38,7 @@ async def get_current_user(
             await session.execute(select(ApiKey).where(ApiKey.key_hash == hash_api_key(x_api_key)))
         ).scalar_one_or_none()
         if key is not None:
-            key.last_used_at = datetime.now(timezone.utc)
+            key.last_used_at = datetime.now(UTC)
             await session.commit()
             role = "master" if key.org_id is None else "admin"
             return User(id=0, username=f"apikey:{key.name}", password_hash="", is_admin=True, role=role, org_id=key.org_id)
