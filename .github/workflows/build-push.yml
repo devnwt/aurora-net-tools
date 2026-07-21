@@ -1,0 +1,99 @@
+name: Build & Push (Harbor)
+
+# Escopo deste workflow: CI (lint + testes) → build → push no Harbor. Fim.
+#
+# Ele NÃO implanta. Quem coloca uma versão no ar é o `deploy/deploy.sh`,
+# executado NO servidor de produção (ver "Arquitetura de CI/CD" no README).
+# Antes, este workflow rodava num runner self-hosted e dava `docker compose up`
+# no próprio host — o que fazia do GitHub Actions o servidor de produção, e
+# amarrava toda publicação de imagem à disponibilidade daquele runner.
+on:
+  push:
+    branches:
+      - main
+  # Permite republicar as imagens de um commit sem precisar de um push novo.
+  workflow_dispatch:
+
+# Uma publicação por vez; não cancela a que já está em andamento (ela pode
+# estar no meio de um push para o registry).
+concurrency:
+  group: build-push-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Gate: nada vai para o Harbor sem lint e testes verdes. O CI não roda em
+  # push para a main (só em PR/develop), então sem este job o merge publicaria
+  # imagens sem nenhuma verificação.
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  build-push:
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      HARBOR_HOST: registry.aurora.app.br
+      REGISTRY: registry.aurora.app.br/aurora-nettools
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Definir a tag da release (SHA curto)
+        id: tag
+        # Tag por commit = imutável. É o que torna o rollback confiável: uma
+        # tag sempre reproduz exatamente o código daquele commit.
+        run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Login no Harbor
+        env:
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+        # No runner self-hosted dava para cair no `docker login` já persistido
+        # no host. O ubuntu-latest é descartável, então os secrets passaram a
+        # ser obrigatórios — falhar aqui, com mensagem clara, evita um "denied"
+        # críptico lá no push, depois de ~10 min de build.
+        run: |
+          if [ -z "$HARBOR_USERNAME" ] || [ -z "$HARBOR_PASSWORD" ]; then
+            echo "::error::Configure os secrets HARBOR_USERNAME e HARBOR_PASSWORD no repositório (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          echo "$HARBOR_PASSWORD" | docker login "$HARBOR_HOST" -u "$HARBOR_USERNAME" --password-stdin
+
+      - name: Build + push das imagens (push-harbor.sh)
+        env:
+          # Move também a tag 'latest' — alias de conveniência para dev. O
+          # deploy de produção sempre usa o SHA.
+          PUSH_LATEST: "1"
+        run: |
+          chmod +x push-harbor.sh
+          ./push-harbor.sh "${{ steps.tag.outputs.tag }}"
+
+      - name: Confirmar que as tags ficaram publicadas
+        # O script sair 0 não prova que os manifests estão no registry.
+        # Consultar o Harbor fecha isso aqui — se falhasse só no servidor, o
+        # erro apareceria longe do build, na hora do deploy.
+        run: |
+          for img in backend frontend proxy; do
+            docker buildx imagetools inspect "$REGISTRY/$img:${{ steps.tag.outputs.tag }}" >/dev/null
+            echo "✅ $img:${{ steps.tag.outputs.tag }}"
+          done
+
+      - name: Resumo da publicação
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          {
+            echo "### Imagens publicadas no Harbor"
+            echo
+            echo '```'
+            for img in backend frontend proxy; do
+              echo "$REGISTRY/$img:$TAG"
+            done
+            echo '```'
+            echo
+            echo "**Para implantar no servidor de produção:**"
+            echo
+            echo '```bash'
+            echo "./deploy/deploy.sh $TAG"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

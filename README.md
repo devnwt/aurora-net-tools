@@ -27,34 +27,63 @@ BACKEND_PORT=8001 PROXY_PORT=8095 docker compose up -d --build
 
 O entrypoint roda `alembic upgrade head` + `app.seed` a cada boot (cria o admin Master se `ADMIN_PASSWORD` estiver definido).
 
-## Publicar imagens no Harbor
+## Arquitetura de CI/CD
 
-Imagens self-contained (backend com MIBs, frontend com Caddy). Registry: `registry.aurora.app.br/aurora-nettools`.
+Três etapas **separadas**, sem que o GitHub Actions toque no servidor de produção:
+
+```
+PR / push develop ──▶ CI (ci.yml)                    lint + testes            ubuntu-latest
+                                                                                    │
+push main ──────────▶ Build & Push (build-push.yml)  CI ▸ build ▸ Harbor      ubuntu-latest
+                                                                                    │
+                                                     (publica  <sha-curto>  +  latest)
+                                                                                    │
+no servidor ────────▶ deploy/deploy.sh <sha>         pull ▸ up ▸ smoke ▸ rollback   prod
+```
+
+O Actions **publica imagens; não implanta.** Quem coloca uma versão no ar é você, no servidor, rodando `deploy/deploy.sh`. Isso mantém o pipeline independente de runner self-hosted e o acesso a produção fora do GitHub.
+
+### 1. Publicar imagens no Harbor
+
+Automático a cada push na `main` (o job só roda se lint e testes passarem). Manualmente:
 
 ```bash
 docker login registry.aurora.app.br
-./push-harbor.sh            # build + push, tag latest
-./push-harbor.sh v1.0.0     # tag específica
+./push-harbor.sh                            # tag latest
+PUSH_LATEST=1 ./push-harbor.sh a1b2c3d      # tag imutável + move 'latest'
 ```
 
-## Deploy no servidor (pull do Harbor)
+Requer os secrets `HARBOR_USERNAME` e `HARBOR_PASSWORD` no repositório (Settings → Secrets and variables → Actions).
 
-Copie `docker-compose.harbor.yml` e um `.env` para o servidor (use o [`.env.example`](./.env.example) como base; gere segredos com `openssl rand -hex 32`).
+### 2. Implantar no servidor (pull do Harbor)
+
+O servidor precisa de `docker-compose.harbor.yml`, `deploy/deploy.sh` e um `.env` de produção lado a lado (use o [`.env.example`](./.env.example) como base; gere segredos com `openssl rand -hex 32`).
 
 ```bash
 docker login registry.aurora.app.br
-docker compose -f docker-compose.harbor.yml pull
-docker compose -f docker-compose.harbor.yml up -d
+./deploy/deploy.sh a1b2c3d      # a tag que o job "Build & Push" publicou
 ```
+
+O script puxa as imagens, sobe a stack e valida `/api/health` + a SPA. **Se a validação falhar, ele reverte sozinho** para a versão que estava rodando. Se a tag não existir no Harbor, aborta antes de tocar em produção.
 
 - App em `http://SERVIDOR:${PROXY_PORT}` (padrão **8090**). Só o proxy é exposto; o backend fica interno.
 - **Primeiro acesso:** usuário `admin` / senha = `ADMIN_PASSWORD` do `.env`.
+
+### 3. Rollback
+
+As tags são o SHA curto do commit e **imutáveis** — voltar versão é implantar uma tag anterior:
+
+```bash
+./deploy/deploy.sh 9f8e7d6
+```
+
+Nunca implante `latest` em produção: por ser um alias móvel, ela impede saber qual versão está no ar e apaga o alvo do rollback automático. O `deploy.sh` recusa.
 
 ## Notas importantes
 
 - **`APP_SECRET_KEY` é definitiva** — cifra os segredos no banco (SMTP/S3/LLM/credenciais). Trocar depois do 1º boot torna-os ilegíveis. Guarde-a.
 - **Globais (só o Master edita em Super Admin → `/admin`):** SMTP, LLM, MinIO/S3, Copilot Tools, cadastro público. **Por ORG (Settings):** FTP.
-- **MIBs** (`backend/mibs/`, ~339 MB) ficam **fora do git** (`.gitignore`) para o repo não pesar; o build da imagem lê do disco. Em uma máquina limpa, provisione a pasta antes de buildar.
+- **MIBs** (`backend/mibs/`, ~339 MB) ficam **fora do git** (`.gitignore`) para o repo não pesar. O build do backend **não** as lê do disco: elas vêm da imagem-base `aurora-nettools/mibs:<n>` no Harbor (ver [`backend/mibs.Dockerfile`](./backend/mibs.Dockerfile)), o que permite buildar em qualquer runner limpo. Ao atualizar as MIBs, publique numa tag **nova** e aponte o `ARG MIBS_IMAGE` do `backend/Dockerfile` — sobrescrever uma tag existente mudaria retroativamente imagens antigas e quebraria o rollback.
 - **Segredos fora do git:** `.env`, `.env.prod` etc. são ignorados; só `.env.example` é versionado.
 
 ## Estrutura
@@ -63,5 +92,9 @@ docker compose -f docker-compose.harbor.yml up -d
 - `frontend/` — React + Vite + Tailwind; `Dockerfile`/`Caddyfile` (Caddy serve o SPA).
 - `proxy/` — Caddy (`Caddyfile` + `Dockerfile`), proxy da aplicação.
 - `docker-compose.example.yml` — modelo de dev (com `build:` + `image:` do Harbor); copie para `docker-compose.yml` (ignorado no git).
+- `docker-compose.build.yml` — **versionado**: definição de build usada pelo `push-harbor.sh`/CI (sem `.env`, sem portas, sem banco).
 - `docker-compose.harbor.yml` — deploy pull-based (só `image:`).
-- `push-harbor.sh` — build + push das imagens.
+- `push-harbor.sh` — build + push das imagens (não implanta).
+- `deploy/deploy.sh` — deploy no servidor a partir do Harbor, com smoke test e rollback automático.
+- `.github/workflows/ci.yml` — lint + testes; reutilizado como gate pelo build.
+- `.github/workflows/build-push.yml` — CI ▸ build ▸ push no Harbor (`ubuntu-latest`).
