@@ -5,7 +5,12 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      skip_ci:
+        description: "Pular lint/testes — use SÓ para rollback emergencial"
+        type: boolean
+        default: false
 
 # Um deploy por vez; NÃO cancela um deploy que já está em andamento.
 concurrency:
@@ -13,9 +18,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Gate: nada vai para o Harbor/produção sem lint e testes verdes. O CI não roda
+  # em push para a main (só em PR/develop), então sem este job o merge dispararia
+  # o deploy direto, sem nenhuma verificação.
+  ci:
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.skip_ci) }}
+    uses: ./.github/workflows/ci.yml
+
   deploy:
-    # 'self-hosted' é o label padrão do runner de produção (aurora-agent-prod).
-    runs-on: self-hosted
+    needs: ci
+    # always() para que o skip_ci (rollback emergencial) consiga passar mesmo com
+    # o job 'ci' pulado — fora esse caso, exige explicitamente ci == success.
+    if: ${{ always() && (needs.ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.skip_ci)) }}
+    # Precisa dos DOIS labels. 'self-hosted' sozinho casa com qualquer runner
+    # auto-hospedado — foi assim que o deploy de produção acabou rodando no
+    # aurora-agent-develop (deixou um clone da main em /opt/aurora-net-tools lá).
+    runs-on: [self-hosted, aurora-agent-prod]
     timeout-minutes: 30
 
     env:
@@ -45,12 +63,20 @@ jobs:
             echo "Sem secrets HARBOR_* — usando o docker login já configurado no host."
           fi
 
+      - name: Definir tag da release (SHA curto)
+        # Tag por commit permite ROLLBACK: IMAGE_TAG=<sha> docker compose ... up -d
+        run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
       - name: Build + push das imagens (push-harbor.sh)
-        # Reaproveita a lógica existente: docker compose build + push p/ o Harbor.
+        # Publica <sha> (imutável, p/ rollback) e também move a tag 'latest'.
         run: |
           cd "$APP_DIR"
           chmod +x push-harbor.sh
-          ./push-harbor.sh
+          ./push-harbor.sh "$IMAGE_TAG"
+          for img in backend frontend proxy; do
+            docker tag  "$HARBOR_HOST/aurora-nettools/$img:$IMAGE_TAG" "$HARBOR_HOST/aurora-nettools/$img:latest"
+            docker push "$HARBOR_HOST/aurora-nettools/$img:latest"
+          done
 
       - name: Deploy (up com as imagens recém-buildadas)
         # Sem 'pull': o push-harbor.sh acabou de buildar as imagens localmente com
@@ -59,6 +85,62 @@ jobs:
         run: |
           cd "$APP_DIR"
           docker compose -f docker-compose.harbor.yml up -d --remove-orphans
+
+      - name: Smoke test (a aplicação respondeu?)
+        # Falha o deploy se a stack subir quebrada — antes ele "passava" mesmo assim.
+        run: |
+          cd "$APP_DIR"
+          COMPOSE="docker compose -f docker-compose.harbor.yml"
+
+          # A porta vem do Docker, não do .env: é a única fonte que prova que o bind
+          # REALMENTE aconteceu. Já aconteceu de o proxy ficar "Up" e o Caddy logar
+          # "server running" sem publicar porta nenhuma (outro stack ocupava a 8090);
+          # lendo o .env o teste checaria uma porta que não é nossa e passaria verde.
+          BIND="$($COMPOSE port proxy 8090 2>/dev/null | head -1)"
+          PORT="${BIND##*:}"
+          # Sem bind o compose NÃO devolve vazio: imprime "invalid IP:0". Por isso a
+          # checagem é pela porta ser um inteiro positivo, não pela string ser vazia.
+          case "$PORT" in
+            ''|0|*[!0-9]*)
+              echo "❌ o serviço 'proxy' não publicou a porta 8090 no host (got: '${BIND:-vazio}')." >&2
+              echo "   Causa usual: colisão de porta com outro stack." >&2
+              $COMPOSE ps >&2
+              ss -ltnp 2>/dev/null | grep -E ':(8090|8091)' >&2 || true
+              exit 1
+              ;;
+          esac
+          echo "proxy publicado em $BIND — checando /api/health ..."
+
+          for i in $(seq 1 30); do
+            BODY="$(curl -fsS --max-time 5 "http://localhost:$PORT/api/health" 2>/dev/null)" \
+              || { sleep 3; continue; }
+            BODY="$(printf '%s' "$BODY" | tr -d ' ')"
+
+            # HTTP 200 não basta: o /health reporta o estado de cada dependência e
+            # uma stack com o banco fora responde 200 com "database":false.
+            case "$BODY" in
+              *'"status":"ok"'*) ;;
+              *) echo "  health degradado: $BODY"; sleep 3; continue ;;
+            esac
+            case "$BODY" in
+              *false*) echo "  dependência fora: $BODY"; sleep 3; continue ;;
+            esac
+            echo "✅ backend saudável (tentativa $i): $BODY"
+
+            # A SPA sai do mesmo proxy; sem checar, um frontend quebrado passaria.
+            if ! curl -fsS --max-time 5 -o /dev/null "http://localhost:$PORT/"; then
+              echo "❌ backend ok, mas a SPA não respondeu em /" >&2
+              $COMPOSE logs frontend proxy --tail=30 >&2
+              exit 1
+            fi
+            echo "✅ SPA respondendo — deploy validado"
+            exit 0
+          done
+
+          echo "❌ aplicação não estabilizou em ~90s — estado e logs:" >&2
+          $COMPOSE ps >&2
+          $COMPOSE logs --tail=40 >&2
+          exit 1
 
       - name: Verificar containers
         run: |
