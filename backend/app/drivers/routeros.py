@@ -9,7 +9,6 @@ pelo classifier e auditados pelo runner. Dois formatos de saída do RouterOS:
 
 import re
 
-
 # === Comandos de leitura (read-only) ===
 
 # Recursos de item único (formato vertical "chave: valor").

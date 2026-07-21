@@ -111,7 +111,7 @@ class FakeTL1Socket:
             self._banner_done = True
             return b">>> UNM2000 TL1 ready\n"
         if not self._buf:
-            raise socket.timeout()
+            raise TimeoutError()
         chunk, self._buf = self._buf[:n], self._buf[n:]
         return chunk
 

@@ -4,15 +4,16 @@ Revision ID: b04a07162f7a
 Revises: e8e6a5d0e13b
 Create Date: 2026-06-22 20:57:28.255450
 """
-from typing import Sequence, Union
+from typing import Union
+from collections.abc import Sequence
 
 from alembic import op
 
 
 revision: str = 'b04a07162f7a'
-down_revision: Union[str, None] = 'e8e6a5d0e13b'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = 'e8e6a5d0e13b'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

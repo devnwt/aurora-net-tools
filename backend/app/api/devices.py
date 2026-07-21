@@ -1,6 +1,6 @@
 import asyncio
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -11,8 +11,7 @@ from app.api.tenancy import is_master, new_org_id, owned, scope
 from app.core.db import get_session
 from app.drivers.base import DriverError, WriteBlocked
 from app.models import Device, DeviceSample, DeviceStatus, Organization, Plan, User
-from app.models.enums import Protocol
-from app.models.enums import DeviceType
+from app.models.enums import DeviceType, Protocol
 from app.schemas.device import DeviceCreate, DeviceOut, DeviceUpdate
 from app.schemas.exec import ExecRequest, ExecResponse, SnmpRequest, SnmpResponse, TestResponse
 from app.services import runner
@@ -41,7 +40,7 @@ async def ping(device_id: int, session: AsyncSession = Depends(get_session), use
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
         )
         out, _ = await asyncio.wait_for(proc.communicate(), timeout=12)
-    except (FileNotFoundError, asyncio.TimeoutError):
+    except (TimeoutError, FileNotFoundError):
         return result
     text = out.decode("utf-8", "replace")
     m = re.search(r"(\d+(?:\.\d+)?)% packet loss", text)
@@ -120,7 +119,7 @@ async def device_samples(
 ):
     """Série temporal de métricas (CPU/RAM/temperatura) do device, pelo poller."""
     await _get(session, device_id, user)  # 404 se fora da ORG
-    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    since = datetime.now(UTC) - timedelta(hours=hours)
     rows = (
         await session.execute(
             select(DeviceSample)

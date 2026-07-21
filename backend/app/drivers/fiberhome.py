@@ -28,7 +28,7 @@ class FiberhomeTL1:
         # Lê o banner (best-effort).
         try:
             self.sock.recv(4096)
-        except socket.timeout:
+        except TimeoutError:
             pass
 
     def login(self, username: str, password: str) -> None:
@@ -57,7 +57,7 @@ class FiberhomeTL1:
                 buffer += c
                 if c == ";":
                     break
-            except socket.timeout:
+            except TimeoutError:
                 break
         return [line.strip() for line in buffer.split("\n")]
 

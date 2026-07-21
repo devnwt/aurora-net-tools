@@ -57,7 +57,7 @@ async def send_email(cfg: OrgSettings, password: str, to: str, subject: str, bod
                         s.login(cfg.smtp_username, password)
                     s.send_message(msg)
             return True, f"E-mail enviado para {to}."
-        except Exception as e:  # noqa: BLE001 — reporta a causa ao usuário
+        except Exception as e:
             return False, f"{type(e).__name__}: {e}"
 
     return await asyncio.to_thread(_run)
@@ -86,7 +86,7 @@ async def ftp_test(cfg: OrgSettings, password: str) -> tuple[bool, str]:
             pwd = ftp.pwd()
             ftp.quit()
             return True, f"Conectado. Diretório atual: {pwd}"
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             return False, f"{type(e).__name__}: {e}"
 
     return await asyncio.to_thread(_run)
@@ -108,7 +108,7 @@ async def ftp_upload(cfg: OrgSettings, password: str, filename: str, data: bytes
             ftp.quit()
             where = f"{cfg.ftp_host}:{cfg.ftp_port or 21}{'/' + cfg.ftp_path.strip('/') if cfg.ftp_path else ''}/{filename}"
             return True, f"enviado por FTP → {where}"
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             return False, f"FTP: {type(e).__name__}: {e}"
 
     return await asyncio.to_thread(_run)
@@ -153,7 +153,7 @@ async def s3_test(cfg: OrgSettings, secret_key: str) -> tuple[bool, str]:
                 return False, "bucket não configurado"
             _s3_client(cfg, secret_key).head_bucket(Bucket=cfg.s3_bucket)
             return True, f"bucket '{cfg.s3_bucket}' acessível em {_s3_endpoint(cfg)}"
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             return False, f"S3: {type(e).__name__}: {e}"
 
     return await asyncio.to_thread(_run)
@@ -169,7 +169,7 @@ async def s3_upload(cfg: OrgSettings, secret_key: str, filename: str, data: byte
                 Bucket=cfg.s3_bucket, Key=key, Body=data, ContentType="text/plain"
             )
             return True, f"enviado por S3 → s3://{cfg.s3_bucket}/{key}"
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             return False, f"S3: {type(e).__name__}: {e}"
 
     return await asyncio.to_thread(_run)
@@ -195,5 +195,5 @@ async def llm_test(cfg: OrgSettings, api_key: str) -> tuple[bool, str]:
             if r.status_code < 300:
                 return True, f"OK — modelo '{cfg.llm_model}' respondeu (HTTP {r.status_code})."
             return False, f"HTTP {r.status_code}: {r.text[:300]}"
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return False, f"{type(e).__name__}: {e}"

@@ -3,10 +3,40 @@ target-version = "py312"
 line-length = 120
 
 [tool.ruff.lint]
-# Regras padrão do ruff (E4/E7/E9 + F). E741 (nome de variável "ambíguo",
-# ex.: l/o/i) é apenas estilístico e não agrega aqui → ignorado.
-ignore = ["E741"]
+# E/F  = pycodestyle+pyflakes (base)   · I   = ordenação de imports (isort)
+# UP   = pyupgrade (sintaxe moderna)   · B   = bugbear (armadilhas comuns)
+# SIM  = simplificações                · C4  = comprehensions
+# RUF  = regras do próprio ruff
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RUF"]
+ignore = [
+  "E501",  # tamanho de linha — deixamos o formatter/revisão cuidarem
+  "E741",  # nome de variável "ambíguo" (l/o/i) — só estilístico
+
+  # --- FASE 2 (backlog de limpeza; exigem correção manual) -------------------
+  "B904",   # raise ... from e (47x) — melhora rastreio de exceção
+  "UP042",  # (str, Enum) -> StrEnum (8x): MUDA serialização/comparação e esses
+            # enums são persistidos no banco e usados no Pydantic → risco real
+  "RUF006", # asyncio.create_task sem guardar referência (2x): é BUG latente
+            # (task pode ser coletada pelo GC) — corrigir com cuidado
+  "SIM117", # with aninhado (4x) — cosmético
+  "SIM105", # try/except/pass -> contextlib.suppress (4x) — cosmético
+  "SIM102", # if aninhado (2x) — aqui a forma aninhada é mais legível
+  "RUF059", # variável desempacotada não usada (1x)
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# No FastAPI, chamar Depends()/Query()/... no argumento default é idiomático,
+# então NÃO é o antipadrão que o B008 tenta pegar.
+extend-immutable-calls = [
+  "fastapi.Depends",
+  "fastapi.Query",
+  "fastapi.Header",
+  "fastapi.Body",
+  "fastapi.Path",
+  "fastapi.File",
+  "fastapi.Form",
+]
 
 [tool.ruff.lint.per-file-ignores]
 # Migrações Alembic são geradas/semi-geradas; não valem lint rigoroso.
-"alembic/**" = ["E402", "F401"]
+"alembic/**" = ["E402", "F401", "I001"]

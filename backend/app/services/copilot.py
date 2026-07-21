@@ -99,7 +99,7 @@ async def gather_facts(session: AsyncSession, actor: str, device: Device) -> str
             session, actor=actor, device=device, protocol=proto,
             commands=[routeros.CMD_RESOURCE_BOARD, routeros.CMD_INTERFACES, routeros.CMD_SERVICES],
         )
-    except Exception as e:  # noqa: BLE001 — facts são best-effort
+    except Exception as e:
         return f"Device '{device.name}' ({device.ip}) — inacessível no momento ({type(e).__name__})."
     props = routeros.parse_props(out[0])
     summ = routeros.summarize_system(props, None)
@@ -242,7 +242,7 @@ async def _do_web_search(cfg: OrgSettings, args: dict) -> str:
             r = await client.get(url, params={"q": q, "format": "json"}, headers={"Accept": "application/json"})
             r.raise_for_status()
             results = (r.json().get("results") or [])[:n]
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return f"erro na busca (SearXNG): {type(e).__name__}: {e}"
     if not results:
         return "sem resultados"
@@ -283,7 +283,7 @@ async def _do_fs(cfg: OrgSettings, op: str, args: dict) -> str:
                 with open(target, "w", encoding="utf-8") as fh:
                     fh.write(content)
                 return f"escrito: {target} ({len(content)} chars)"
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             return f"erro: {type(e).__name__}: {e}"
         return "operação inválida"
 
@@ -335,7 +335,7 @@ async def gather_mcp_tools(session: AsyncSession, org_id: int | None) -> list[di
                                 },
                             },
                         })
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             log.warning("MCP %s indisponível: %s", row.name, e)
     return out
 
@@ -352,7 +352,7 @@ async def _call_mcp(entry: dict, args: dict) -> str:
                 res = await sess.call_tool(entry["orig"], args)
                 texts = [getattr(c, "text", "") for c in (res.content or []) if getattr(c, "text", "")]
                 return "\n".join(texts) or "(sem conteúdo)"
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return f"erro ao chamar MCP: {type(e).__name__}: {e}"
 
 
@@ -448,7 +448,7 @@ async def gather_openapi_tools(session: AsyncSession, org_id: int | None) -> lis
                 r = await client.get(url, headers=_mcp_headers(row.config))
                 r.raise_for_status()
                 out.extend(_openapi_entries(r.json(), row))
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             log.warning("OpenAPI %s indisponível: %s", row.name, e)
     return out
 
@@ -473,7 +473,7 @@ async def _call_openapi(entry: dict, args: dict) -> str:
         async with httpx.AsyncClient(timeout=30) as client:
             r = await client.request(entry["method"].upper(), url, params=query, json=json_body, headers=headers)
         return f"HTTP {r.status_code}: {r.text[:4000]}"
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return f"erro ao chamar OpenAPI: {type(e).__name__}: {e}"
 
 
@@ -538,7 +538,7 @@ async def _chat(cfg: OrgSettings, messages: list[dict], tools: list[dict] | None
     try:
         async with httpx.AsyncClient(timeout=120) as client:
             r = await client.post(f"{base}/chat/completions", headers=headers, json=body)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         raise CopilotError(f"LLM inacessível: {type(e).__name__}: {e}")
     if r.status_code >= 300:
         raise CopilotError(f"LLM HTTP {r.status_code}: {r.text[:300]}")
@@ -850,7 +850,7 @@ async def _stream_llm(cfg, messages: list[dict], tools: list[dict] | None):
                             slot["args"] += fn["arguments"]
     except CopilotError:
         raise
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         raise CopilotError(f"LLM inacessível: {type(e).__name__}: {e}")
 
     assembled = [

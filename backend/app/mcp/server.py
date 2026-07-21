@@ -5,7 +5,7 @@ e a auditoria valem igualmente para a IA. Padrão de retorno `_result` herdado d
 fiberhome_mcp.py.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 from sqlalchemy import or_, select
@@ -28,7 +28,7 @@ mcp = FastMCP("aurora-nettools", streamable_http_path="/")
 ACTOR = "mcp"
 
 
-def _result(ok: bool, data: Any = None, error: Optional[str] = None, **meta: Any) -> dict:
+def _result(ok: bool, data: Any = None, error: str | None = None, **meta: Any) -> dict:
     payload = {"ok": ok, "data": data, "error": error}
     payload.update(meta)
     return payload
@@ -82,7 +82,7 @@ async def listar_controllers() -> dict:
 
 
 @mcp.tool()
-async def listar_devices(group_id: Optional[int] = None, device_type: Optional[str] = None) -> dict:
+async def listar_devices(group_id: int | None = None, device_type: str | None = None) -> dict:
     """Lista equipamentos de acesso direto da ORG, com filtro opcional por grupo e tipo."""
     async with SessionLocal() as session:
         stmt = tscope(select(Device), Device, _p()).order_by(Device.name)
@@ -208,13 +208,13 @@ async def listar_shelves(controller_id: int, olt_ip: str) -> dict:
 
 
 @mcp.tool()
-async def listar_pons(controller_id: int, olt_ip: str, ponid: Optional[str] = None) -> dict:
+async def listar_pons(controller_id: int, olt_ip: str, ponid: str | None = None) -> dict:
     """Lista as portas PON de uma OLT (LST-PONINFO)."""
     return await _fh_call(controller_id, lambda c, cr: fiberhome.list_pons(c, cr, olt_ip, ponid))
 
 
 @mcp.tool()
-async def listar_onus(controller_id: int, olt_ip: str, ponid: Optional[str] = None) -> dict:
+async def listar_onus(controller_id: int, olt_ip: str, ponid: str | None = None) -> dict:
     """Lista as ONUs de uma OLT (ou de uma PON específica) — LST-ONU."""
     return await _fh_call(controller_id, lambda c, cr: fiberhome.list_onus(c, cr, olt_ip, ponid))
 
@@ -233,7 +233,7 @@ async def onus_nao_registradas(controller_id: int, olt_ip: str) -> dict:
 
 @mcp.tool()
 async def alarmes_olt(
-    controller_id: int, olt_ip: str, start: Optional[str] = None, end: Optional[str] = None
+    controller_id: int, olt_ip: str, start: str | None = None, end: str | None = None
 ) -> dict:
     """Consulta alarmes de uma OLT (QUERY-ALARM)."""
     return await _fh_call(controller_id, lambda c, cr: fiberhome.olt_alarms(c, cr, olt_ip, start, end))
@@ -298,7 +298,7 @@ async def laninfo_onu(controller_id: int, olt_ip: str, ponid: str, onuid: str, o
 
 @mcp.tool()
 async def portvlan_onu(
-    controller_id: int, olt_ip: str, ponid: str, onuid: str, onutype: str = "MAC", onuport: Optional[str] = None
+    controller_id: int, olt_ip: str, ponid: str, onuid: str, onutype: str = "MAC", onuport: str | None = None
 ) -> dict:
     """VLANs por porta da ONU (LST-PORTVLAN)."""
     return await _fh_call(

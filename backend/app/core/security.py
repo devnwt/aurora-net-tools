@@ -1,7 +1,7 @@
 import hashlib
 import re
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 from jose import JWTError, jwt
@@ -40,7 +40,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(subject: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
+    expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_expire_minutes)
     payload = {"sub": subject, "exp": expire}
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
@@ -55,7 +55,7 @@ def decode_access_token(token: str) -> str | None:
 
 def create_scoped_token(subject: str, purpose: str, minutes: int) -> str:
     """Token JWT com propósito (ex.: reset de senha), sem tabela extra."""
-    expire = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+    expire = datetime.now(UTC) + timedelta(minutes=minutes)
     payload = {"sub": subject, "purpose": purpose, "exp": expire}
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 

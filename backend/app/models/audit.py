@@ -1,8 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base

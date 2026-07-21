@@ -6,8 +6,8 @@ from app.models.copilot import CopilotAction, CopilotConversation, CopilotMessag
 from app.models.credential import Credential
 from app.models.device import Device
 from app.models.group import DeviceGroup
-from app.models.organization import Organization
 from app.models.org_settings import OrgSettings
+from app.models.organization import Organization
 from app.models.plan import Plan
 from app.models.rack import Rack, RackLink
 from app.models.sample import DeviceSample
@@ -26,14 +26,14 @@ __all__ = [
     "CopilotConversation",
     "CopilotMessage",
     "CopilotTool",
-    "DeviceBackup",
     "Credential",
     "Device",
+    "DeviceBackup",
     "DeviceGroup",
     "DeviceSample",
     "DeviceStatus",
-    "Organization",
     "OrgSettings",
+    "Organization",
     "Plan",
     "Rack",
     "RackLink",

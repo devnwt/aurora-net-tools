@@ -162,7 +162,7 @@ async def stream_message(conv_id: int, payload: MessageIn, session: AsyncSession
                 yield _sse("done", await _detail(s2, conv2))
             except copilot.CopilotError as e:
                 yield _sse("error", {"detail": str(e)})
-            except Exception:  # noqa: BLE001
+            except Exception:
                 yield _sse("error", {"detail": "erro interno do Copilot"})
 
     return StreamingResponse(gen(), media_type="text/event-stream", headers={
@@ -341,5 +341,5 @@ async def test_tool(tool_id: int, session: AsyncSession = Depends(get_session)):
                 await sess.initialize()
                 listed = await sess.list_tools()
                 return {"ok": True, "detail": f"{len(listed.tools)} tool(s): " + ", ".join(x.name for x in listed.tools[:20])}
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return {"ok": False, "detail": f"{type(e).__name__}: {e}"}

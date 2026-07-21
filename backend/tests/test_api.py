@@ -5,7 +5,6 @@ import pytest
 from app.drivers.classifier import classify_command
 from app.models.enums import Classification, DeviceType
 
-
 # === Classifier (unitário, decisão §13) ===
 
 

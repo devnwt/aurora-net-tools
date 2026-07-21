@@ -1,6 +1,5 @@
-from sqlalchemy import Boolean
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base

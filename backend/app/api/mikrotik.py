@@ -255,7 +255,7 @@ async def traffic(
     device_id: int,
     iface: str,
     session: AsyncSession = Depends(get_session),
-    user: User = Depends(get_current_user),  # noqa: ARG001 (mantém auth)
+    user: User = Depends(get_current_user),
 ):
     """Taxa instantânea rx/tx de uma interface (monitor-traffic). Leitura silenciosa (alta freq.)."""
     device = await _get_routeros(session, device_id, user)
@@ -308,7 +308,7 @@ _OPTIC_KEYS = (
 
 
 @router.get("/{device_id}/mikrotik/optics")
-async def optics(device_id: int, iface: str, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):  # noqa: ARG001
+async def optics(device_id: int, iface: str, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):
     """Diagnóstico óptico de uma interface SFP (`/interface ethernet monitor` — sfp-rx/tx-power…)."""
     device = await _get_routeros(session, device_id, user)
     if not re.fullmatch(r"[A-Za-z0-9._-]+", iface):
@@ -320,7 +320,7 @@ async def optics(device_id: int, iface: str, session: AsyncSession = Depends(get
 
 
 @router.get("/{device_id}/mikrotik/poe")
-async def poe(device_id: int, iface: str, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):  # noqa: ARG001
+async def poe(device_id: int, iface: str, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):
     """Diagnóstico PoE-out de uma interface (`/interface ethernet poe monitor`)."""
     device = await _get_routeros(session, device_id, user)
     if not re.fullmatch(r"[A-Za-z0-9._-]+", iface):
