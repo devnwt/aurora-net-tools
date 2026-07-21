@@ -47,9 +47,18 @@ jobs:
         # credencial de git própria; o token evita depender de SSH key/helper).
         run: |
           cd "$APP_DIR"
-          git fetch --prune "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" main
+          REMOTE="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git fetch --prune "$REMOTE" main
           git checkout -f main 2>/dev/null || git checkout -B main
-          git reset --hard FETCH_HEAD
+          # Reset no SHA que disparou o workflow, NÃO em FETCH_HEAD: se um segundo
+          # push entrar na main antes deste fetch, FETCH_HEAD traz o código mais
+          # novo e as imagens seriam publicadas com a tag do commit ANTIGO — um
+          # rollback para essa tag entregaria código que nunca esteve nela.
+          # (concurrency serializa os deploys, mas não fecha essa janela.)
+          git cat-file -e "${{ github.sha }}^{commit}" 2>/dev/null \
+            || git fetch "$REMOTE" "${{ github.sha }}"
+          git reset --hard "${{ github.sha }}"
+          git --no-pager log --oneline -1
 
       - name: Login no Harbor
         # Usa os secrets HARBOR_* se existirem; senão, cai no login já persistido no host.
@@ -67,6 +76,29 @@ jobs:
         # Tag por commit permite ROLLBACK: IMAGE_TAG=<sha> docker compose ... up -d
         run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
 
+      - name: Guardar a versão em produção (alvo do rollback)
+        id: prev
+        # Precisa rodar ANTES do build/push, que move a tag 'latest'.
+        run: |
+          cd "$APP_DIR"
+          TAG=""
+          CID="$(docker compose -f docker-compose.harbor.yml ps -q backend 2>/dev/null | head -1)"
+          if [ -n "$CID" ]; then
+            TAG="$(docker inspect --format '{{.Config.Image}}' "$CID" 2>/dev/null)"
+            TAG="${TAG##*:}"
+            # 'latest' não identifica versão: daqui a dois steps ela apontará para
+            # a imagem NOVA, então reverter para ela reimplantaria o que quebrou.
+            case "$TAG" in
+              ''|latest|*/*) TAG="" ;;
+            esac
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          if [ -n "$TAG" ]; then
+            echo "produção está em '$TAG' — rollback disponível"
+          else
+            echo "::warning::Versão atual não identificada por SHA (provável ':latest'). Este deploy NÃO terá rollback automático; a partir do próximo, terá."
+          fi
+
       - name: Build + push das imagens (push-harbor.sh)
         # Publica <sha> (imutável, p/ rollback) e também move a tag 'latest'.
         run: |
@@ -79,6 +111,7 @@ jobs:
           done
 
       - name: Deploy (up com as imagens recém-buildadas)
+        id: deploy_up
         # Sem 'pull': o push-harbor.sh acabou de buildar as imagens localmente com
         # as MESMAS tags do Harbor, então o up usa elas direto (não precisa de auth
         # no registry — era isso que dava 401 no job).
@@ -87,6 +120,7 @@ jobs:
           docker compose -f docker-compose.harbor.yml up -d --remove-orphans
 
       - name: Smoke test (a aplicação respondeu?)
+        id: smoke
         # Falha o deploy se a stack subir quebrada — antes ele "passava" mesmo assim.
         run: |
           cd "$APP_DIR"
@@ -142,7 +176,46 @@ jobs:
           $COMPOSE logs --tail=40 >&2
           exit 1
 
+      - name: Rollback automático (a stack nova não subiu)
+        # Só reverte se o problema foi ao subir/validar a stack. Falha de git ou
+        # de login no Harbor não chegou a mexer em produção — reverter ali seria
+        # reimplantar sem motivo.
+        if: ${{ failure() && steps.prev.outputs.tag != '' && (steps.deploy_up.outcome == 'failure' || steps.smoke.outcome == 'failure') }}
+        env:
+          PREV_TAG: ${{ steps.prev.outputs.tag }}
+        run: |
+          cd "$APP_DIR"
+          COMPOSE="docker compose -f docker-compose.harbor.yml"
+          echo "⏪ revertendo produção para '$PREV_TAG' ..."
+
+          # As imagens antigas costumam estar no host (o prune só tira dangling),
+          # mas se o runner foi limpo é preciso buscá-las do Harbor.
+          docker image inspect "$HARBOR_HOST/aurora-nettools/backend:$PREV_TAG" >/dev/null 2>&1 \
+            || IMAGE_TAG="$PREV_TAG" $COMPOSE pull
+
+          IMAGE_TAG="$PREV_TAG" $COMPOSE up -d --remove-orphans
+
+          # Reverter sem confirmar deixaria o job vermelho sem dizer se produção
+          # voltou — que é justamente a informação que importa nesse momento.
+          BIND="$($COMPOSE port proxy 8090 2>/dev/null | head -1)"
+          PORT="${BIND##*:}"
+          case "$PORT" in ''|0|*[!0-9]*) PORT="" ;; esac
+          if [ -n "$PORT" ]; then
+            for i in $(seq 1 20); do
+              if curl -fsS --max-time 5 "http://localhost:$PORT/api/health" >/dev/null 2>&1; then
+                echo "✅ rollback concluído — produção respondendo em '$PREV_TAG'"
+                exit 0
+              fi
+              sleep 3
+            done
+          fi
+          echo "::error::ROLLBACK FALHOU — produção está fora do ar. Intervenção manual necessária." >&2
+          $COMPOSE ps >&2
+          $COMPOSE logs --tail=40 >&2
+          exit 1
+
       - name: Verificar containers
+        if: ${{ always() }}
         run: |
           cd "$APP_DIR"
           docker compose -f docker-compose.harbor.yml ps
