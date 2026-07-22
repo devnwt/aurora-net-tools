@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ConfirmProvider } from "@/lib/confirm";
+import { ToastProvider } from "@/lib/toast";
 import { Layout } from "@/components/Layout";
 import { Spinner } from "@/components/ui";
 import { Login } from "@/pages/Login";
@@ -45,6 +46,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
+        <ToastProvider>
         <ConfirmProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -88,6 +90,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </ConfirmProvider>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>,
