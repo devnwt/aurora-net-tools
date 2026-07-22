@@ -38,10 +38,13 @@ push main ──────────▶ Build & Push (build-push.yml)  CI �
                                                                                     │
                                                      (publica  <sha-curto>  +  latest)
                                                                                     │
-no servidor ────────▶ deploy/deploy.sh <sha>         pull ▸ up ▸ smoke ▸ rollback   prod
+                                          webhook PUSH_ARTIFACT  │
+                                                                 ▼
+no servidor ────────▶ deploy/webhook.py ──▶ deploy/deploy.sh <sha>                prod
+                                            pull ▸ up ▸ smoke ▸ rollback
 ```
 
-O Actions **publica imagens; não implanta.** Quem coloca uma versão no ar é você, no servidor, rodando `deploy/deploy.sh`. Isso mantém o pipeline independente de runner self-hosted e o acesso a produção fora do GitHub.
+O Actions **publica imagens; não implanta.** Quem coloca uma versão no ar é o servidor, reagindo ao webhook do Harbor (ou você, à mão, com `deploy/deploy.sh <sha>`). Isso mantém o pipeline independente de runner self-hosted e o acesso a produção fora do GitHub — o GitHub nunca fala com o servidor; o servidor é que escuta o registry.
 
 ### 1. Publicar imagens no Harbor
 
@@ -68,6 +71,32 @@ O script puxa as imagens, sobe a stack e valida `/api/health` + a SPA. **Se a va
 
 - App em `http://SERVIDOR:${PROXY_PORT}` (padrão **8090**). Só o proxy é exposto; o backend fica interno.
 - **Primeiro acesso:** usuário `admin` / senha = `ADMIN_PASSWORD` do `.env`.
+
+### 2b. Deploy automático (webhook do Harbor)
+
+Com o receptor instalado, publicar no Harbor já implanta — sem passo manual e sem dar ao GitHub qualquer acesso a produção.
+
+**No servidor** (ver cabeçalho de [`deploy/aurora-webhook.service`](./deploy/aurora-webhook.service) para os comandos exatos): instale o unit, gere o segredo em `/etc/aurora/webhook.env` e suba com `systemctl enable --now aurora-webhook`.
+
+**No Harbor** → projeto `aurora-nettools` → *Webhooks* → **NEW WEBHOOK**:
+
+| Campo | Valor |
+|---|---|
+| Notify Type | `http` |
+| Event Type | **Artifact pushed** |
+| Endpoint URL | `http://SEU-SERVIDOR:9000/harbor-webhook` |
+| Auth Header | o valor de `AURORA_WEBHOOK_SECRET` |
+
+O receptor lida com o que o Harbor tem de inconveniente:
+
+- **Ignora tudo que não é release** — `latest`, outros repositórios (`mibs`), outros namespaces e eventos que não sejam push.
+- **Um deploy por release.** O `push-harbor.sh` publica 3 repositórios × 2 tags, então o Harbor dispara vários eventos para a mesma versão; eles são coalescidos.
+- **Espera a stack inteira.** O push dos 3 repositórios não é atômico — o evento do `backend` costuma chegar antes de `frontend` e `proxy` existirem. O deploy só começa quando as três imagens da tag estiverem no registry (timeout de 15 min).
+- **Falha não marca como implantada**, então um novo push da mesma tag tenta de novo.
+
+Logs: `journalctl -u aurora-webhook -f`. Saúde: `curl http://SEU-SERVIDOR:9000/health`.
+
+> O endpoint dispara deploy em produção: exponha só para o Harbor (firewall/rede interna) e nunca sem o `Auth Header`. O serviço se recusa a iniciar sem segredo configurado.
 
 ### 3. Rollback
 
@@ -96,5 +125,6 @@ Nunca implante `latest` em produção: por ser um alias móvel, ela impede saber
 - `docker-compose.harbor.yml` — deploy pull-based (só `image:`).
 - `push-harbor.sh` — build + push das imagens (não implanta).
 - `deploy/deploy.sh` — deploy no servidor a partir do Harbor, com smoke test e rollback automático.
+- `deploy/webhook.py` + `deploy/aurora-webhook.service` — receptor do webhook do Harbor que dispara o deploy (stdlib, sem dependências).
 - `.github/workflows/ci.yml` — lint + testes; reutilizado como gate pelo build.
 - `.github/workflows/build-push.yml` — CI ▸ build ▸ push no Harbor (`ubuntu-latest`).

@@ -36,6 +36,16 @@ O script: puxa as imagens → `up -d` → valida `/api/health` (checando `status
 
 **Rollback** = implantar uma tag anterior (são imutáveis): `./deploy/deploy.sh 9f8e7d6`.
 
+Com o webhook do Harbor ativo (`deploy/webhook.py`), o deploy dispara sozinho ao publicar uma release — o `deploy.sh` acima continua sendo o caminho manual e o de rollback. Estado do automático:
+
+```bash
+systemctl status aurora-webhook
+journalctl -u aurora-webhook -f          # acompanha um deploy em andamento
+curl http://localhost:9000/health
+```
+
+Se uma release publicou no Harbor mas nada aconteceu em produção, olhe o log nesta ordem: chegou o evento (`evento backend:<sha> -> ...`)? ficou preso em `aguardando as 3 imagens` (push incompleto ou sem permissão de pull)? ou o `deploy.sh` falhou e reverteu?
+
 `PROXY_PORT` precisa estar fixado no `.env` do servidor. O smoke test descobre a porta via `docker compose port` (não pelo `.env`) justamente porque já houve caso do proxy ficar `Up`, o Caddy logar `server running` e **nenhuma porta ser publicada** por colisão com outro stack.
 
 ## Variáveis de ambiente críticas (`.env`)
