@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useToast } from "@/lib/toast";
 import { Button, Input } from "@/components/ui";
 import { FloatingInput } from "@/components/FloatingInput";
 import { AuthShell } from "@/components/AuthShell";
@@ -11,8 +12,8 @@ export function Login() {
   const nav = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const toast = useToast();
 
   const [forgot, setForgot] = useState(false);
   const [ident, setIdent] = useState("");
@@ -25,13 +26,16 @@ export function Login() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
     setBusy(true);
     try {
       await login(username, password);
       nav("/");
-    } catch {
-      setError("Credenciais inválidas.");
+    } catch (err) {
+      // Backend inalcançável faz o fetch rejeitar com TypeError, não ApiError.
+      // Sem separar os dois, uma queda do servidor aparecia como senha errada.
+      toast.error(err instanceof ApiError ? err : "Não foi possível falar com o servidor.", {
+        title: "Falha ao entrar",
+      });
     } finally {
       setBusy(false);
     }
@@ -68,7 +72,6 @@ export function Login() {
         <form onSubmit={onSubmit} className="flex aspect-square w-full max-w-sm flex-col justify-center space-y-5 rounded-2xl border border-white/10 bg-black/30 p-8 backdrop-blur-md">
           <FloatingInput id="u" label="Email ou usuário" type="text" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
           <FloatingInput id="p" label="Senha" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          {error && <p className="text-sm text-danger">{error}</p>}
           <Button type="submit" className="w-full justify-center py-2.5" disabled={busy}>{busy ? "Entrando…" : "Entrar"}</Button>
           <div className="flex items-center justify-between text-xs">
             <button type="button" onClick={() => setForgot(true)} className="text-white/60 hover:text-white cursor-pointer">Esqueci minha senha</button>

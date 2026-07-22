@@ -60,7 +60,15 @@ export const api = {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: form,
     });
-    if (!res.ok) throw new ApiError(res.status, "Credenciais inválidas");
+    if (!res.ok) {
+      // Só 401 é credencial errada. Tratar 500/502/503 como "credenciais
+      // inválidas" manda procurar o problema no lugar errado — foi assim que
+      // um backend fora do ar já passou por senha errada.
+      throw new ApiError(
+        res.status,
+        res.status === 401 ? "Usuário ou senha incorretos." : `O servidor respondeu ${res.status}.`,
+      );
+    }
     const data = (await res.json()) as { access_token: string };
     tokenStore.set(data.access_token);
     return data;
