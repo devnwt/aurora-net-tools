@@ -1,0 +1,58 @@
+# Receptor do webhook do Harbor — dispara o deploy de produção.
+#
+# Instalação no servidor de produção:
+#
+#   sudo install -m 0644 deploy/aurora-webhook.service /etc/systemd/system/
+#   sudo install -d -m 0700 /etc/aurora
+#   printf 'AURORA_WEBHOOK_SECRET=%s\n' "$(openssl rand -hex 32)" \
+#     | sudo tee /etc/aurora/webhook.env > /dev/null
+#   sudo chmod 600 /etc/aurora/webhook.env
+#   sudo systemctl daemon-reload && sudo systemctl enable --now aurora-webhook
+#   sudo systemctl status aurora-webhook
+#
+# O segredo (para colar no campo "Auth Header" do Harbor):
+#   sudo grep AURORA_WEBHOOK_SECRET /etc/aurora/webhook.env
+#
+# Logs:  journalctl -u aurora-webhook -f
+
+[Unit]
+Description=Aurora — receptor de webhook do Harbor (deploy de produção)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+
+# Ajuste para o diretório do deploy no servidor (onde estão docker-compose.harbor.yml,
+# .env e a pasta deploy/).
+WorkingDirectory=/opt/aurora-net-tools
+ExecStart=/usr/bin/python3 /opt/aurora-net-tools/deploy/webhook.py
+
+# O segredo mora fora do git, com permissão 600.
+EnvironmentFile=/etc/aurora/webhook.env
+
+# Precisa falar com o Docker: use um usuário do grupo docker, não root.
+# (docker.sock = acesso equivalente a root; o mínimo aqui é não somar mais.)
+User=deploy
+Group=docker
+
+Restart=on-failure
+RestartSec=5s
+
+# --- Isolamento -------------------------------------------------------------
+# O serviço só precisa ler o repo, escrever nada fora dele e falar com o Docker.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/aurora-net-tools
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target
