@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
+import { useToast } from "@/lib/toast";
 import type { Device, DeviceStatusInfo, Group } from "@/lib/types";
 import { groupBySite, methodOf, statusOf, STATUS_META, toStatusMap, type DeviceStatus, type StatusMap } from "@/lib/mikrotik";
 import { PageHeader } from "@/components/PageHeader";
@@ -23,7 +24,9 @@ export function Dashboard() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [statuses, setStatuses] = useState<StatusMap>(new Map());
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [order, setOrder] = useState<"az" | "count">("az");
+  const toast = useToast();
 
   function load() {
     setLoading(true);
@@ -36,6 +39,14 @@ export function Dashboard() {
         setDevices(d);
         setGroups(g);
         setStatuses(toStatusMap(s));
+        setFailed(false);
+      })
+      // Sem catch, uma falha de rede deixava o painel exibindo zeros como se
+      // estivesse tudo certo (o finally desliga o loading de qualquer jeito) e
+      // a rejeição virava unhandled.
+      .catch((e) => {
+        setFailed(true);
+        toast.error(e, { title: "Falha ao carregar o painel" });
       })
       .finally(() => setLoading(false));
   }
@@ -53,8 +64,17 @@ export function Dashboard() {
     return list;
   }, [devices, groups, order]);
 
-  const statValue = (key: string) =>
-    key === "total" ? devices.length : key === "sites" ? groups.length : counts[key] ?? 0;
+  // Quando a carga falhou e não há nada em mãos, "0" seria mentira — e mentira
+  // que dura, porque o toast some em 8s. "—" diz "não sei", que é a verdade.
+  // Numa falha de atualização os números anteriores seguem válidos e ficam.
+  const statValue = (key: string): string | number =>
+    failed && devices.length === 0
+      ? "—"
+      : key === "total"
+        ? devices.length
+        : key === "sites"
+          ? groups.length
+          : counts[key] ?? 0;
 
   return (
     <div>

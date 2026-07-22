@@ -151,9 +151,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {/* z-[60] fica acima do Modal (z-50) — um erro disparado de dentro de um
           diálogo precisa aparecer. pointer-events-none no container para a
-          coluna vazia não capturar cliques da página. */}
+          coluna vazia não capturar cliques da página.
+          top-20 e não top-4: o canto superior direito é onde o PageHeader põe a
+          ação primária de toda página ("Atualizar Tudo", "Novo device"). Em
+          top-4 o toast de erro cobria justamente o botão que a mensagem manda
+          apertar. 80px passa da faixa do header (~74px no pior caso, com
+          subtítulo) sem deixar de ser o canto superior. */}
       <div
-        className="pointer-events-none fixed right-4 top-4 z-[60] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2"
+        className="pointer-events-none fixed right-4 top-20 z-[60] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2"
         role="region"
         aria-label="Notificações"
       >
