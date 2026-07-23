@@ -1,0 +1,86 @@
+{
+  "actions": {
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "confirmAction": "Confirmar acción",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "add": "Añadir",
+    "remove": "Quitar",
+    "back": "Volver",
+    "retry": "Reintentar",
+    "refresh": "Actualizar",
+    "test": "Probar",
+    "search": "Buscar",
+    "run": "Ejecutar",
+    "send": "Enviar",
+    "sending": "Enviando…",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "download": "Descargar",
+    "apply": "Aplicar",
+    "clear": "Limpiar",
+    "new": "Nuevo",
+    "ok": "OK",
+    "warning": "Aviso"
+  },
+  "state": {
+    "loading": "Cargando…",
+    "empty": "Nada por aquí.",
+    "noResults": "Sin resultados.",
+    "error": "Ocurrió un error.",
+    "unexpectedError": "Ocurrió un error inesperado.",
+    "serverUnreachable": "No se pudo conectar con el servidor.",
+    "success": "Operación completada."
+  },
+  "labels": {
+    "name": "Nombre",
+    "description": "Descripción",
+    "host": "Host",
+    "port": "Puerto",
+    "username": "Usuario",
+    "password": "Contraseña",
+    "status": "Estado",
+    "actions": "Acciones",
+    "type": "Tipo",
+    "enabled": "Habilitado",
+    "disabled": "Deshabilitado",
+    "all": "Todos",
+    "none": "Ninguno",
+    "date": "Fecha",
+    "details": "Detalles",
+    "yes": "Sí",
+    "no": "No",
+    "noSite": "Sin sitio"
+  },
+  "validation": {
+    "required": "Campo obligatorio.",
+    "invalid": "Valor no válido."
+  },
+  "roles": {
+    "master": "Master",
+    "admin": "Administrador",
+    "operator": "Operador"
+  },
+  "deviceStatus": {
+    "online": "En línea",
+    "not_accessible": "Inaccesible",
+    "offline": "Fuera de línea",
+    "unknown": "Desconocido",
+    "disabled": "Deshabilitado"
+  },
+  "a11y": {
+    "close": "Cerrar",
+    "loading": "cargando",
+    "notifications": "Notificaciones",
+    "closeNotification": "Cerrar notificación",
+    "repeated": "repetido {{count}} veces"
+  },
+  "comingSoon": { "badge": "Próximamente", "hint": "Esta pantalla está en construcción." },
+  "graph": { "center": "Centrar / zoom 100%", "rearrange": "Reorganizar (borra posiciones guardadas)" },
+  "chart": { "collecting": "Recopilando muestras…" }
+}

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Bot, Brain, Check, Plus, Send, ShieldAlert, Trash2, Wrench, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import i18n from "@/i18n";
 import { useAuth } from "@/lib/auth";
 import type { CopilotConversation, CopilotDetail, Device, Group } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
@@ -9,15 +11,13 @@ import { Badge, Button, Card, Spinner, Textarea } from "@/components/ui";
 import { useConfirm } from "@/lib/confirm";
 import { cn } from "@/lib/utils";
 
-const errMsg = (e: unknown) => (e instanceof ApiError ? `Erro ${e.status}: ${e.message}` : String(e));
+const errMsg = (e: unknown) =>
+  e instanceof ApiError ? i18n.t("copilot:errorStatus", { status: e.status, message: e.message }) : String(e);
 
-const MODES = [
-  { key: "chat", label: "Chat", hint: "Só conversa, nunca executa." },
-  { key: "manual", label: "Manual", hint: "Toda escrita pede aprovação." },
-  { key: "auto", label: "Automático", hint: "Escreve sozinho (alto risco pede aprovação)." },
-] as const;
+const MODES = [{ key: "chat" }, { key: "manual" }, { key: "auto" }] as const;
 
 export function Copilot() {
+  const { t } = useTranslation();
   const { confirm } = useConfirm();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "master";
@@ -66,7 +66,7 @@ export function Copilot() {
     }
     return map;
   }, [devices]);
-  const siteName = (id: number | null) => groups.find((g) => g.id === id)?.name ?? "Sem site";
+  const siteName = (id: number | null) => groups.find((g) => g.id === id)?.name ?? t("common:labels.noSite");
 
   function toggle(id: number) {
     setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -82,10 +82,10 @@ export function Copilot() {
       if (routeros.length > 0) {
         const names = routeros.map((d) => d.name).join(", ");
         const doBackup = await confirm({
-          title: "Backup antes de iniciar",
-          message: `Deseja fazer backup ${routeros.length > 1 ? "dos dispositivos" : "do dispositivo"} ${names} antes de iniciar a conversa?`,
-          confirmText: "Fazer backup",
-          cancelText: "Pular",
+          title: t("copilot:backup.title"),
+          message: t("copilot:backup.message", { count: routeros.length, names }),
+          confirmText: t("copilot:backup.confirm"),
+          cancelText: t("copilot:backup.skip"),
           tone: "primary",
         });
         if (doBackup) {
@@ -97,7 +97,7 @@ export function Copilot() {
               fails.push(`${d.name} (${errMsg(e)})`);
             }
           }
-          if (fails.length) setErr(`Backup falhou em: ${fails.join("; ")}`);
+          if (fails.length) setErr(t("copilot:backup.failed", { list: fails.join("; ") }));
         }
       }
       const c = await api.post<CopilotConversation>("/copilot/conversations", { mode, device_ids: [...sel] });
@@ -142,7 +142,7 @@ export function Copilot() {
           else if (evLine === "reasoning") setLive((l) => l && { ...l, reasoning: l.reasoning + (payload.text as string) });
           else if (evLine === "tool") setLive((l) => l && { ...l, tools: [...l.tools, payload.name as string] });
           else if (evLine === "done") { setDetail(payload as unknown as CopilotDetail); setLive(null); }
-          else if (evLine === "error") setErr(String(payload.detail ?? "erro"));
+          else if (evLine === "error") setErr(String(payload.detail ?? t("copilot:streamError")));
         }
       }
     } catch (e) {
@@ -167,13 +167,13 @@ export function Copilot() {
   }
 
   async function delConv(id: number) {
-    if (!(await confirm({ title: "Excluir conversa", message: "Excluir esta conversa?" }))) return;
+    if (!(await confirm({ title: t("copilot:delete.title"), message: t("copilot:delete.message") }))) return;
     await api.del(`/copilot/conversations/${id}`);
     if (activeId === id) setActiveId(null);
     loadConvs();
   }
 
-  const deviceName = (id: number | null) => devices.find((d) => d.id === id)?.name ?? `device ${id}`;
+  const deviceName = (id: number | null) => devices.find((d) => d.id === id)?.name ?? t("copilot:deviceFallback", { id });
   const pending = detail?.actions.filter((a) => a.status === "pending") ?? [];
 
   // Timeline cronológica: mensagens + ações resolvidas intercaladas por created_at.
@@ -196,31 +196,31 @@ export function Copilot() {
   return (
     <div>
       <PageHeader
-        title="Copilot"
-        subtitle="Assistente LLM para operar devices (Configurações → LLM)"
-        actions={isAdmin ? <Link to="/settings"><Button variant="ghost"><Wrench className="h-4 w-4" /> Ferramentas (Configurações)</Button></Link> : undefined}
+        title={t("copilot:title")}
+        subtitle={t("copilot:subtitle")}
+        actions={isAdmin ? <Link to="/settings"><Button variant="ghost"><Wrench className="h-4 w-4" /> {t("copilot:tools")}</Button></Link> : undefined}
       />
 
       <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
         {/* Coluna esquerda */}
         <div className="space-y-4">
           <Card>
-            <h2 className="mb-2 text-sm font-semibold">Nova conversa</h2>
+            <h2 className="mb-2 text-sm font-semibold">{t("copilot:newConversation")}</h2>
             <div className="mb-3 flex gap-1 rounded-lg border border-border p-0.5 text-xs">
               {MODES.map((m) => (
-                <button key={m.key} onClick={() => setMode(m.key)} title={m.hint}
+                <button key={m.key} onClick={() => setMode(m.key)} title={t(`copilot:modes.${m.key}.hint`)}
                   className={cn("flex-1 rounded px-2 py-1 cursor-pointer", mode === m.key ? "bg-primary/20 text-primary" : "text-muted")}>
-                  {m.label}
+                  {t(`copilot:modes.${m.key}.label`)}
                 </button>
               ))}
             </div>
-            <p className="mb-2 text-[11px] text-muted">{MODES.find((m) => m.key === mode)!.hint}</p>
+            <p className="mb-2 text-[11px] text-muted">{t(`copilot:modes.${mode}.hint`)}</p>
 
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Devices ({sel.size})</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">{t("copilot:devicesLabel", { count: sel.size })}</span>
               <div className="flex gap-1">
-                <button onClick={() => setSel(new Set(allIds))} className="rounded border border-border px-2 py-0.5 text-[11px] text-muted hover:text-text cursor-pointer">Todos</button>
-                <button onClick={() => setSel(new Set())} className="rounded border border-border px-2 py-0.5 text-[11px] text-muted hover:text-text cursor-pointer">Limpar</button>
+                <button onClick={() => setSel(new Set(allIds))} className="rounded border border-border px-2 py-0.5 text-[11px] text-muted hover:text-text cursor-pointer">{t("common:labels.all")}</button>
+                <button onClick={() => setSel(new Set())} className="rounded border border-border px-2 py-0.5 text-[11px] text-muted hover:text-text cursor-pointer">{t("common:actions.clear")}</button>
               </div>
             </div>
             <div className="max-h-52 space-y-2 overflow-y-auto rounded-lg border border-border p-2">
@@ -236,15 +236,15 @@ export function Copilot() {
                   ))}
                 </div>
               ))}
-              {devices.length === 0 && <p className="text-xs text-muted">Nenhum device.</p>}
+              {devices.length === 0 && <p className="text-xs text-muted">{t("copilot:noDevices")}</p>}
             </div>
             <Button onClick={start} disabled={starting} className="mt-3 w-full justify-center">
-              {starting ? <Spinner /> : <Plus className="h-4 w-4" />} Iniciar
+              {starting ? <Spinner /> : <Plus className="h-4 w-4" />} {t("copilot:start")}
             </Button>
           </Card>
 
           <Card>
-            <h2 className="mb-2 text-sm font-semibold">Conversas</h2>
+            <h2 className="mb-2 text-sm font-semibold">{t("copilot:conversations")}</h2>
             <div className="space-y-1">
               {convs.map((c) => (
                 <div key={c.id} className={cn("flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm", activeId === c.id ? "bg-primary/15" : "hover:bg-surface-2")}>
@@ -255,7 +255,7 @@ export function Copilot() {
                   <button onClick={() => delConv(c.id)} className="text-muted hover:text-danger cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>
               ))}
-              {convs.length === 0 && <p className="text-xs text-muted">Nenhuma conversa ainda.</p>}
+              {convs.length === 0 && <p className="text-xs text-muted">{t("copilot:noConversations")}</p>}
             </div>
           </Card>
         </div>
@@ -265,8 +265,8 @@ export function Copilot() {
           {!detail ? (
             <div className="flex flex-1 flex-col items-center justify-center text-center text-muted">
               <Bot className="mb-3 h-10 w-10 opacity-40" />
-              <p className="text-sm">Selecione ou inicie uma conversa.</p>
-              <p className="mt-1 text-xs">Escolha os devices e o modo à esquerda.</p>
+              <p className="text-sm">{t("copilot:empty.select")}</p>
+              <p className="mt-1 text-xs">{t("copilot:empty.hint")}</p>
             </div>
           ) : (
             <>
@@ -274,7 +274,7 @@ export function Copilot() {
                 <Bot className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">{detail.conversation.title}</span>
                 <Badge tone={detail.conversation.mode === "auto" ? "accent" : "muted"}>{detail.conversation.mode}</Badge>
-                <span className="ml-auto text-xs text-muted">{detail.conversation.device_ids.map(deviceName).join(", ") || "sem device"}</span>
+                <span className="ml-auto text-xs text-muted">{detail.conversation.device_ids.map(deviceName).join(", ") || t("copilot:noDevice")}</span>
               </div>
 
               <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto pr-1">
@@ -284,7 +284,7 @@ export function Copilot() {
                       {it.msg.role === "assistant" && it.msg.reasoning && (
                         <details className="mb-1.5 rounded-lg border border-border/70 bg-bg/40">
                           <summary className="flex cursor-pointer select-none items-center gap-1 px-2 py-1 text-[11px] text-muted">
-                            <Brain className="h-3.5 w-3.5" /> Raciocínio
+                            <Brain className="h-3.5 w-3.5" /> {t("copilot:reasoning")}
                           </summary>
                           <div className="whitespace-pre-wrap px-2 pb-2 pt-1 text-[12px] italic leading-relaxed text-muted/80">{it.msg.reasoning}</div>
                         </details>
@@ -317,12 +317,12 @@ export function Copilot() {
                     <div className="max-w-[85%] rounded-2xl bg-surface-2 px-3 py-2 text-sm">
                       {live.reasoning && (
                         <details open className="mb-1.5 rounded-lg border border-border/70 bg-bg/40">
-                          <summary className="flex cursor-pointer select-none items-center gap-1 px-2 py-1 text-[11px] text-muted"><Brain className="h-3.5 w-3.5" /> Raciocínio</summary>
+                          <summary className="flex cursor-pointer select-none items-center gap-1 px-2 py-1 text-[11px] text-muted"><Brain className="h-3.5 w-3.5" /> {t("copilot:reasoning")}</summary>
                           <div className="whitespace-pre-wrap px-2 pb-2 pt-1 text-[12px] italic leading-relaxed text-muted/80">{live.reasoning}</div>
                         </details>
                       )}
                       <span className="whitespace-pre-wrap">{live.content}</span>
-                      {(!live.content && !live.reasoning) && <span className="text-muted">pensando…</span>}
+                      {(!live.content && !live.reasoning) && <span className="text-muted">{t("copilot:thinking")}</span>}
                       <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse bg-primary align-middle" />
                       {live.tools.length > 0 && (
                         <p className="mt-1 flex flex-wrap gap-1 text-[11px] text-muted">
@@ -340,15 +340,15 @@ export function Copilot() {
                   {pending.map((a) => (
                     <div key={a.id} className={cn("rounded-lg border p-3", a.high_risk ? "border-danger/50 bg-danger/5" : "border-accent/50 bg-accent/5")}>
                       <div className="mb-1 flex items-center gap-2 text-xs">
-                        {a.high_risk && <span className="inline-flex items-center gap-1 text-danger"><ShieldAlert className="h-3.5 w-3.5" /> alto risco</span>}
-                        <Badge tone="accent">aguardando aprovação</Badge>
+                        {a.high_risk && <span className="inline-flex items-center gap-1 text-danger"><ShieldAlert className="h-3.5 w-3.5" /> {t("copilot:action.highRisk")}</span>}
+                        <Badge tone="accent">{t("copilot:action.awaiting")}</Badge>
                         <span className="font-mono text-muted">{deviceName(a.device_id)}</span>
                       </div>
                       <pre className="overflow-x-auto rounded bg-bg p-2 font-mono text-xs text-text">{a.command}</pre>
                       {a.rationale && <p className="mt-1 text-xs text-muted">{a.rationale}</p>}
                       <div className="mt-2 flex gap-2">
-                        <Button onClick={() => resolve(a.id, true)} disabled={sending}><Check className="h-4 w-4" /> Aprovar & executar</Button>
-                        <Button variant="danger" onClick={() => resolve(a.id, false)} disabled={sending}><X className="h-4 w-4" /> Rejeitar</Button>
+                        <Button onClick={() => resolve(a.id, true)} disabled={sending}><Check className="h-4 w-4" /> {t("copilot:action.approve")}</Button>
+                        <Button variant="danger" onClick={() => resolve(a.id, false)} disabled={sending}><X className="h-4 w-4" /> {t("copilot:action.reject")}</Button>
                       </div>
                     </div>
                   ))}
@@ -362,7 +362,7 @@ export function Copilot() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                  placeholder={pending.length ? "Resolva as ações pendentes acima…" : "Pergunte algo sobre o(s) device(s)…"}
+                  placeholder={pending.length ? t("copilot:placeholder.pending") : t("copilot:placeholder.ask")}
                   rows={2}
                   className="flex-1 resize-none"
                   disabled={sending || pending.length > 0}
@@ -372,8 +372,8 @@ export function Copilot() {
                 </Button>
               </div>
               <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted">
-                <span>Contexto: <span className="font-mono text-text">{detail.conversation.tokens_context.toLocaleString("pt-BR")}</span> tokens</span>
-                <span>Total usado: <span className="font-mono text-text">{detail.conversation.tokens_total.toLocaleString("pt-BR")}</span> tokens</span>
+                <span>{t("copilot:tokens.context")}: <span className="font-mono text-text">{detail.conversation.tokens_context.toLocaleString("pt-BR")}</span> {t("copilot:tokens.unit")}</span>
+                <span>{t("copilot:tokens.total")}: <span className="font-mono text-text">{detail.conversation.tokens_total.toLocaleString("pt-BR")}</span> {t("copilot:tokens.unit")}</span>
               </div>
             </>
           )}

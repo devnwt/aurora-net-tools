@@ -1,0 +1,100 @@
+{
+  "errorTitle": "Error",
+  "users": {
+    "title": "Users",
+    "subtitle": "Aurora access accounts",
+    "add": "Add user",
+    "empty": "No users",
+    "columns": {
+      "email": "Email",
+      "role": "Role"
+    },
+    "you": "you",
+    "noEmail": "— no email —",
+    "delete": {
+      "title": "Delete user",
+      "message": "Delete {{who}}?\n\nThis action is permanent and cannot be undone."
+    },
+    "deleteFailed": "Could not delete: {{error}}",
+    "editTitle": "Edit {{name}}",
+    "emailLabel": "Email (login)",
+    "emailPlaceholder": "you@company.com",
+    "passwordLabel": "Password",
+    "newPasswordLabel": "New password (optional)",
+    "passwordKeepPlaceholder": "leave blank to keep",
+    "roleLabel": "Role",
+    "roleHelp": {
+      "operator": "uses the system.",
+      "admin": "manages their own organization.",
+      "master": "system superadmin."
+    }
+  },
+  "apikeys": {
+    "title": "API Keys",
+    "subtitle": "Tokens for programmatic API access (X-API-Key header)",
+    "create": "Create Key",
+    "empty": {
+      "title": "No keys",
+      "hint": "Create a key to integrate automations."
+    },
+    "columns": {
+      "prefix": "Prefix",
+      "created": "Created",
+      "lastUsed": "Last used"
+    },
+    "never": "never",
+    "revoke": "Revoke",
+    "revokeConfirm": {
+      "title": "Revoke key",
+      "message": "Revoke the key \"{{name}}\"? Integrations using it will stop working."
+    },
+    "createTitle": "Create API Key",
+    "creating": "Creating…",
+    "namePlaceholder": "e.g. automation, mcp, ci",
+    "createdTitle": "Key created",
+    "createdWarn": {
+      "before": "Copy the key now — it ",
+      "strong": "will not be shown again",
+      "after": ". Keep it safe."
+    },
+    "useHeader": "Use in the header:"
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "subtitle": "HTTP notifications on events (e.g. device down / back up)",
+    "add": "Add Webhook",
+    "empty": {
+      "title": "No webhooks",
+      "hint": "Create one to receive event notifications."
+    },
+    "columns": {
+      "url": "URL",
+      "events": "Events"
+    },
+    "signed": "signed",
+    "allEvents": "all",
+    "active": "active",
+    "inactive": "inactive",
+    "events": {
+      "online": "Device online",
+      "offline": "Device offline / unreachable"
+    },
+    "test": {
+      "delivered": "delivered ({{status}})",
+      "response": "response {{status}}",
+      "error": "error {{status}}",
+      "failed": "failed"
+    },
+    "delete": {
+      "title": "Delete webhook",
+      "message": "Delete the webhook \"{{name}}\"?"
+    },
+    "editTitle": "Edit Webhook",
+    "urlLabel": "URL",
+    "urlPlaceholder": "https://example.com/hook",
+    "eventsLabel": "Events (empty = all)",
+    "secretLabelEdit": "Secret (optional — blank keeps it)",
+    "secretLabelNew": "Secret (optional, HMAC-SHA256)",
+    "secretPlaceholder": "signs the body if filled"
+  }
+}

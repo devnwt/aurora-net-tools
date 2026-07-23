@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { RefreshCw, Router } from "lucide-react";
 import { api } from "@/lib/api";
 import { rosGet } from "@/lib/rosClient";
@@ -28,6 +29,7 @@ function gridPos(i: number, cols: number) {
 }
 
 export function Topology() {
+  const { t } = useTranslation();
   const [devices, setDevices] = useState<Device[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [site, setSite] = useState<string>("");
@@ -93,7 +95,7 @@ export function Topology() {
           if (!ghostMap.has(gkey)) {
             ghostMap.set(gkey, {
               key: gkey,
-              label: n.identity || ip || n["mac-address"] || "desconhecido",
+              label: n.identity || ip || n["mac-address"] || t("ops:topology.unknown"),
               sub: n.platform || n.interface || "",
               board: n.board || n["board-name"] || "",
               version: n.version || "",
@@ -104,7 +106,7 @@ export function Topology() {
       }
     }
     return { edges, ghosts: [...ghostMap.values()], ghostEdges, links: edges.length };
-  }, [shown, neighbors, byIp, byName]);
+  }, [shown, neighbors, byIp, byName, t]);
 
   // Posições: devices gerenciados primeiro, depois ghosts (se visíveis).
   const ghostList = showUnmanaged ? ghosts : [];
@@ -124,23 +126,23 @@ export function Topology() {
   return (
     <div>
       <PageHeader
-        title="Topologia"
+        title={t("ops:topology.title")}
         actions={
           <div className="flex items-center gap-2">
             <Select value={site} onChange={(e) => setSite(e.target.value)} className="w-44">
-              <option value="">Todos os sites</option>
+              <option value="">{t("ops:topology.allSites")}</option>
               {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
             </Select>
             <button onClick={() => setShowUnmanaged((v) => !v)} className={cn("rounded-lg border px-3 py-2 text-sm cursor-pointer", showUnmanaged ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted")}>
-              Não-gerenciados: {showUnmanaged ? "Sim" : "Não"}
+              {t("ops:topology.unmanaged")}: {showUnmanaged ? t("common:labels.yes") : t("common:labels.no")}
             </button>
             <button onClick={() => shown.forEach(probe)} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-muted hover:bg-surface-2 cursor-pointer">
-              <RefreshCw className="h-4 w-4" /> Atualizar
+              <RefreshCw className="h-4 w-4" /> {t("common:actions.refresh")}
             </button>
           </div>
         }
       />
-      <p className="mb-4 text-xs text-muted">{shown.length} dispositivos · {ghosts.length} não-gerenciados · {links} enlaces</p>
+      <p className="mb-4 text-xs text-muted">{t("ops:topology.counts", { devices: shown.length, ghosts: ghosts.length, links })}</p>
 
       <div className="overflow-auto rounded-lg border border-border bg-surface/40 p-2">
         <div className="relative" style={{ width, height, minWidth: "100%" }}>
@@ -202,14 +204,14 @@ export function Topology() {
             return (
               <div key={g.key} className="absolute rounded-lg border border-dashed border-border bg-surface-2/60 p-2" style={{ left: p.x, top: p.y, width: GHOST_W, height: GHOST_H }}>
                 <p className="truncate text-sm">{g.label}</p>
-                <p className="truncate font-mono text-[11px] text-muted">{g.sub || "não-gerenciado"}</p>
+                <p className="truncate font-mono text-[11px] text-muted">{g.sub || t("ops:topology.unmanagedNode")}</p>
                 {g.board && <p className="truncate font-mono text-[11px] text-muted">board: <span className="text-text">{g.board}</span></p>}
                 {g.version && <p className="truncate font-mono text-[11px] text-muted">ver: <span className="text-text">{g.version}</span></p>}
               </div>
             );
           })}
 
-          {total === 0 && <p className="p-6 text-sm text-muted">Nenhum device.</p>}
+          {total === 0 && <p className="p-6 text-sm text-muted">{t("ops:topology.empty")}</p>}
         </div>
       </div>
     </div>

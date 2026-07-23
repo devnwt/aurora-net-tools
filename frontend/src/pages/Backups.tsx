@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Download, Eye, Save } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import type { BackupFull, BackupMeta, Device } from "@/lib/types";
@@ -19,6 +20,7 @@ interface BackupCreated {
 }
 
 export function Backups() {
+  const { t } = useTranslation();
   const { confirm } = useConfirm();
   const [items, setItems] = useState<BackupMeta[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -50,7 +52,7 @@ export function Backups() {
       setUploads(r.uploads && Object.keys(r.uploads).length ? r.uploads : null);
       load();
     } catch (e) {
-      setErr(e instanceof ApiError ? `Erro ${e.status}: ${e.message}` : String(e));
+      setErr(e instanceof ApiError ? t("ops:shared.errorWithStatus", { status: e.status, message: e.message }) : String(e));
     } finally {
       setCreating(false);
     }
@@ -72,35 +74,35 @@ export function Backups() {
   }
 
   async function remove(b: BackupMeta) {
-    if (!(await confirm({ title: "Excluir backup", message: `Excluir o backup de ${b.device_name} (${new Date(b.created_at).toLocaleString("pt-BR")})?` }))) return;
+    if (!(await confirm({ title: t("ops:backups.deleteTitle"), message: t("ops:backups.deleteMsg", { device: b.device_name, date: new Date(b.created_at).toLocaleString("pt-BR") }) }))) return;
     await api.del(`/backups/${b.id}`);
     load();
   }
 
   return (
     <div>
-      <PageHeader title="Backups" subtitle="Export de configuração RouterOS (/export)" />
+      <PageHeader title={t("ops:backups.title")} subtitle={t("ops:backups.subtitle")} />
 
       <Card className="mb-5">
-        <h2 className="mb-3 text-sm font-semibold">Novo backup</h2>
+        <h2 className="mb-3 text-sm font-semibold">{t("ops:backups.newTitle")}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <Select value={target} onChange={(e) => setTarget(e.target.value)} className="w-64">
-            <option value="">— selecione um RouterOS —</option>
+            <option value="">{t("ops:shared.selectRouterOS")}</option>
             {devices.map((d) => <option key={d.id} value={d.id}>{d.name} · {d.ip}</option>)}
           </Select>
           <label className="inline-flex items-center gap-1.5 text-sm text-muted">
             <input type="checkbox" checked={sendFtp} onChange={(e) => setSendFtp(e.target.checked)} className="h-4 w-4 accent-primary" />
-            Enviar por FTP
+            {t("ops:backups.sendFtp")}
           </label>
           <label className="inline-flex items-center gap-1.5 text-sm text-muted">
             <input type="checkbox" checked={sendS3} onChange={(e) => setSendS3(e.target.checked)} className="h-4 w-4 accent-primary" />
-            Enviar por MinIO/S3
+            {t("ops:backups.sendS3")}
           </label>
           <Button onClick={create} disabled={creating || !target}>
-            {creating ? <Spinner /> : <Save className="h-4 w-4" />} Criar backup
+            {creating ? <Spinner /> : <Save className="h-4 w-4" />} {t("ops:backups.create")}
           </Button>
         </div>
-        <p className="mt-2 text-xs text-muted">Configure os destinos em <span className="font-mono">Settings → FTP / MinIO</span>.</p>
+        <p className="mt-2 text-xs text-muted">{t("ops:backups.configHintPrefix")} <span className="font-mono">Settings → FTP / MinIO</span>.</p>
         {err && <p className="mt-3 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">{err}</p>}
         {uploads && (
           <div className="mt-3 space-y-2">
@@ -120,9 +122,9 @@ export function Backups() {
       {loading ? (
         <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>
       ) : items.length === 0 ? (
-        <EmptyState title="Nenhum backup" hint="Crie um backup selecionando um device acima." />
+        <EmptyState title={t("ops:backups.emptyTitle")} hint={t("ops:backups.emptyHint")} />
       ) : (
-        <Table head={<><Th>Device</Th><Th>Criado em</Th><Th>Tamanho</Th><Th className="text-right">Ações</Th></>}>
+        <Table head={<><Th>{t("ops:backups.col.device")}</Th><Th>{t("ops:backups.col.created")}</Th><Th>{t("ops:backups.col.size")}</Th><Th className="text-right">{t("common:labels.actions")}</Th></>}>
           {items.map((b) => (
             <tr key={b.id} className="hover:bg-surface-2 transition-colors duration-200">
               <Td className="font-medium">{b.device_name}</Td>
@@ -130,9 +132,9 @@ export function Backups() {
               <Td className="font-mono text-muted">{fmtSize(b.size)}</Td>
               <Td className="text-right">
                 <div className="flex items-center justify-end gap-2">
-                  <Button variant="ghost" onClick={() => view(b)}><Eye className="h-4 w-4" /> Ver</Button>
-                  <Button variant="ghost" onClick={() => download(b)}><Download className="h-4 w-4" /> Baixar</Button>
-                  <Button variant="danger" onClick={() => remove(b)}>Excluir</Button>
+                  <Button variant="ghost" onClick={() => view(b)}><Eye className="h-4 w-4" /> {t("ops:backups.view")}</Button>
+                  <Button variant="ghost" onClick={() => download(b)}><Download className="h-4 w-4" /> {t("common:actions.download")}</Button>
+                  <Button variant="danger" onClick={() => remove(b)}>{t("common:actions.delete")}</Button>
                 </div>
               </Td>
             </tr>
@@ -141,9 +143,9 @@ export function Backups() {
       )}
 
       {viewing && (
-        <Modal title={`Backup #${viewing.id}`} onClose={() => setViewing(null)}>
+        <Modal title={t("ops:backups.viewTitle", { id: viewing.id })} onClose={() => setViewing(null)}>
           <pre className="max-h-[60vh] overflow-auto rounded-lg border border-border bg-bg p-3 font-mono text-xs whitespace-pre-wrap">
-            {viewing.content || "(vazio)"}
+            {viewing.content || t("ops:shared.emptyParens")}
           </pre>
         </Modal>
       )}

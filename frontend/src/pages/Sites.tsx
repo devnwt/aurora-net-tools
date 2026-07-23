@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Device, Group } from "@/lib/types";
@@ -11,6 +12,7 @@ import { DeviceMap } from "@/components/DeviceMap";
 const BLANK = { name: "", location: "", description: "", latitude: "", longitude: "" };
 
 export function Sites() {
+  const { t } = useTranslation();
   const { confirm } = useConfirm();
   const [groups, setGroups] = useState<Group[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -68,7 +70,7 @@ export function Sites() {
   }
 
   async function remove(g: Group) {
-    if (!(await confirm({ title: "Excluir site", message: `Excluir o site "${g.name}"?` }))) return;
+    if (!(await confirm({ title: t("sites:delete.title"), message: t("sites:delete.message", { name: g.name }) }))) return;
     await api.del(`/groups/${g.id}`);
     load();
   }
@@ -76,16 +78,16 @@ export function Sites() {
   return (
     <div>
       <PageHeader
-        title="Sites"
-        actions={<Button onClick={openNew}><Plus className="h-4 w-4" /> Adicionar Site</Button>}
+        title={t("sites:title")}
+        actions={<Button onClick={openNew}><Plus className="h-4 w-4" /> {t("sites:addSite")}</Button>}
       />
 
       {loading ? (
         <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>
       ) : groups.length === 0 ? (
-        <EmptyState title="Nenhum site" hint="Crie um site para agrupar seus dispositivos." />
+        <EmptyState title={t("sites:empty.title")} hint={t("sites:empty.hint")} />
       ) : (
-        <Table head={<><Th>Nome</Th><Th>Local</Th><Th>Descrição</Th><Th>Dispositivos</Th><Th className="text-right">Ações</Th></>}>
+        <Table head={<><Th>{t("common:labels.name")}</Th><Th>{t("sites:columns.location")}</Th><Th>{t("common:labels.description")}</Th><Th>{t("sites:columns.devices")}</Th><Th className="text-right">{t("common:labels.actions")}</Th></>}>
           {groups.map((g) => (
             <tr key={g.id} className="hover:bg-surface-2 transition-colors duration-200">
               <Td className="font-medium">{g.name}</Td>
@@ -94,8 +96,8 @@ export function Sites() {
               <Td className="font-mono">{counts[g.id] ?? 0}</Td>
               <Td className="text-right">
                 <div className="flex items-center justify-end gap-2">
-                  <Button variant="ghost" onClick={() => openEdit(g)}>Editar</Button>
-                  <Button variant="danger" onClick={() => remove(g)}>Excluir</Button>
+                  <Button variant="ghost" onClick={() => openEdit(g)}>{t("common:actions.edit")}</Button>
+                  <Button variant="danger" onClick={() => remove(g)}>{t("common:actions.delete")}</Button>
                 </div>
               </Td>
             </tr>
@@ -105,31 +107,31 @@ export function Sites() {
 
       {open && (
         <Modal
-          title={editing ? "Editar Site" : "Adicionar Site"}
+          title={editing ? t("sites:editSite") : t("sites:addSite")}
           onClose={() => setOpen(false)}
           footer={
             <>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button onClick={save} disabled={saving || !form.name}>{saving ? "Salvando…" : editing ? "Salvar" : "Adicionar Site"}</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}>{t("common:actions.cancel")}</Button>
+              <Button onClick={save} disabled={saving || !form.name}>{saving ? t("common:actions.saving") : editing ? t("common:actions.save") : t("sites:addSite")}</Button>
             </>
           }
         >
           <div className="space-y-3">
-            <Field label="NOME">
+            <Field label={t("common:labels.name")}>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
             </Field>
-            <Field label="LOCAL">
-              <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="ex.: Vitória, POP Centro" />
+            <Field label={t("sites:columns.location")}>
+              <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder={t("sites:placeholders.location")} />
             </Field>
-            <Field label="DESCRIÇÃO">
-              <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descrição opcional" />
+            <Field label={t("common:labels.description")}>
+              <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder={t("sites:placeholders.description")} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="LATITUDE">
-                <Input type="number" step="any" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} placeholder="-20.1234" className="font-mono" />
+              <Field label={t("sites:fields.latitude")}>
+                <Input type="number" step="any" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} placeholder={t("sites:placeholders.latitude")} className="font-mono" />
               </Field>
-              <Field label="LONGITUDE">
-                <Input type="number" step="any" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} placeholder="-40.1234" className="font-mono" />
+              <Field label={t("sites:fields.longitude")}>
+                <Input type="number" step="any" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} placeholder={t("sites:placeholders.longitude")} className="font-mono" />
               </Field>
             </div>
             <div className="overflow-hidden rounded-lg border border-border">
@@ -141,7 +143,7 @@ export function Sites() {
                 height={200}
                 onPick={(la, lo) => setForm((f) => ({ ...f, latitude: la.toFixed(6), longitude: lo.toFixed(6) }))}
               />
-              <p className="px-3 py-1.5 text-[11px] text-muted">Clique no mapa (ou arraste o pino) para definir a localização.</p>
+              <p className="px-3 py-1.5 text-[11px] text-muted">{t("sites:mapHint")}</p>
             </div>
           </div>
         </Modal>

@@ -1,0 +1,100 @@
+{
+  "errorTitle": "Erro",
+  "users": {
+    "title": "Usuários",
+    "subtitle": "Contas de acesso ao Aurora",
+    "add": "Adicionar usuário",
+    "empty": "Nenhum usuário",
+    "columns": {
+      "email": "E-mail",
+      "role": "Papel"
+    },
+    "you": "você",
+    "noEmail": "— sem e-mail —",
+    "delete": {
+      "title": "Excluir usuário",
+      "message": "Excluir {{who}}?\n\nEsta ação é permanente e não pode ser desfeita."
+    },
+    "deleteFailed": "Não foi possível excluir: {{error}}",
+    "editTitle": "Editar {{name}}",
+    "emailLabel": "E-mail (login)",
+    "emailPlaceholder": "voce@empresa.com",
+    "passwordLabel": "Senha",
+    "newPasswordLabel": "Nova senha (opcional)",
+    "passwordKeepPlaceholder": "deixe em branco para manter",
+    "roleLabel": "Papel",
+    "roleHelp": {
+      "operator": "usa o sistema.",
+      "admin": "gere a própria organização.",
+      "master": "superadmin do sistema."
+    }
+  },
+  "apikeys": {
+    "title": "Chaves de API",
+    "subtitle": "Tokens para acesso programático à API (header X-API-Key)",
+    "create": "Criar Chave",
+    "empty": {
+      "title": "Nenhuma chave",
+      "hint": "Crie uma chave para integrar automações."
+    },
+    "columns": {
+      "prefix": "Prefixo",
+      "created": "Criada",
+      "lastUsed": "Último uso"
+    },
+    "never": "nunca",
+    "revoke": "Revogar",
+    "revokeConfirm": {
+      "title": "Revogar chave",
+      "message": "Revogar a chave \"{{name}}\"? Integrações que a usam deixarão de funcionar."
+    },
+    "createTitle": "Criar Chave de API",
+    "creating": "Criando…",
+    "namePlaceholder": "e.g. automation, mcp, ci",
+    "createdTitle": "Chave criada",
+    "createdWarn": {
+      "before": "Copie a chave agora — ela ",
+      "strong": "não será exibida novamente",
+      "after": ". Guarde-a com segurança."
+    },
+    "useHeader": "Use no header:"
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "subtitle": "Notificações HTTP em eventos (ex.: dispositivo caiu / voltou)",
+    "add": "Adicionar Webhook",
+    "empty": {
+      "title": "Nenhum webhook",
+      "hint": "Crie um para receber notificações de eventos."
+    },
+    "columns": {
+      "url": "URL",
+      "events": "Eventos"
+    },
+    "signed": "assinado",
+    "allEvents": "todos",
+    "active": "ativo",
+    "inactive": "inativo",
+    "events": {
+      "online": "Dispositivo online",
+      "offline": "Dispositivo offline / não-acessível"
+    },
+    "test": {
+      "delivered": "entregue ({{status}})",
+      "response": "resposta {{status}}",
+      "error": "erro {{status}}",
+      "failed": "falhou"
+    },
+    "delete": {
+      "title": "Excluir webhook",
+      "message": "Excluir o webhook \"{{name}}\"?"
+    },
+    "editTitle": "Editar Webhook",
+    "urlLabel": "URL",
+    "urlPlaceholder": "https://exemplo.com/hook",
+    "eventsLabel": "Eventos (vazio = todos)",
+    "secretLabelEdit": "Segredo (opcional — em branco mantém)",
+    "secretLabelNew": "Segredo (opcional, HMAC-SHA256)",
+    "secretPlaceholder": "assina o corpo se preenchido"
+  }
+}

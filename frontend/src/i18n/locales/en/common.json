@@ -1,0 +1,86 @@
+{
+  "actions": {
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "confirmAction": "Confirm action",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "add": "Add",
+    "remove": "Remove",
+    "back": "Back",
+    "retry": "Try again",
+    "refresh": "Refresh",
+    "test": "Test",
+    "search": "Search",
+    "run": "Run",
+    "send": "Send",
+    "sending": "Sending…",
+    "copy": "Copy",
+    "copied": "Copied",
+    "download": "Download",
+    "apply": "Apply",
+    "clear": "Clear",
+    "new": "New",
+    "ok": "OK",
+    "warning": "Notice"
+  },
+  "state": {
+    "loading": "Loading…",
+    "empty": "Nothing here yet.",
+    "noResults": "No results.",
+    "error": "An error occurred.",
+    "unexpectedError": "An unexpected error occurred.",
+    "serverUnreachable": "Could not reach the server.",
+    "success": "Done."
+  },
+  "labels": {
+    "name": "Name",
+    "description": "Description",
+    "host": "Host",
+    "port": "Port",
+    "username": "Username",
+    "password": "Password",
+    "status": "Status",
+    "actions": "Actions",
+    "type": "Type",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "all": "All",
+    "none": "None",
+    "date": "Date",
+    "details": "Details",
+    "yes": "Yes",
+    "no": "No",
+    "noSite": "No site"
+  },
+  "validation": {
+    "required": "Required field.",
+    "invalid": "Invalid value."
+  },
+  "roles": {
+    "master": "Master",
+    "admin": "Administrator",
+    "operator": "Operator"
+  },
+  "deviceStatus": {
+    "online": "Online",
+    "not_accessible": "Unreachable",
+    "offline": "Offline",
+    "unknown": "Unknown",
+    "disabled": "Disabled"
+  },
+  "a11y": {
+    "close": "Close",
+    "loading": "loading",
+    "notifications": "Notifications",
+    "closeNotification": "Close notification",
+    "repeated": "repeated {{count}} times"
+  },
+  "comingSoon": { "badge": "Coming soon", "hint": "This screen is under construction." },
+  "graph": { "center": "Center / zoom 100%", "rearrange": "Rearrange (clears saved positions)" },
+  "chart": { "collecting": "Collecting samples…" }
+}

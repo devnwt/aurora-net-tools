@@ -1,0 +1,43 @@
+{
+  "title": "Configuración",
+  "subtitle": "Sistema, poller e integraciones",
+  "tabs": { "home": "Inicio", "ftp": "FTP", "preferences": "Preferencias" },
+  "preferences": {
+    "title": "Preferencias de la Interfaz",
+    "language": "Idioma",
+    "languageDesc": "Selecciona el idioma utilizado en la interfaz de Aurora Prisma NetTools.",
+    "languageLabel": "Idioma de la interfaz"
+  },
+  "system": {
+    "pollNow": "Sondear ahora",
+    "title": "Sistema y Poller",
+    "app": "Aplicación",
+    "poller": "Poller",
+    "enabled": "habilitado",
+    "disabled": "deshabilitado",
+    "interval": "Intervalo del poller",
+    "concurrency": "Concurrencia del poller",
+    "retention": "Retención de muestras",
+    "retentionValue": "{{days}} días",
+    "envNote": "Configurable mediante variables de entorno (POLL_INTERVAL_SECONDS, POLL_CONCURRENCY, SAMPLE_RETENTION_DAYS).",
+    "collected": "Datos recopilados",
+    "devices": "Dispositivos",
+    "statuses": "Estados",
+    "samples": "Muestras",
+    "pollTriggered": "Ciclo de sondeo disparado — los estados/métricas se actualizan en unos segundos."
+  },
+  "ftp": {
+    "title": "Servidor FTP",
+    "enabled": "Habilitado",
+    "desc": "Destino para el envío/almacenamiento de copias de seguridad y exportaciones.",
+    "directory": "Directorio",
+    "ftps": "FTPS (TLS explícito)",
+    "test": "Probar conexión",
+    "pwSet": "Ya definida — complétala para cambiarla.",
+    "pwPlaceholder": "•••••••• (definida)",
+    "hostPlaceholder": "ftp.dominio.com",
+    "dirPlaceholder": "/backups"
+  },
+  "saved": "Guardado y confirmado en el servidor a las {{time}}.",
+  "errPrefix": "Error {{status}}: {{message}}"
+}

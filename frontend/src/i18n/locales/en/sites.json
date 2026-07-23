@@ -1,0 +1,76 @@
+{
+  "title": "Sites",
+  "addSite": "Add Site",
+  "editSite": "Edit Site",
+  "empty": {
+    "title": "No sites",
+    "hint": "Create a site to group your devices."
+  },
+  "columns": {
+    "location": "Location",
+    "devices": "Devices"
+  },
+  "delete": {
+    "title": "Delete site",
+    "message": "Delete the site \"{{name}}\"?"
+  },
+  "fields": {
+    "latitude": "Latitude",
+    "longitude": "Longitude"
+  },
+  "placeholders": {
+    "location": "e.g. Vitória, Downtown POP",
+    "description": "Optional description",
+    "latitude": "-20.1234",
+    "longitude": "-40.1234"
+  },
+  "mapHint": "Click the map (or drag the pin) to set the location.",
+  "racks": {
+    "title": "Racks & Map",
+    "subtitle": "Site → Rack → Device and links between racks",
+    "legend": {
+      "site": "Site",
+      "rack": "Rack",
+      "device": "Device",
+      "group": "Group",
+      "user": "User"
+    },
+    "dragNodes": "drag the nodes",
+    "emptyGraph": {
+      "title": "No structure",
+      "hint": "Create a site, racks and assign devices to see the graph."
+    },
+    "racksHeading": "Racks",
+    "selectSite": "— site —",
+    "rackNamePlaceholder": "rack name",
+    "createSiteFirst": "Create a Site first (Sites menu).",
+    "deviceCount": "{{n}} devices",
+    "deleteRack": {
+      "title": "Delete rack",
+      "message": "Delete the rack \"{{name}}\"? Devices will be left without a rack."
+    },
+    "devicesToRack": "Devices → Rack",
+    "noDevices": "No devices.",
+    "noRackOption": "— no rack —",
+    "linksHeading": "Links between racks",
+    "rackAOption": "— rack A —",
+    "rackBOption": "— rack B —",
+    "ifaceAPlaceholder": "iface A (e.g. ether5)",
+    "ifaceBPlaceholder": "iface B (e.g. ether1)",
+    "link": "Link",
+    "noLinks": "No links.",
+    "errorTitle": "Error",
+    "userGroupsHeading": "User groups",
+    "groupNamePlaceholder": "group name",
+    "noParentOption": "— no parent —",
+    "noGroups": "No groups. Create nestable groups to organize users.",
+    "userCount": "{{n}} users",
+    "deleteGroup": {
+      "title": "Delete group",
+      "message": "Delete the group \"{{name}}\"? Users will be left without a group."
+    },
+    "usersToGroup": "Users → Group",
+    "noUsers": "No users.",
+    "noGroupOption": "— no group —"
+  }
+}

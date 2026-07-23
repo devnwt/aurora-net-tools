@@ -5,7 +5,8 @@ import type { OrgMeta, Plan } from "@/lib/types";
 import { Table, Td, Th } from "@/components/Table";
 import { Badge, Button, Card, EmptyState, Input, Modal, Select, Spinner } from "@/components/ui";
 import { useConfirm } from "@/lib/confirm";
-import { PASSWORD_HINT, passwordError } from "@/lib/password";
+import { PASSWORD_HINT_KEY, passwordError } from "@/lib/password";
+import i18n from "@/i18n";
 
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : String(e));
 
@@ -175,7 +176,7 @@ export function AdminOrgs() {
                 <Fld label="USUÁRIO DO ADMIN"><Input value={form.admin_username} onChange={(e) => setForm({ ...form, admin_username: e.target.value })} /></Fld>
                 <Fld label="SENHA DO ADMIN">
                   <Input type="password" value={form.admin_password} onChange={(e) => setForm({ ...form, admin_password: e.target.value })} />
-                  <p className={`mt-1 text-[11px] ${form.admin_password && passwordError(form.admin_password) ? "text-danger" : "text-muted"}`}>{PASSWORD_HINT}</p>
+                  <p className={`mt-1 text-[11px] ${form.admin_password && passwordError(form.admin_password) ? "text-danger" : "text-muted"}`}>{i18n.t(PASSWORD_HINT_KEY)}</p>
                 </Fld>
               </>
             )}

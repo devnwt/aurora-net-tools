@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -17,6 +18,7 @@ const COLOR: Record<string, string> = {
 };
 
 export function Racks() {
+  const { t } = useTranslation();
   const { confirm, alert } = useConfirm();
   const { user: me } = useAuth();
   const isAdmin = me?.role === "admin" || me?.role === "master";
@@ -98,7 +100,7 @@ export function Racks() {
     }
   }
   async function delRack(r: Rack) {
-    if (!(await confirm({ title: "Excluir rack", message: `Excluir o rack "${r.name}"? Os devices ficam sem rack.` }))) return;
+    if (!(await confirm({ title: t("sites:racks.deleteRack.title"), message: t("sites:racks.deleteRack.message", { name: r.name }) }))) return;
     await api.del(`/racks/${r.id}`);
     reload();
   }
@@ -119,7 +121,7 @@ export function Racks() {
       setLinkForm({ rack_a_id: "", iface_a: "", rack_b_id: "", iface_b: "" });
       reload();
     } catch (e) {
-      await alert({ title: "Erro", message: String(e), tone: "danger" });
+      await alert({ title: t("sites:racks.errorTitle"), message: String(e), tone: "danger" });
     } finally {
       setBusy(false);
     }
@@ -136,13 +138,13 @@ export function Racks() {
       setUgForm({ name: "", parent_id: "" });
       reload();
     } catch (e) {
-      await alert({ title: "Erro", message: String(e), tone: "danger" });
+      await alert({ title: t("sites:racks.errorTitle"), message: String(e), tone: "danger" });
     } finally {
       setBusy(false);
     }
   }
   async function delUgroup(g: UserGroup) {
-    if (!(await confirm({ title: "Excluir grupo", message: `Excluir o grupo "${g.name}"? Os usuários ficam sem grupo.` }))) return;
+    if (!(await confirm({ title: t("sites:racks.deleteGroup.title"), message: t("sites:racks.deleteGroup.message", { name: g.name }) }))) return;
     await api.del(`/user-groups/${g.id}`);
     reload();
   }
@@ -155,19 +157,19 @@ export function Racks() {
 
   return (
     <div>
-      <PageHeader title="Racks & Mapa" subtitle="Site → Rack → Device e ligações entre racks" />
+      <PageHeader title={t("sites:racks.title")} subtitle={t("sites:racks.subtitle")} />
 
       <Card className="mb-5">
         <div className="mb-2 flex items-center gap-4 text-xs text-muted">
-          <span className="inline-flex items-center gap-1.5"><Dot c={COLOR.site} /> Site</span>
-          <span className="inline-flex items-center gap-1.5"><Dot c={COLOR.rack} /> Rack</span>
-          <span className="inline-flex items-center gap-1.5"><Dot c={COLOR.device} /> Device</span>
-          {isAdmin && <span className="inline-flex items-center gap-1.5"><Dot c={COLOR.usergroup} /> Grupo</span>}
-          {isAdmin && <span className="inline-flex items-center gap-1.5"><Dot c={COLOR.user} /> Usuário</span>}
-          <span className="ml-auto">arraste os nós</span>
+          <span className="inline-flex items-center gap-1.5"><Dot c={COLOR.site} /> {t("sites:racks.legend.site")}</span>
+          <span className="inline-flex items-center gap-1.5"><Dot c={COLOR.rack} /> {t("sites:racks.legend.rack")}</span>
+          <span className="inline-flex items-center gap-1.5"><Dot c={COLOR.device} /> {t("sites:racks.legend.device")}</span>
+          {isAdmin && <span className="inline-flex items-center gap-1.5"><Dot c={COLOR.usergroup} /> {t("sites:racks.legend.group")}</span>}
+          {isAdmin && <span className="inline-flex items-center gap-1.5"><Dot c={COLOR.user} /> {t("sites:racks.legend.user")}</span>}
+          <span className="ml-auto">{t("sites:racks.dragNodes")}</span>
         </div>
         {nodes.length === 0 ? (
-          <EmptyState title="Sem estrutura" hint="Crie um site, racks e atribua devices para ver o grafo." />
+          <EmptyState title={t("sites:racks.emptyGraph.title")} hint={t("sites:racks.emptyGraph.hint")} />
         ) : (
           <ForceGraph nodes={nodes} edges={edges} color={(n) => COLOR[n.type] ?? "#94A3B8"} />
         )}
@@ -176,16 +178,16 @@ export function Racks() {
       <div className="grid gap-5 lg:grid-cols-2">
         {/* Racks por site */}
         <Card>
-          <h2 className="mb-3 text-sm font-semibold">Racks</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("sites:racks.racksHeading")}</h2>
           <div className="mb-3 flex flex-wrap gap-2">
             <Select value={rackForm.site_id} onChange={(e) => setRackForm({ ...rackForm, site_id: e.target.value })} className="w-40">
-              <option value="">— site —</option>
+              <option value="">{t("sites:racks.selectSite")}</option>
               {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </Select>
-            <Input value={rackForm.name} onChange={(e) => setRackForm({ ...rackForm, name: e.target.value })} placeholder="nome do rack" className="max-w-[160px]" />
-            <Button onClick={addRack} disabled={busy || !rackForm.site_id || !rackForm.name}><Plus className="h-4 w-4" /> Adicionar</Button>
+            <Input value={rackForm.name} onChange={(e) => setRackForm({ ...rackForm, name: e.target.value })} placeholder={t("sites:racks.rackNamePlaceholder")} className="max-w-[160px]" />
+            <Button onClick={addRack} disabled={busy || !rackForm.site_id || !rackForm.name}><Plus className="h-4 w-4" /> {t("common:actions.add")}</Button>
           </div>
-          {sites.length === 0 && <p className="text-xs text-muted">Crie um Site primeiro (menu Sites).</p>}
+          {sites.length === 0 && <p className="text-xs text-muted">{t("sites:racks.createSiteFirst")}</p>}
           {sites.map((s) => {
             const rs = racks.filter((r) => r.site_id === s.id);
             if (rs.length === 0) return null;
@@ -195,8 +197,8 @@ export function Racks() {
                 <div className="mt-1 space-y-1">
                   {rs.map((r) => (
                     <div key={r.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-1.5 text-sm">
-                      <span>{r.name} <span className="text-xs text-muted">({devices.filter((d) => d.rack_id === r.id).length} devices)</span></span>
-                      <Button variant="danger" onClick={() => delRack(r)}>Excluir</Button>
+                      <span>{r.name} <span className="text-xs text-muted">({t("sites:racks.deviceCount", { n: devices.filter((d) => d.rack_id === r.id).length })})</span></span>
+                      <Button variant="danger" onClick={() => delRack(r)}>{t("common:actions.delete")}</Button>
                     </div>
                   ))}
                 </div>
@@ -207,16 +209,16 @@ export function Racks() {
 
         {/* Atribuir devices a racks */}
         <Card>
-          <h2 className="mb-3 text-sm font-semibold">Devices → Rack</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("sites:racks.devicesToRack")}</h2>
           {devices.length === 0 ? (
-            <p className="text-xs text-muted">Nenhum device.</p>
+            <p className="text-xs text-muted">{t("sites:racks.noDevices")}</p>
           ) : (
             <div className="space-y-1">
               {devices.map((d) => (
                 <div key={d.id} className="flex items-center gap-2 text-sm">
                   <span className="min-w-0 flex-1 truncate">{d.name} <span className="font-mono text-xs text-muted">{d.ip}</span></span>
                   <Select value={d.rack_id ? String(d.rack_id) : ""} onChange={(e) => assign(d.id, e.target.value)} className="w-44">
-                    <option value="">— sem rack —</option>
+                    <option value="">{t("sites:racks.noRackOption")}</option>
                     {racks.map((r) => <option key={r.id} value={r.id}>{r.name} · {siteName(r.site_id)}</option>)}
                   </Select>
                 </div>
@@ -227,23 +229,23 @@ export function Racks() {
 
         {/* Ligações entre racks */}
         <Card className="lg:col-span-2">
-          <h2 className="mb-3 text-sm font-semibold">Ligações entre racks</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("sites:racks.linksHeading")}</h2>
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <Select value={linkForm.rack_a_id} onChange={(e) => setLinkForm({ ...linkForm, rack_a_id: e.target.value })} className="w-40">
-              <option value="">— rack A —</option>
+              <option value="">{t("sites:racks.rackAOption")}</option>
               {racks.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </Select>
-            <Input value={linkForm.iface_a} onChange={(e) => setLinkForm({ ...linkForm, iface_a: e.target.value })} placeholder="iface A (ex.: ether5)" className="max-w-[150px] font-mono" />
+            <Input value={linkForm.iface_a} onChange={(e) => setLinkForm({ ...linkForm, iface_a: e.target.value })} placeholder={t("sites:racks.ifaceAPlaceholder")} className="max-w-[150px] font-mono" />
             <span className="text-muted">↔</span>
             <Select value={linkForm.rack_b_id} onChange={(e) => setLinkForm({ ...linkForm, rack_b_id: e.target.value })} className="w-40">
-              <option value="">— rack B —</option>
+              <option value="">{t("sites:racks.rackBOption")}</option>
               {racks.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </Select>
-            <Input value={linkForm.iface_b} onChange={(e) => setLinkForm({ ...linkForm, iface_b: e.target.value })} placeholder="iface B (ex.: ether1)" className="max-w-[150px] font-mono" />
-            <Button onClick={addLink} disabled={busy || !linkForm.rack_a_id || !linkForm.rack_b_id}><Plus className="h-4 w-4" /> Ligar</Button>
+            <Input value={linkForm.iface_b} onChange={(e) => setLinkForm({ ...linkForm, iface_b: e.target.value })} placeholder={t("sites:racks.ifaceBPlaceholder")} className="max-w-[150px] font-mono" />
+            <Button onClick={addLink} disabled={busy || !linkForm.rack_a_id || !linkForm.rack_b_id}><Plus className="h-4 w-4" /> {t("sites:racks.link")}</Button>
           </div>
           {links.length === 0 ? (
-            <p className="text-xs text-muted">Sem ligações.</p>
+            <p className="text-xs text-muted">{t("sites:racks.noLinks")}</p>
           ) : (
             <div className="space-y-1">
               {links.map((l) => (
@@ -251,7 +253,7 @@ export function Racks() {
                   <span className="font-mono text-xs">
                     {rackName(l.rack_a_id)} <span className="text-accent">{l.iface_a || "?"}</span> ↔ <span className="text-accent">{l.iface_b || "?"}</span> {rackName(l.rack_b_id)}
                   </span>
-                  <Button variant="danger" onClick={() => delLink(l)}>Excluir</Button>
+                  <Button variant="danger" onClick={() => delLink(l)}>{t("common:actions.delete")}</Button>
                 </div>
               ))}
             </div>
@@ -261,17 +263,17 @@ export function Racks() {
         {/* Grupos de usuários (admin/master) */}
         {isAdmin && (
           <Card>
-            <h2 className="mb-3 text-sm font-semibold">Grupos de usuários</h2>
+            <h2 className="mb-3 text-sm font-semibold">{t("sites:racks.userGroupsHeading")}</h2>
             <div className="mb-3 flex flex-wrap gap-2">
-              <Input value={ugForm.name} onChange={(e) => setUgForm({ ...ugForm, name: e.target.value })} placeholder="nome do grupo" className="max-w-[160px]" />
+              <Input value={ugForm.name} onChange={(e) => setUgForm({ ...ugForm, name: e.target.value })} placeholder={t("sites:racks.groupNamePlaceholder")} className="max-w-[160px]" />
               <Select value={ugForm.parent_id} onChange={(e) => setUgForm({ ...ugForm, parent_id: e.target.value })} className="w-40">
-                <option value="">— sem pai —</option>
+                <option value="">{t("sites:racks.noParentOption")}</option>
                 {ugroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </Select>
-              <Button onClick={addUgroup} disabled={busy || !ugForm.name}><Plus className="h-4 w-4" /> Adicionar</Button>
+              <Button onClick={addUgroup} disabled={busy || !ugForm.name}><Plus className="h-4 w-4" /> {t("common:actions.add")}</Button>
             </div>
             {ugroups.length === 0 ? (
-              <p className="text-xs text-muted">Nenhum grupo. Crie grupos aninháveis para organizar usuários.</p>
+              <p className="text-xs text-muted">{t("sites:racks.noGroups")}</p>
             ) : (
               <div className="space-y-1">
                 {ugroups.map((g) => (
@@ -279,9 +281,9 @@ export function Racks() {
                     <span>
                       {g.name}
                       {g.parent_id && <span className="text-xs text-muted"> ⊂ {ugroups.find((p) => p.id === g.parent_id)?.name ?? g.parent_id}</span>}
-                      <span className="text-xs text-muted"> ({members.filter((u) => u.usergroup_id === g.id).length} usuários)</span>
+                      <span className="text-xs text-muted"> ({t("sites:racks.userCount", { n: members.filter((u) => u.usergroup_id === g.id).length })})</span>
                     </span>
-                    <Button variant="danger" onClick={() => delUgroup(g)}>Excluir</Button>
+                    <Button variant="danger" onClick={() => delUgroup(g)}>{t("common:actions.delete")}</Button>
                   </div>
                 ))}
               </div>
@@ -292,16 +294,16 @@ export function Racks() {
         {/* Atribuir usuários a grupos (admin/master) */}
         {isAdmin && (
           <Card>
-            <h2 className="mb-3 text-sm font-semibold">Usuários → Grupo</h2>
+            <h2 className="mb-3 text-sm font-semibold">{t("sites:racks.usersToGroup")}</h2>
             {members.length === 0 ? (
-              <p className="text-xs text-muted">Nenhum usuário.</p>
+              <p className="text-xs text-muted">{t("sites:racks.noUsers")}</p>
             ) : (
               <div className="space-y-1">
                 {members.map((u) => (
                   <div key={u.id} className="flex items-center gap-2 text-sm">
                     <span className="min-w-0 flex-1 truncate">{u.username} <span className="text-xs text-muted">{u.role}</span></span>
                     <Select value={u.usergroup_id ? String(u.usergroup_id) : ""} onChange={(e) => assignUser(u.id, e.target.value)} className="w-44">
-                      <option value="">— sem grupo —</option>
+                      <option value="">{t("sites:racks.noGroupOption")}</option>
                       {ugroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </Select>
                   </div>

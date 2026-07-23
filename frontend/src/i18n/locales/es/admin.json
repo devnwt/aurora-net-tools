@@ -1,0 +1,59 @@
+{
+  "title": "Super Admin",
+  "subtitle": "Administración multi-tenant del sistema",
+  "restricted": "Área restringida al Master del sistema.",
+  "tabs": {
+    "orgs": "Organizaciones",
+    "plans": "Planes",
+    "smtp": "SMTP Global",
+    "llm": "LLM Global",
+    "s3": "MinIO / S3",
+    "copilot": "Herramientas del Copilot"
+  },
+  "copilot": {
+    "title": "Herramientas del Copilot (globales)"
+  },
+  "secretSet": "Ya definida — complete para cambiar.",
+  "secretPlaceholder": "•••••••• (definida)",
+  "saved": "Guardado y confirmado a las {{time}}.",
+  "errPrefix": "Error {{status}}: {{message}}",
+  "s3": {
+    "title": "MinIO / S3 Global",
+    "descPre": "Almacenamiento compatible con S3 (MinIO, AWS S3, Ceph…) — ",
+    "descBold": "destino de copias de seguridad de todas las ORGs",
+    "descPost": ".",
+    "endpoint": "Endpoint",
+    "endpointHint": "host:puerto o URL",
+    "bucket": "Bucket",
+    "accessKey": "Access Key",
+    "secretKey": "Secret Key",
+    "region": "Region",
+    "prefix": "Prefijo (carpeta)",
+    "prefixHint": "opcional",
+    "https": "HTTPS (TLS)",
+    "testBucket": "Probar bucket"
+  },
+  "llm": {
+    "title": "LLM Global (compatible con OpenAI)",
+    "descPre": "Proveedor de LLM del sistema — usado por el ",
+    "descBold": "Copilot de todas las organizaciones",
+    "descPost": ". Cualquier endpoint compatible con la API de OpenAI (OpenAI, Groq, Ollama, vLLM, LM Studio…).",
+    "baseUrl": "Base URL",
+    "baseUrlHint": "incluya /v1 cuando corresponda",
+    "model": "Modelo",
+    "apiKey": "API Key",
+    "testConnection": "Probar conexión"
+  },
+  "smtp": {
+    "title": "SMTP Global",
+    "descPre": "Servidor de correo del sistema — usado para ",
+    "descBold1": "bienvenidas de nuevos registros",
+    "descMid": " y ",
+    "descBold2": "reenvío de acceso",
+    "descPost": ".",
+    "from": "Remitente (From)",
+    "starttls": "STARTTLS",
+    "testToPlaceholder": "destino de la prueba",
+    "sendTest": "Enviar prueba"
+  }
+}

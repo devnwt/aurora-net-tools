@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Play } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import type { AuditEntry, Device, Group } from "@/lib/types";
@@ -15,6 +16,7 @@ interface RunResult {
 }
 
 export function Commands() {
+  const { t } = useTranslation();
   const [devices, setDevices] = useState<Device[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [command, setCommand] = useState("/system/resource/print");
@@ -34,7 +36,7 @@ export function Commands() {
     loadHistory();
   }, []);
 
-  const sites = useMemo(() => groupBySite(devices, groups), [devices, groups]);
+  const sites = useMemo(() => groupBySite(devices, groups, t("common:labels.noSite")), [devices, groups, t]);
 
   function toggle(id: number) {
     setSelected((s) => {
@@ -55,9 +57,9 @@ export function Commands() {
       targets.map(async (device): Promise<RunResult> => {
         try {
           const r = await api.post<{ output: string }>(`/devices/${device.id}/exec`, { command, protocol: "ssh" });
-          return { device, ok: true, text: r.output || "(sem saída)" };
+          return { device, ok: true, text: r.output || t("ops:commands.noOutput") };
         } catch (e) {
-          return { device, ok: false, text: e instanceof ApiError ? `Erro ${e.status}: ${e.message}` : String(e) };
+          return { device, ok: false, text: e instanceof ApiError ? t("ops:shared.errorWithStatus", { status: e.status, message: e.message }) : String(e) };
         }
       }),
     );
@@ -68,23 +70,23 @@ export function Commands() {
 
   return (
     <div>
-      <PageHeader title="Comandos em Massa" />
+      <PageHeader title={t("ops:commands.title")} />
 
       <Card className="mb-5">
-        <h2 className="mb-3 text-sm font-semibold">Executar Comando</h2>
-        <label className="text-[11px] uppercase tracking-wide text-muted">Comando</label>
+        <h2 className="mb-3 text-sm font-semibold">{t("ops:commands.runTitle")}</h2>
+        <label className="text-[11px] uppercase tracking-wide text-muted">{t("ops:commands.commandLabel")}</label>
         <Input
           value={command}
           onChange={(e) => setCommand(e.target.value)}
           className="mt-1 font-mono"
           placeholder="/system/resource/print"
         />
-        <p className="mt-1 text-xs text-muted">Somente leitura — comandos de escrita são recusados pela allowlist.</p>
+        <p className="mt-1 text-xs text-muted">{t("ops:commands.readOnlyNote")}</p>
 
         <div className="mt-4 mb-2 flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wide text-muted">Selecionar Dispositivos</span>
-          <Button variant="ghost" onClick={selectAll}>Selecionar Todos</Button>
-          <Button variant="ghost" onClick={deselectAll}>Desmarcar Todos</Button>
+          <span className="text-[11px] uppercase tracking-wide text-muted">{t("ops:commands.selectDevices")}</span>
+          <Button variant="ghost" onClick={selectAll}>{t("ops:commands.selectAll")}</Button>
+          <Button variant="ghost" onClick={deselectAll}>{t("ops:commands.deselectAll")}</Button>
         </div>
         <div className="rounded-lg border border-border p-3">
           {sites.map((site) => (
@@ -104,20 +106,20 @@ export function Commands() {
         </div>
 
         <Button className="mt-4" onClick={execute} disabled={running || selected.size === 0 || !command}>
-          {running ? <Spinner /> : <Play className="h-4 w-4" />} Executar ({selected.size})
+          {running ? <Spinner /> : <Play className="h-4 w-4" />} {t("common:actions.run")} ({selected.size})
         </Button>
       </Card>
 
       {results.length > 0 && (
         <Card className="mb-5">
-          <h2 className="mb-3 text-sm font-semibold">Resultados</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("ops:commands.results")}</h2>
           <div className="space-y-3">
             {results.map((r) => (
               <div key={r.device.id}>
                 <div className="mb-1 flex items-center gap-2">
                   <span className="font-medium">{r.device.name}</span>
                   <span className="font-mono text-xs text-muted">{r.device.ip}</span>
-                  <Badge tone={r.ok ? "ok" : "danger"}>{r.ok ? "ok" : "falha"}</Badge>
+                  <Badge tone={r.ok ? "ok" : "danger"}>{r.ok ? t("ops:commands.ok") : t("ops:commands.fail")}</Badge>
                 </div>
                 <pre className={cn("max-h-64 overflow-auto rounded-lg border border-border bg-bg p-3 font-mono text-xs whitespace-pre-wrap", !r.ok && "text-danger")}>
                   {r.text}
@@ -129,16 +131,16 @@ export function Commands() {
       )}
 
       <Card>
-        <h2 className="mb-3 text-sm font-semibold">Histórico de Comandos</h2>
+        <h2 className="mb-3 text-sm font-semibold">{t("ops:commands.history")}</h2>
         {history.length === 0 ? (
-          <p className="text-xs text-muted">Nenhum comando ainda</p>
+          <p className="text-xs text-muted">{t("ops:commands.historyEmpty")}</p>
         ) : (
-          <Table head={<><Th>Comando</Th><Th>Proto</Th><Th>Resultado</Th><Th>ms</Th><Th>Data</Th></>}>
+          <Table head={<><Th>{t("ops:commands.col.command")}</Th><Th>{t("ops:commands.col.proto")}</Th><Th>{t("ops:commands.col.result")}</Th><Th>ms</Th><Th>{t("common:labels.date")}</Th></>}>
             {history.map((a) => (
               <tr key={a.id} className="hover:bg-surface-2 transition-colors duration-200">
                 <Td className="max-w-md truncate font-mono text-xs" title={a.command}>{a.command}</Td>
                 <Td><Badge>{a.protocol}</Badge></Td>
-                <Td>{a.ok ? <Badge tone="ok">ok</Badge> : <Badge tone="danger" title={a.error ?? ""}>falha</Badge>}</Td>
+                <Td>{a.ok ? <Badge tone="ok">{t("ops:commands.ok")}</Badge> : <Badge tone="danger" title={a.error ?? ""}>{t("ops:commands.fail")}</Badge>}</Td>
                 <Td className="font-mono text-xs text-muted">{a.duration_ms}</Td>
                 <Td className="whitespace-nowrap text-xs text-muted">{new Date(a.ts).toLocaleString("pt-BR")}</Td>
               </tr>

@@ -1,0 +1,226 @@
+{
+  "errPrefix": "Error {{status}}: {{message}}",
+  "list": {
+    "title": "Devices",
+    "subtitle": "{{count}} device(s)",
+    "add": "Add Device",
+    "searchPlaceholder": "Search by name or host…",
+    "emptyTitle": "No device",
+    "emptyHint": "Register a device or adjust the filters."
+  },
+  "labels": {
+    "method": "Method",
+    "routeros": "RouterOS",
+    "board": "Board",
+    "uptime": "Uptime",
+    "cpu": "CPU",
+    "architecture": "Architecture",
+    "lastCheck": "Last check",
+    "interface": "Interface",
+    "comment": "Comment",
+    "optional": "optional",
+    "any": "any",
+    "dynamic": "dynamic",
+    "address": "Address",
+    "network": "Network"
+  },
+  "actions": {
+    "enable": "Enable",
+    "disable": "Disable",
+    "makeStatic": "Make static",
+    "any": "— any —"
+  },
+  "form": {
+    "inventory": "Inventory",
+    "editTitle": "Edit equipment",
+    "newTitle": "New equipment",
+    "ipHost": "IP / host",
+    "group": "Group",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "noGroup": "— no group —",
+    "apiNote": "(stored; no execution in the MVP)",
+    "baseUrl": "Base URL",
+    "credential": "Credential",
+    "inheritFromGroup": "— inherit from group —",
+    "submitCreate": "Register"
+  },
+  "detail": {
+    "checking": "Checking…",
+    "deleteTitle": "Delete device",
+    "deleteMsg": "Delete the device \"{{name}}\"?",
+    "neighbors": "Neighbors",
+    "testConnection": "Test connection",
+    "nonRosPrefix": "This device is",
+    "nonRosText": "Live screens are RouterOS-specific — use the Command tab below.",
+    "cpuLoad": "CPU load",
+    "ramUsed": "RAM used",
+    "temperature": "Temperature",
+    "services": "Services",
+    "interfaces": "Interfaces"
+  },
+  "ping": {
+    "testNow": "Test now",
+    "loss": "loss",
+    "measuring": "measuring…"
+  },
+  "map": {
+    "hint": "Click on the map to set the location",
+    "fromSite": "(from site)"
+  },
+  "protocols": {
+    "title": "Protocols — OSPF · MPLS · VPLS",
+    "instances": "Instances",
+    "adjacencies": "Adjacencies",
+    "interfaces": "Interfaces",
+    "tunnels": "Tunnels",
+    "active": "active",
+    "inactive": "inactive"
+  },
+  "health": {
+    "title": "Health",
+    "metrics": {
+      "temperature": "CPU temperature",
+      "cpuLoad": "CPU load",
+      "ramUsed": "RAM used"
+    },
+    "current": "Current",
+    "min": "min",
+    "max": "max",
+    "avg": "avg"
+  },
+  "traffic": {
+    "title": "Live traffic",
+    "optical": "optical",
+    "clickHint": "click an interface above or:",
+    "live": "● Live",
+    "paused": "Paused",
+    "measuring": "Measuring live traffic…",
+    "pausedShort": "Paused.",
+    "peak": "Peak",
+    "noSfp": "No SFP module present on this port.",
+    "txPower": "TX Power",
+    "rxPower": "RX Power",
+    "temp": "Temp",
+    "voltage": "Voltage",
+    "vendor": "Vendor",
+    "model": "Model",
+    "wavelength": "Wavelength",
+    "poeStatus": "PoE Status",
+    "current": "Current",
+    "power": "Power"
+  },
+  "ports": {
+    "sfpTip": "SFP / optical — click to see TX/RX power",
+    "tip": "click to see the traffic",
+    "disabled": "disabled",
+    "inactive": "inactive",
+    "optical": "(optical)"
+  },
+  "ifaces": {
+    "physical": "Ethernet / Physical",
+    "inactive": "Inactive",
+    "active": "Active",
+    "sfp": "SFP / optical",
+    "wifi": "CAPSMAN / WiFi",
+    "empty": "No interfaces.",
+    "cat": {
+      "vlan": "VLAN",
+      "pppoe": "PPPoE",
+      "bridge": "Bridge",
+      "bond": "Bond",
+      "other": "Other (tunnels/virtual)"
+    }
+  },
+  "neighbors": {
+    "title": "Neighbors — {{name}}",
+    "empty": "No neighbor advertised (MNDP/CDP/LLDP).",
+    "thisDevice": "this device",
+    "neighbor": "neighbor",
+    "legend": "{{count}} neighbor(s) · edge = local port · scroll: zoom · drag nodes/background · position is saved"
+  },
+  "tabs": {
+    "ip_addr": "IP · Addresses",
+    "services": "Services",
+    "fw_filter": "Firewall · Filter",
+    "fw_nat": "Firewall · NAT",
+    "dhcp_servers": "DHCP · Servers",
+    "dhcp_leases": "DHCP · Leases",
+    "routes": "Routes"
+  },
+  "ip": {
+    "add": "Add address",
+    "empty": "No IP addresses.",
+    "modalTitle": "Add IP address",
+    "removeMsg": "Remove {{address}} from {{interface}}?",
+    "fieldAddress": "Address (CIDR)"
+  },
+  "services": {
+    "empty": "No services.",
+    "insecure": "insecure",
+    "infoPrefix": "Router access services (",
+    "infoMid": "). Disable the insecure ones (",
+    "infoSuffix": ") and restrict access by network in",
+    "availableFrom": "Available from",
+    "colService": "Service",
+    "colCertificate": "Certificate",
+    "editTitle": "Edit service \"{{name}}\"",
+    "fieldPort": "Port",
+    "fieldAvailable": "Available from (allowed networks)",
+    "portPlaceholder": "e.g. 22",
+    "availablePlaceholder": "e.g. 10.0.0.0/8,192.168.0.0/16 (empty = any)"
+  },
+  "dhcpServers": {
+    "add": "Add server",
+    "empty": "No DHCP servers.",
+    "modalTitle": "Add DHCP server",
+    "removeMsg": "Remove the DHCP server \"{{name}}\"?",
+    "colPool": "Pool",
+    "colLease": "Lease",
+    "poolPlaceholder": "optional (e.g. dhcp_pool0)",
+    "leasePlaceholder": "optional (e.g. 30m, 1d)"
+  },
+  "dhcpLeases": {
+    "add": "Add static lease",
+    "empty": "No leases.",
+    "modalTitle": "Add static lease",
+    "removeMsg": "Remove the lease {{address}}?",
+    "colServer": "Server",
+    "fieldAddressIp": "Address (IP)",
+    "fieldMac": "MAC address",
+    "fieldServer": "Server",
+    "serverPlaceholder": "optional (e.g. defconf)"
+  },
+  "firewall": {
+    "add": "Add rule",
+    "empty": "No static rules.",
+    "removeMsg": "Remove rule #{{number}} ({{chain}}/{{action}})?",
+    "addRule": "Add rule",
+    "colAction": "Action",
+    "colExtra": "Extra",
+    "fieldAction": "Action",
+    "fieldProtocol": "Protocol",
+    "fieldSrc": "Source address",
+    "fieldDst": "Destination address",
+    "fieldDstPort": "Destination port",
+    "fieldToAddresses": "Destination addresses (NAT)",
+    "fieldToPorts": "Destination ports (NAT)",
+    "fieldInIface": "Input interface",
+    "fieldOutIface": "Output interface"
+  },
+  "routes": {
+    "add": "Add route",
+    "empty": "No routes.",
+    "modalTitle": "Add static route",
+    "removeMsg": "Remove the route {{dst}} via {{gateway}}?",
+    "fieldDistance": "Distance",
+    "gatewayPlaceholder": "192.168.88.1 or ether1",
+    "distancePlaceholder": "optional (e.g. 1)",
+    "commentPlaceholder": "optional"
+  },
+  "command": {
+    "title": "Command (read-only)",
+    "noOutput": "(no output)",
+    "note": "Write commands are rejected by the allowlist."
+  }
+}

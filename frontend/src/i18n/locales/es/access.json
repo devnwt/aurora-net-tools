@@ -1,0 +1,100 @@
+{
+  "errorTitle": "Error",
+  "users": {
+    "title": "Usuarios",
+    "subtitle": "Cuentas de acceso a Aurora",
+    "add": "Añadir usuario",
+    "empty": "Ningún usuario",
+    "columns": {
+      "email": "Correo",
+      "role": "Rol"
+    },
+    "you": "tú",
+    "noEmail": "— sin correo —",
+    "delete": {
+      "title": "Eliminar usuario",
+      "message": "¿Eliminar {{who}}?\n\nEsta acción es permanente y no se puede deshacer."
+    },
+    "deleteFailed": "No se pudo eliminar: {{error}}",
+    "editTitle": "Editar {{name}}",
+    "emailLabel": "Correo (inicio de sesión)",
+    "emailPlaceholder": "tu@empresa.com",
+    "passwordLabel": "Contraseña",
+    "newPasswordLabel": "Nueva contraseña (opcional)",
+    "passwordKeepPlaceholder": "deja en blanco para mantener",
+    "roleLabel": "Rol",
+    "roleHelp": {
+      "operator": "usa el sistema.",
+      "admin": "gestiona su propia organización.",
+      "master": "superadmin del sistema."
+    }
+  },
+  "apikeys": {
+    "title": "Claves de API",
+    "subtitle": "Tokens para acceso programático a la API (cabecera X-API-Key)",
+    "create": "Crear clave",
+    "empty": {
+      "title": "Ninguna clave",
+      "hint": "Crea una clave para integrar automatizaciones."
+    },
+    "columns": {
+      "prefix": "Prefijo",
+      "created": "Creada",
+      "lastUsed": "Último uso"
+    },
+    "never": "nunca",
+    "revoke": "Revocar",
+    "revokeConfirm": {
+      "title": "Revocar clave",
+      "message": "¿Revocar la clave \"{{name}}\"? Las integraciones que la usan dejarán de funcionar."
+    },
+    "createTitle": "Crear clave de API",
+    "creating": "Creando…",
+    "namePlaceholder": "ej.: automation, mcp, ci",
+    "createdTitle": "Clave creada",
+    "createdWarn": {
+      "before": "Copia la clave ahora — ",
+      "strong": "no se mostrará de nuevo",
+      "after": ". Guárdala de forma segura."
+    },
+    "useHeader": "Usa en la cabecera:"
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "subtitle": "Notificaciones HTTP en eventos (ej.: dispositivo caído / recuperado)",
+    "add": "Añadir Webhook",
+    "empty": {
+      "title": "Ningún webhook",
+      "hint": "Crea uno para recibir notificaciones de eventos."
+    },
+    "columns": {
+      "url": "URL",
+      "events": "Eventos"
+    },
+    "signed": "firmado",
+    "allEvents": "todos",
+    "active": "activo",
+    "inactive": "inactivo",
+    "events": {
+      "online": "Dispositivo en línea",
+      "offline": "Dispositivo fuera de línea / inaccesible"
+    },
+    "test": {
+      "delivered": "entregado ({{status}})",
+      "response": "respuesta {{status}}",
+      "error": "error {{status}}",
+      "failed": "falló"
+    },
+    "delete": {
+      "title": "Eliminar webhook",
+      "message": "¿Eliminar el webhook \"{{name}}\"?"
+    },
+    "editTitle": "Editar Webhook",
+    "urlLabel": "URL",
+    "urlPlaceholder": "https://ejemplo.com/hook",
+    "eventsLabel": "Eventos (vacío = todos)",
+    "secretLabelEdit": "Secreto (opcional — en blanco lo mantiene)",
+    "secretLabelNew": "Secreto (opcional, HMAC-SHA256)",
+    "secretPlaceholder": "firma el cuerpo si se completa"
+  }
+}

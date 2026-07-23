@@ -1,5 +1,6 @@
 // Gráfico de linha leve em SVG (sem dependências). Aceita 1+ séries {points,color}
 // e desenha área + linha com rótulos de eixo. Responsivo (viewBox + width 100%).
+import i18n from "@/i18n";
 
 export interface Point {
   t: number; // epoch ms
@@ -27,7 +28,7 @@ export function LineChart({
   unit = "",
   format,
   id = "lc",
-  empty = "Coletando amostras…",
+  empty = i18n.t("common:chart.collecting"),
 }: {
   series: Series[];
   unit?: string;

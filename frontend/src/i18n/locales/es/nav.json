@@ -1,0 +1,34 @@
+{
+  "brand": { "tagline": "Gestión de NOC" },
+  "groups": {
+    "overview": "VISIÓN GENERAL",
+    "actions": "ACCIONES",
+    "fiberhome": "FIBERHOME",
+    "admin": "ADMIN",
+    "system": "SISTEMA"
+  },
+  "items": {
+    "dashboard": "Panel",
+    "devices": "Dispositivos",
+    "sites": "Sitios",
+    "racks": "Racks y Mapa",
+    "copilot": "Copilot",
+    "commands": "Comandos",
+    "templates": "Plantillas",
+    "upgrades": "Actualizaciones",
+    "scan": "Escanear Red",
+    "topology": "Topología",
+    "backups": "Copias de seguridad",
+    "logs": "Registros",
+    "security": "Seguridad",
+    "controllers": "Controladoras",
+    "admin": "Super Admin",
+    "activity": "Actividad",
+    "credentials": "Credenciales",
+    "users": "Usuarios",
+    "apikeys": "Claves de API",
+    "webhooks": "Webhooks",
+    "settings": "Configuración"
+  },
+  "logout": "Salir"
+}

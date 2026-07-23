@@ -1,0 +1,34 @@
+{
+  "brand": { "tagline": "NOC management" },
+  "groups": {
+    "overview": "OVERVIEW",
+    "actions": "ACTIONS",
+    "fiberhome": "FIBERHOME",
+    "admin": "ADMIN",
+    "system": "SYSTEM"
+  },
+  "items": {
+    "dashboard": "Dashboard",
+    "devices": "Devices",
+    "sites": "Sites",
+    "racks": "Racks & Map",
+    "copilot": "Copilot",
+    "commands": "Commands",
+    "templates": "Templates",
+    "upgrades": "Upgrades",
+    "scan": "Scan Network",
+    "topology": "Topology",
+    "backups": "Backups",
+    "logs": "Logs",
+    "security": "Security",
+    "controllers": "Controllers",
+    "admin": "Super Admin",
+    "activity": "Activity",
+    "credentials": "Credentials",
+    "users": "Users",
+    "apikeys": "API Keys",
+    "webhooks": "Webhooks",
+    "settings": "Settings"
+  },
+  "logout": "Log out"
+}

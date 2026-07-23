@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import type { Credential } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
@@ -9,6 +10,7 @@ import { useConfirm } from "@/lib/confirm";
 const BLANK = { name: "", kind: "ssh", username: "", secret: "" };
 
 export function Credentials() {
+  const { t } = useTranslation();
   const { confirm } = useConfirm();
   const [items, setItems] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +51,7 @@ export function Credentials() {
   }
 
   async function remove(id: number) {
-    if (!(await confirm({ title: "Excluir credencial", message: "Excluir esta credencial?" }))) return;
+    if (!(await confirm({ title: t("credentials:delete.title"), message: t("credentials:delete.message") }))) return;
     await api.del(`/credentials/${id}`);
     if (editingId === id) reset();
     load();
@@ -57,15 +59,15 @@ export function Credentials() {
 
   return (
     <div>
-      <PageHeader title="Credenciais" subtitle="Perfis reutilizáveis (segredos cifrados)" />
+      <PageHeader title={t("credentials:title")} subtitle={t("credentials:subtitle")} />
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         <div>
           {loading ? (
             <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>
           ) : items.length === 0 ? (
-            <EmptyState title="Nenhuma credencial" hint="Crie um perfil ao lado." />
+            <EmptyState title={t("credentials:empty.title")} hint={t("credentials:empty.hint")} />
           ) : (
-            <Table head={<><Th>Nome</Th><Th>Tipo</Th><Th>Usuário</Th><Th>Segredo</Th><Th /></>}>
+            <Table head={<><Th>{t("common:labels.name")}</Th><Th>{t("common:labels.type")}</Th><Th>{t("common:labels.username")}</Th><Th>{t("credentials:columns.secret")}</Th><Th /></>}>
               {items.map((c) => (
                 <tr key={c.id} className="hover:bg-surface-2 transition-colors duration-200">
                   <Td className="font-medium">{c.name}</Td>
@@ -74,8 +76,8 @@ export function Credentials() {
                   <Td className="font-mono text-muted">{c.secret}</Td>
                   <Td className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" onClick={() => startEdit(c)}>Editar</Button>
-                      <Button variant="danger" onClick={() => remove(c.id)}>Excluir</Button>
+                      <Button variant="ghost" onClick={() => startEdit(c)}>{t("common:actions.edit")}</Button>
+                      <Button variant="danger" onClick={() => remove(c.id)}>{t("common:actions.delete")}</Button>
                     </div>
                   </Td>
                 </tr>
@@ -84,14 +86,14 @@ export function Credentials() {
           )}
         </div>
         <Card>
-          <h2 className="mb-3 text-sm font-semibold">{editingId ? "Editar perfil" : "Novo perfil"}</h2>
+          <h2 className="mb-3 text-sm font-semibold">{editingId ? t("credentials:form.editTitle") : t("credentials:form.newTitle")}</h2>
           <form onSubmit={submit} className="space-y-3">
             <div className="space-y-1">
-              <label htmlFor="cn" className="text-xs text-muted">Nome</label>
+              <label htmlFor="cn" className="text-xs text-muted">{t("common:labels.name")}</label>
               <Input id="cn" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
             <div className="space-y-1">
-              <label htmlFor="ck" className="text-xs text-muted">Tipo</label>
+              <label htmlFor="ck" className="text-xs text-muted">{t("common:labels.type")}</label>
               <Select id="ck" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })} disabled={editingId !== null}>
                 <option value="ssh">SSH</option>
                 <option value="telnet">Telnet</option>
@@ -99,21 +101,21 @@ export function Credentials() {
                 <option value="api">API</option>
                 <option value="tl1">TL1</option>
               </Select>
-              {editingId && <p className="text-xs text-muted">O tipo não pode ser alterado.</p>}
+              {editingId && <p className="text-xs text-muted">{t("credentials:form.typeLocked")}</p>}
             </div>
             <div className="space-y-1">
-              <label htmlFor="cu" className="text-xs text-muted">Usuário (vazio p/ SNMP v2c)</label>
+              <label htmlFor="cu" className="text-xs text-muted">{t("credentials:form.usernameLabel")}</label>
               <Input id="cu" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
             </div>
             <div className="space-y-1">
               <label htmlFor="cs" className="text-xs text-muted">
-                Segredo / community {editingId && <span className="text-muted">(deixe vazio p/ manter)</span>}
+                {t("credentials:form.secretLabel")} {editingId && <span className="text-muted">{t("credentials:form.keepSecret")}</span>}
               </label>
               <Input id="cs" type="password" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
             </div>
             <div className="flex gap-2">
-              <Button type="submit" className="flex-1" disabled={saving}>{saving ? "Salvando…" : editingId ? "Salvar" : "Criar"}</Button>
-              {editingId && <Button type="button" variant="ghost" onClick={reset}>Cancelar</Button>}
+              <Button type="submit" className="flex-1" disabled={saving}>{saving ? t("common:actions.saving") : editingId ? t("common:actions.save") : t("common:actions.create")}</Button>
+              {editingId && <Button type="button" variant="ghost" onClick={reset}>{t("common:actions.cancel")}</Button>}
             </div>
           </form>
         </Card>

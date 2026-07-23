@@ -1,0 +1,27 @@
+{
+  "title": "Panel",
+  "refreshAll": "Actualizar Todo",
+  "loadFailTitle": "Error al cargar el panel",
+  "stats": {
+    "total": "Total de Dispositivos",
+    "online": "En línea",
+    "not_accessible": "Inaccesible",
+    "offline": "Fuera de línea",
+    "unknown": "Desconocido",
+    "sites": "Sitios"
+  },
+  "bySite": "Dispositivos por Sitio",
+  "order": { "az": "A-Z", "count": "Por cantidad" },
+  "columns": {
+    "device": "Dispositivo",
+    "host": "Host",
+    "status": "Estado",
+    "method": "Método",
+    "routeros": "RouterOS",
+    "board": "Board",
+    "cpu": "CPU",
+    "ram": "RAM",
+    "temp": "Temp",
+    "uptime": "Uptime"
+  }
+}

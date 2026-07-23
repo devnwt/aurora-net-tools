@@ -1,0 +1,19 @@
+{
+  "title": "Activity",
+  "subtitle": "Audit of every execution against the network",
+  "empty": {
+    "title": "No activity",
+    "hint": "Executions appear here."
+  },
+  "columns": {
+    "when": "When",
+    "actor": "Actor",
+    "protocol": "Proto",
+    "command": "Command",
+    "ms": "ms"
+  },
+  "result": {
+    "ok": "ok",
+    "fail": "fail"
+  }
+}

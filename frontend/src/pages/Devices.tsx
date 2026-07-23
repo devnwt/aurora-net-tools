@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Device, DeviceStatusInfo, Group } from "@/lib/types";
@@ -17,6 +18,7 @@ export function Devices() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<DeviceStatus | null>(null);
+  const { t } = useTranslation();
 
   function load() {
     setLoading(true);
@@ -52,18 +54,18 @@ export function Devices() {
     );
   }, [devices, statuses, search, active]);
 
-  const sites = useMemo(() => groupBySite(filtered, groups), [filtered, groups]);
+  const sites = useMemo(() => groupBySite(filtered, groups, t("common:labels.noSite")), [filtered, groups, t]);
 
   return (
     <div>
       <PageHeader
-        title="Dispositivos"
-        subtitle={`${devices.length} dispositivo(s)`}
-        actions={<Link to="/devices/new"><Button><Plus className="h-4 w-4" /> Adicionar Dispositivo</Button></Link>}
+        title={t("devices:list.title")}
+        subtitle={t("devices:list.subtitle", { count: devices.length })}
+        actions={<Link to="/devices/new"><Button><Plus className="h-4 w-4" /> {t("devices:list.add")}</Button></Link>}
       />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome ou host…" className="max-w-sm" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("devices:list.searchPlaceholder")} className="max-w-sm" />
         {FILTERS.map((f) => {
           const meta = STATUS_META[f];
           const on = active === f;
@@ -77,7 +79,7 @@ export function Devices() {
               )}
             >
               <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
-              {meta.label}
+              {t(`common:deviceStatus.${f}`)}
               {counts[f] ? <span className="text-muted">({counts[f]})</span> : null}
             </button>
           );
@@ -87,7 +89,7 @@ export function Devices() {
       {loading ? (
         <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>
       ) : filtered.length === 0 ? (
-        <EmptyState title="Nenhum device" hint="Cadastre um device ou ajuste os filtros." />
+        <EmptyState title={t("devices:list.emptyTitle")} hint={t("devices:list.emptyHint")} />
       ) : (
         <div className="space-y-6">
           {sites.map((site) => (
@@ -105,15 +107,17 @@ export function Devices() {
 }
 
 function DeviceCard({ device, status }: { device: Device; status?: DeviceStatusInfo }) {
-  const meta = STATUS_META[(status?.status as DeviceStatus) ?? "unknown"];
+  const { t } = useTranslation();
+  const deviceStatus = (status?.status as DeviceStatus) ?? "unknown";
+  const meta = STATUS_META[deviceStatus];
   const v = (x: string | number | null | undefined) => (x == null || x === "" ? "—" : String(x));
   const rows: [string, string][] = [
-    ["Host", device.ip],
-    ["Método", methodOf(device)],
-    ["RouterOS", v(status?.version)],
-    ["Board", v(status?.board)],
-    ["Uptime", v(status?.uptime)],
-    ["CPU", status?.cpu_load != null ? `${status.cpu_load}%` : "—"],
+    [t("common:labels.host"), device.ip],
+    [t("devices:labels.method"), methodOf(device)],
+    [t("devices:labels.routeros"), v(status?.version)],
+    [t("devices:labels.board"), v(status?.board)],
+    [t("devices:labels.uptime"), v(status?.uptime)],
+    [t("devices:labels.cpu"), status?.cpu_load != null ? `${status.cpu_load}%` : "—"],
   ];
   return (
     <Link to={`/devices/${device.id}`}>
@@ -121,7 +125,7 @@ function DeviceCard({ device, status }: { device: Device; status?: DeviceStatusI
         <div className="mb-3 flex items-start justify-between gap-2">
           <h3 className="font-semibold leading-tight">{device.name}</h3>
           <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted">
-            <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} /> {meta.label}
+            <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} /> {t(`common:deviceStatus.${deviceStatus}`)}
           </span>
         </div>
         <dl className="space-y-1 text-xs">

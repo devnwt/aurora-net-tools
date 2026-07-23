@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Bot, Building2, Database, Mail, Package, Save, Sparkles } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -7,43 +8,46 @@ import { PageHeader } from "@/components/PageHeader";
 import { CopilotToolsManager } from "@/components/CopilotTools";
 import { Button, Card, Input, Spinner } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import i18n from "@/i18n";
 import { AdminOrgs } from "./AdminOrgs";
 import { AdminPlans } from "./AdminPlans";
 
-const errMsg = (e: unknown) => (e instanceof ApiError ? `Erro ${e.status}: ${e.message}` : String(e));
+const errMsg = (e: unknown) =>
+  e instanceof ApiError ? i18n.t("admin:errPrefix", { status: e.status, message: e.message }) : String(e);
 
 type Tab = "orgs" | "plans" | "smtp" | "llm" | "s3" | "copilot";
-const TABS: { key: Tab; label: string; icon: typeof Building2 }[] = [
-  { key: "orgs", label: "Organizações", icon: Building2 },
-  { key: "plans", label: "Planos", icon: Package },
-  { key: "smtp", label: "SMTP Global", icon: Mail },
-  { key: "llm", label: "LLM Global", icon: Sparkles },
-  { key: "s3", label: "MinIO / S3", icon: Database },
-  { key: "copilot", label: "Ferramentas do Copilot", icon: Bot },
+const TABS: { key: Tab; icon: typeof Building2 }[] = [
+  { key: "orgs", icon: Building2 },
+  { key: "plans", icon: Package },
+  { key: "smtp", icon: Mail },
+  { key: "llm", icon: Sparkles },
+  { key: "s3", icon: Database },
+  { key: "copilot", icon: Bot },
 ];
 
 export function Admin() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("orgs");
 
   if (user?.role !== "master") {
-    return <Card><p className="text-sm text-muted">Área restrita ao Master do sistema.</p></Card>;
+    return <Card><p className="text-sm text-muted">{t("admin:restricted")}</p></Card>;
   }
 
   return (
     <div>
-      <PageHeader title="Super Admin" subtitle="Administração multi-tenant do sistema" />
+      <PageHeader title={t("admin:title")} subtitle={t("admin:subtitle")} />
       <div className="mb-5 flex flex-wrap items-center gap-1 border-b border-border">
-        {TABS.map((t) => (
+        {TABS.map((item) => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={item.key}
+            onClick={() => setTab(item.key)}
             className={cn(
               "inline-flex cursor-pointer items-center gap-1.5 rounded-t-lg px-4 py-2 text-sm transition-colors duration-200",
-              tab === t.key ? "border-b-2 border-primary font-medium text-primary" : "text-muted hover:text-text",
+              tab === item.key ? "border-b-2 border-primary font-medium text-primary" : "text-muted hover:text-text",
             )}
           >
-            <t.icon className="h-4 w-4" /> {t.label}
+            <item.icon className="h-4 w-4" /> {t(`admin:tabs.${item.key}`)}
           </button>
         ))}
       </div>
@@ -56,7 +60,7 @@ export function Admin() {
         <Card>
           <div className="mb-4 flex items-center gap-2">
             <Bot className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold">Ferramentas do Copilot (globais)</h2>
+            <h2 className="text-sm font-semibold">{t("admin:copilot.title")}</h2>
           </div>
           <CopilotToolsManager />
         </Card>
@@ -68,6 +72,7 @@ export function Admin() {
 // === MinIO/S3 Global (destino de backups) ===
 
 function S3GlobalTab() {
+  const { t } = useTranslation();
   const [data, setData] = useState<GlobalS3 | null>(null);
   const [f, setF] = useState({ enabled: false, endpoint: "", region: "us-east-1", bucket: "", access_key: "", prefix: "", use_ssl: true, secret_key: "" });
   const [keySet, setKeySet] = useState(false);
@@ -93,7 +98,7 @@ function S3GlobalTab() {
       await api.put("/admin/s3", body);
       const fresh = await api.get<GlobalS3>("/admin/s3");
       setData(fresh);
-      setMsg({ ok: true, text: `Salvo e confirmado às ${new Date().toLocaleTimeString("pt-BR")}.` });
+      setMsg({ ok: true, text: t("admin:saved", { time: new Date().toLocaleTimeString(i18n.language) }) });
     } catch (e) { setMsg({ ok: false, text: errMsg(e) }); } finally { setBusy(false); }
   }
   async function test() {
@@ -109,32 +114,32 @@ function S3GlobalTab() {
     <Card>
       <div className="mb-4 flex items-center gap-2">
         <Database className="h-4 w-4 text-primary" />
-        <h2 className="text-sm font-semibold">MinIO / S3 Global</h2>
+        <h2 className="text-sm font-semibold">{t("admin:s3.title")}</h2>
         <div className="ml-auto">
           <label className="inline-flex items-center gap-2 text-sm text-muted">
-            <input type="checkbox" checked={f.enabled} onChange={(e) => setF({ ...f, enabled: e.target.checked })} className="h-4 w-4 accent-primary" /> Habilitado
+            <input type="checkbox" checked={f.enabled} onChange={(e) => setF({ ...f, enabled: e.target.checked })} className="h-4 w-4 accent-primary" /> {t("common:labels.enabled")}
           </label>
         </div>
       </div>
-      <p className="mb-4 text-xs text-muted">Armazenamento S3-compatível (MinIO, AWS S3, Ceph…) — <strong>destino de backups de todas as ORGs</strong>.</p>
+      <p className="mb-4 text-xs text-muted">{t("admin:s3.descPre")}<strong>{t("admin:s3.descBold")}</strong>{t("admin:s3.descPost")}</p>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Endpoint" hint="host:porta ou URL"><Input value={f.endpoint} onChange={(e) => setF({ ...f, endpoint: e.target.value })} placeholder="minio.local:9000" className="font-mono text-xs" /></Field>
-        <Field label="Bucket"><Input value={f.bucket} onChange={(e) => setF({ ...f, bucket: e.target.value })} placeholder="backups" className="font-mono" /></Field>
-        <Field label="Access Key"><Input value={f.access_key} onChange={(e) => setF({ ...f, access_key: e.target.value })} className="font-mono" /></Field>
-        <Field label="Secret Key" hint={keySet ? "Já definida — preencha para trocar." : undefined}>
-          <Input type="password" value={f.secret_key} onChange={(e) => setF({ ...f, secret_key: e.target.value })} placeholder={keySet ? "•••••••• (definida)" : ""} className="font-mono" />
+        <Field label={t("admin:s3.endpoint")} hint={t("admin:s3.endpointHint")}><Input value={f.endpoint} onChange={(e) => setF({ ...f, endpoint: e.target.value })} placeholder="minio.local:9000" className="font-mono text-xs" /></Field>
+        <Field label={t("admin:s3.bucket")}><Input value={f.bucket} onChange={(e) => setF({ ...f, bucket: e.target.value })} placeholder="backups" className="font-mono" /></Field>
+        <Field label={t("admin:s3.accessKey")}><Input value={f.access_key} onChange={(e) => setF({ ...f, access_key: e.target.value })} className="font-mono" /></Field>
+        <Field label={t("admin:s3.secretKey")} hint={keySet ? t("admin:secretSet") : undefined}>
+          <Input type="password" value={f.secret_key} onChange={(e) => setF({ ...f, secret_key: e.target.value })} placeholder={keySet ? t("admin:secretPlaceholder") : ""} className="font-mono" />
         </Field>
-        <Field label="Region"><Input value={f.region} onChange={(e) => setF({ ...f, region: e.target.value })} placeholder="us-east-1" className="font-mono" /></Field>
-        <Field label="Prefixo (pasta)" hint="opcional"><Input value={f.prefix} onChange={(e) => setF({ ...f, prefix: e.target.value })} placeholder="routeros/" className="font-mono" /></Field>
+        <Field label={t("admin:s3.region")}><Input value={f.region} onChange={(e) => setF({ ...f, region: e.target.value })} placeholder="us-east-1" className="font-mono" /></Field>
+        <Field label={t("admin:s3.prefix")} hint={t("admin:s3.prefixHint")}><Input value={f.prefix} onChange={(e) => setF({ ...f, prefix: e.target.value })} placeholder="routeros/" className="font-mono" /></Field>
         <div className="flex items-end">
           <label className="inline-flex items-center gap-2 text-sm text-muted">
-            <input type="checkbox" checked={f.use_ssl} onChange={(e) => setF({ ...f, use_ssl: e.target.checked })} className="h-4 w-4 accent-primary" /> HTTPS (TLS)
+            <input type="checkbox" checked={f.use_ssl} onChange={(e) => setF({ ...f, use_ssl: e.target.checked })} className="h-4 w-4 accent-primary" /> {t("admin:s3.https")}
           </label>
         </div>
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
-        <Button onClick={save} disabled={busy}><Save className="h-4 w-4" /> Salvar</Button>
-        <Button variant="ghost" className="ml-auto" onClick={test} disabled={busy}>Testar bucket</Button>
+        <Button onClick={save} disabled={busy}><Save className="h-4 w-4" /> {t("common:actions.save")}</Button>
+        <Button variant="ghost" className="ml-auto" onClick={test} disabled={busy}>{t("admin:s3.testBucket")}</Button>
       </div>
       {msg && <p className={cn("mt-4 rounded-lg border p-3 text-sm", msg.ok ? "border-ok/40 bg-ok/10 text-ok" : "border-danger/40 bg-danger/10 text-danger")}>{msg.text}</p>}
     </Card>
@@ -144,6 +149,7 @@ function S3GlobalTab() {
 // === LLM Global (usado pelo Copilot de todas as ORGs) ===
 
 function LlmGlobalTab() {
+  const { t } = useTranslation();
   const [data, setData] = useState<GlobalLlm | null>(null);
   const [f, setF] = useState({ enabled: false, base_url: "", model: "", api_key: "" });
   const [keySet, setKeySet] = useState(false);
@@ -169,7 +175,7 @@ function LlmGlobalTab() {
       await api.put("/admin/llm", body);
       const fresh = await api.get<GlobalLlm>("/admin/llm");
       setData(fresh);
-      setMsg({ ok: true, text: `Salvo e confirmado às ${new Date().toLocaleTimeString("pt-BR")}.` });
+      setMsg({ ok: true, text: t("admin:saved", { time: new Date().toLocaleTimeString(i18n.language) }) });
     } catch (e) { setMsg({ ok: false, text: errMsg(e) }); } finally { setBusy(false); }
   }
   async function test() {
@@ -185,26 +191,26 @@ function LlmGlobalTab() {
     <Card>
       <div className="mb-4 flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
-        <h2 className="text-sm font-semibold">LLM Global (compatível com OpenAI)</h2>
+        <h2 className="text-sm font-semibold">{t("admin:llm.title")}</h2>
         <div className="ml-auto">
           <label className="inline-flex items-center gap-2 text-sm text-muted">
-            <input type="checkbox" checked={f.enabled} onChange={(e) => setF({ ...f, enabled: e.target.checked })} className="h-4 w-4 accent-primary" /> Habilitado
+            <input type="checkbox" checked={f.enabled} onChange={(e) => setF({ ...f, enabled: e.target.checked })} className="h-4 w-4 accent-primary" /> {t("common:labels.enabled")}
           </label>
         </div>
       </div>
-      <p className="mb-4 text-xs text-muted">Provedor de LLM do sistema — usado pelo <strong>Copilot de todas as organizações</strong>. Qualquer endpoint compatível com a API da OpenAI (OpenAI, Groq, Ollama, vLLM, LM Studio…).</p>
+      <p className="mb-4 text-xs text-muted">{t("admin:llm.descPre")}<strong>{t("admin:llm.descBold")}</strong>{t("admin:llm.descPost")}</p>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Base URL" hint="inclua /v1 quando aplicável">
+        <Field label={t("admin:llm.baseUrl")} hint={t("admin:llm.baseUrlHint")}>
           <Input value={f.base_url} onChange={(e) => setF({ ...f, base_url: e.target.value })} placeholder="https://api.openai.com/v1" className="font-mono text-xs" />
         </Field>
-        <Field label="Modelo"><Input value={f.model} onChange={(e) => setF({ ...f, model: e.target.value })} placeholder="gpt-4o-mini" className="font-mono" /></Field>
-        <Field label="API Key" hint={keySet ? "Já definida — preencha para trocar." : undefined}>
-          <Input type="password" value={f.api_key} onChange={(e) => setF({ ...f, api_key: e.target.value })} placeholder={keySet ? "•••••••• (definida)" : "sk-…"} className="font-mono" />
+        <Field label={t("admin:llm.model")}><Input value={f.model} onChange={(e) => setF({ ...f, model: e.target.value })} placeholder="gpt-4o-mini" className="font-mono" /></Field>
+        <Field label={t("admin:llm.apiKey")} hint={keySet ? t("admin:secretSet") : undefined}>
+          <Input type="password" value={f.api_key} onChange={(e) => setF({ ...f, api_key: e.target.value })} placeholder={keySet ? t("admin:secretPlaceholder") : "sk-…"} className="font-mono" />
         </Field>
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
-        <Button onClick={save} disabled={busy}><Save className="h-4 w-4" /> Salvar</Button>
-        <Button variant="ghost" className="ml-auto" onClick={test} disabled={busy}>Testar conexão</Button>
+        <Button onClick={save} disabled={busy}><Save className="h-4 w-4" /> {t("common:actions.save")}</Button>
+        <Button variant="ghost" className="ml-auto" onClick={test} disabled={busy}>{t("admin:llm.testConnection")}</Button>
       </div>
       {msg && <p className={cn("mt-4 rounded-lg border p-3 text-sm", msg.ok ? "border-ok/40 bg-ok/10 text-ok" : "border-danger/40 bg-danger/10 text-danger")}>{msg.text}</p>}
     </Card>
@@ -214,6 +220,7 @@ function LlmGlobalTab() {
 // === SMTP Global (config do sistema, base dos e-mails de acesso) ===
 
 function SmtpGlobalTab() {
+  const { t } = useTranslation();
   const [data, setData] = useState<GlobalSmtp | null>(null);
   const [f, setF] = useState({ enabled: false, host: "", port: "587", username: "", from_addr: "", use_tls: true, password: "" });
   const [pwSet, setPwSet] = useState(false);
@@ -240,7 +247,7 @@ function SmtpGlobalTab() {
       await api.put("/admin/smtp", body);
       const fresh = await api.get<GlobalSmtp>("/admin/smtp");
       setData(fresh);
-      setMsg({ ok: true, text: `Salvo e confirmado às ${new Date().toLocaleTimeString("pt-BR")}.` });
+      setMsg({ ok: true, text: t("admin:saved", { time: new Date().toLocaleTimeString(i18n.language) }) });
     } catch (e) { setMsg({ ok: false, text: errMsg(e) }); } finally { setBusy(false); }
   }
   async function test() {
@@ -256,33 +263,33 @@ function SmtpGlobalTab() {
     <Card>
       <div className="mb-4 flex items-center gap-2">
         <Mail className="h-4 w-4 text-primary" />
-        <h2 className="text-sm font-semibold">SMTP Global</h2>
+        <h2 className="text-sm font-semibold">{t("admin:smtp.title")}</h2>
         <div className="ml-auto">
           <label className="inline-flex items-center gap-2 text-sm text-muted">
-            <input type="checkbox" checked={f.enabled} onChange={(e) => setF({ ...f, enabled: e.target.checked })} className="h-4 w-4 accent-primary" /> Habilitado
+            <input type="checkbox" checked={f.enabled} onChange={(e) => setF({ ...f, enabled: e.target.checked })} className="h-4 w-4 accent-primary" /> {t("common:labels.enabled")}
           </label>
         </div>
       </div>
-      <p className="mb-4 text-xs text-muted">Servidor de e-mail do sistema — usado para <strong>boas-vindas de novos cadastros</strong> e <strong>reenvio de login</strong>.</p>
+      <p className="mb-4 text-xs text-muted">{t("admin:smtp.descPre")}<strong>{t("admin:smtp.descBold1")}</strong>{t("admin:smtp.descMid")}<strong>{t("admin:smtp.descBold2")}</strong>{t("admin:smtp.descPost")}</p>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Host"><Input value={f.host} onChange={(e) => setF({ ...f, host: e.target.value })} placeholder="smtp.gmail.com" /></Field>
-        <Field label="Porta"><Input value={f.port} onChange={(e) => setF({ ...f, port: e.target.value })} className="font-mono" inputMode="numeric" /></Field>
-        <Field label="Usuário"><Input value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} placeholder="user@dominio.com" /></Field>
-        <Field label="Senha" hint={pwSet ? "Já definida — preencha para trocar." : undefined}>
-          <Input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder={pwSet ? "•••••••• (definida)" : ""} />
+        <Field label={t("common:labels.host")}><Input value={f.host} onChange={(e) => setF({ ...f, host: e.target.value })} placeholder="smtp.gmail.com" /></Field>
+        <Field label={t("common:labels.port")}><Input value={f.port} onChange={(e) => setF({ ...f, port: e.target.value })} className="font-mono" inputMode="numeric" /></Field>
+        <Field label={t("common:labels.username")}><Input value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} placeholder="user@dominio.com" /></Field>
+        <Field label={t("common:labels.password")} hint={pwSet ? t("admin:secretSet") : undefined}>
+          <Input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder={pwSet ? t("admin:secretPlaceholder") : ""} />
         </Field>
-        <Field label="Remetente (From)"><Input value={f.from_addr} onChange={(e) => setF({ ...f, from_addr: e.target.value })} placeholder="noreply@dominio.com" /></Field>
+        <Field label={t("admin:smtp.from")}><Input value={f.from_addr} onChange={(e) => setF({ ...f, from_addr: e.target.value })} placeholder="noreply@dominio.com" /></Field>
         <div className="flex items-end">
           <label className="inline-flex items-center gap-2 text-sm text-muted">
-            <input type="checkbox" checked={f.use_tls} onChange={(e) => setF({ ...f, use_tls: e.target.checked })} className="h-4 w-4 accent-primary" /> STARTTLS
+            <input type="checkbox" checked={f.use_tls} onChange={(e) => setF({ ...f, use_tls: e.target.checked })} className="h-4 w-4 accent-primary" /> {t("admin:smtp.starttls")}
           </label>
         </div>
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
-        <Button onClick={save} disabled={busy}><Save className="h-4 w-4" /> Salvar</Button>
+        <Button onClick={save} disabled={busy}><Save className="h-4 w-4" /> {t("common:actions.save")}</Button>
         <div className="ml-auto flex items-center gap-2">
-          <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder="destino do teste" className="w-56" />
-          <Button variant="ghost" onClick={test} disabled={busy || !to}>Enviar teste</Button>
+          <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder={t("admin:smtp.testToPlaceholder")} className="w-56" />
+          <Button variant="ghost" onClick={test} disabled={busy || !to}>{t("admin:smtp.sendTest")}</Button>
         </div>
       </div>
       {msg && <p className={cn("mt-4 rounded-lg border p-3 text-sm", msg.ok ? "border-ok/40 bg-ok/10 text-ok" : "border-danger/40 bg-danger/10 text-danger")}>{msg.text}</p>}

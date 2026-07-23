@@ -25,68 +25,72 @@ import {
   Workflow,
 } from "lucide-react";
 // Package/Building2 removidos: a área Admin virou um único item "Super Admin".
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import logo from "@/logo.png";
 
 interface NavItem {
   to: string;
-  label: string;
+  /** Chave em nav:items.* — o rótulo é traduzido no render. */
+  key: string;
   icon: LucideIcon;
   end?: boolean;
   adminOnly?: boolean;
   masterOnly?: boolean;
 }
 
-const groups: { title: string; items: NavItem[] }[] = [
+// `key` de cada grupo vira nav:groups.<key>; a de cada item, nav:items.<key>.
+const groups: { key: string; items: NavItem[] }[] = [
   {
-    title: "VISÃO GERAL",
+    key: "overview",
     items: [
-      { to: "/", label: "Painel", icon: LayoutDashboard, end: true },
-      { to: "/devices", label: "Dispositivos", icon: Monitor },
-      { to: "/sites", label: "Sites", icon: MapPin },
-      { to: "/racks", label: "Racks e Mapa", icon: Boxes },
+      { to: "/", key: "dashboard", icon: LayoutDashboard, end: true },
+      { to: "/devices", key: "devices", icon: Monitor },
+      { to: "/sites", key: "sites", icon: MapPin },
+      { to: "/racks", key: "racks", icon: Boxes },
     ],
   },
   {
-    title: "AÇÕES",
+    key: "actions",
     items: [
-      { to: "/copilot", label: "Copilot", icon: Bot },
-      { to: "/commands", label: "Comandos", icon: Terminal },
-      { to: "/templates", label: "Modelos", icon: FileText },
-      { to: "/upgrades", label: "Atualizações", icon: ArrowUpCircle },
-      { to: "/scan", label: "Escanear Rede", icon: Globe },
-      { to: "/topology", label: "Topologia", icon: Workflow },
-      { to: "/backups", label: "Backups", icon: Archive },
-      { to: "/logs", label: "Logs", icon: ScrollText },
-      { to: "/security", label: "Segurança", icon: ShieldCheck },
+      { to: "/copilot", key: "copilot", icon: Bot },
+      { to: "/commands", key: "commands", icon: Terminal },
+      { to: "/templates", key: "templates", icon: FileText },
+      { to: "/upgrades", key: "upgrades", icon: ArrowUpCircle },
+      { to: "/scan", key: "scan", icon: Globe },
+      { to: "/topology", key: "topology", icon: Workflow },
+      { to: "/backups", key: "backups", icon: Archive },
+      { to: "/logs", key: "logs", icon: ScrollText },
+      { to: "/security", key: "security", icon: ShieldCheck },
     ],
   },
   {
-    title: "FIBERHOME",
-    items: [{ to: "/controllers", label: "Controladoras", icon: Server }],
+    key: "fiberhome",
+    items: [{ to: "/controllers", key: "controllers", icon: Server }],
   },
   {
-    title: "ADMIN",
+    key: "admin",
     items: [
-      { to: "/admin", label: "Super Admin", icon: Crown, masterOnly: true },
+      { to: "/admin", key: "admin", icon: Crown, masterOnly: true },
     ],
   },
   {
-    title: "SISTEMA",
+    key: "system",
     items: [
-      { to: "/activity", label: "Atividade", icon: Activity },
-      { to: "/credentials", label: "Credenciais", icon: KeyRound },
-      { to: "/users", label: "Usuários", icon: UsersIcon, adminOnly: true },
-      { to: "/apikeys", label: "Chaves de API", icon: KeySquare, adminOnly: true },
-      { to: "/webhooks", label: "Webhooks", icon: WebhookIcon, adminOnly: true },
-      { to: "/settings", label: "Configurações", icon: Settings },
+      { to: "/activity", key: "activity", icon: Activity },
+      { to: "/credentials", key: "credentials", icon: KeyRound },
+      { to: "/users", key: "users", icon: UsersIcon, adminOnly: true },
+      { to: "/apikeys", key: "apikeys", icon: KeySquare, adminOnly: true },
+      { to: "/webhooks", key: "webhooks", icon: WebhookIcon, adminOnly: true },
+      { to: "/settings", key: "settings", icon: Settings },
     ],
   },
 ];
 
 export function Layout() {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const initial = (user?.username ?? "?").charAt(0).toUpperCase();
 
   return (
@@ -99,7 +103,7 @@ export function Layout() {
               Aurora Prisma{" "}
               <span className="bg-gradient-to-r from-primary via-cyan-400 to-accent bg-clip-text font-bold italic text-transparent">NetTools</span>
             </p>
-            <p className="text-xs text-muted">Gerência de NOC</p>
+            <p className="text-xs text-muted">{t("nav:brand.tagline")}</p>
           </div>
         </div>
 
@@ -110,12 +114,12 @@ export function Layout() {
             );
             if (items.length === 0) return null;
             return (
-              <div key={group.title}>
+              <div key={group.key}>
                 <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted/70">
-                  {group.title}
+                  {t(`nav:groups.${group.key}`)}
                 </p>
                 <div className="space-y-0.5">
-                  {items.map(({ to, label, icon: Icon, end }) => (
+                  {items.map(({ to, key, icon: Icon, end }) => (
                   <NavLink
                     key={to}
                     to={to}
@@ -130,7 +134,7 @@ export function Layout() {
                     }
                   >
                     <Icon className="h-4 w-4" aria-hidden />
-                    {label}
+                    {t(`nav:items.${key}`)}
                   </NavLink>
                 ))}
                 </div>
@@ -146,11 +150,11 @@ export function Layout() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm">{user?.username}</p>
-              <p className="text-xs text-muted">{user?.role === "master" ? "Master" : user?.role === "admin" ? "Administrador" : "Operador"}</p>
+              <p className="text-xs text-muted">{t(`common:roles.${user?.role === "master" ? "master" : user?.role === "admin" ? "admin" : "operator"}`)}</p>
             </div>
             <button
               onClick={logout}
-              aria-label="Sair"
+              aria-label={t("nav:logout")}
               className="rounded-lg p-2 text-muted hover:bg-surface-2 hover:text-danger cursor-pointer transition-colors duration-200"
             >
               <LogOut className="h-4 w-4" aria-hidden />

@@ -1,0 +1,27 @@
+{
+  "title": "Dashboard",
+  "refreshAll": "Refresh All",
+  "loadFailTitle": "Failed to load the dashboard",
+  "stats": {
+    "total": "Total Devices",
+    "online": "Online",
+    "not_accessible": "Unreachable",
+    "offline": "Offline",
+    "unknown": "Unknown",
+    "sites": "Sites"
+  },
+  "bySite": "Devices by Site",
+  "order": { "az": "A-Z", "count": "By count" },
+  "columns": {
+    "device": "Device",
+    "host": "Host",
+    "status": "Status",
+    "method": "Method",
+    "routeros": "RouterOS",
+    "board": "Board",
+    "cpu": "CPU",
+    "ram": "RAM",
+    "temp": "Temp",
+    "uptime": "Uptime"
+  }
+}
