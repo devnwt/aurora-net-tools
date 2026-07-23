@@ -1,0 +1,91 @@
+{
+  "controllers": {
+    "title": "Controladoras",
+    "subtitle": "EMS/controladoras (ex.: UNM2000 Fiberhome)",
+    "empty": "Nenhuma controladora",
+    "emptyHint": "Cadastre um EMS ao lado.",
+    "testTl1": "Testar TL1",
+    "olts": "OLTs",
+    "connected": "conectou",
+    "delete": {
+      "title": "Excluir controladora",
+      "message": "Excluir esta controladora?"
+    },
+    "form": {
+      "editTitle": "Editar controladora",
+      "newTitle": "Nova controladora (UNM2000)",
+      "portTl1": "Porta TL1",
+      "credentialTl1": "Credencial TL1",
+      "noCredential": "— nenhuma —"
+    }
+  },
+  "explorer": {
+    "back": "Controladoras",
+    "oltsTitle": "OLTs",
+    "subtitle": "Exploração ao vivo via TL1 (UNM2000)",
+    "noOlts": "Nenhuma OLT",
+    "noOltsHint": "O UNM2000 não retornou OLTs.",
+    "oltsHeading": "OLTs ({{count}})",
+    "explore": "Explorar",
+    "backToOlts": "OLTs",
+    "noName": "(sem nome)"
+  },
+  "records": {
+    "empty": "Sem registros",
+    "count": "{{count}} registro(s)"
+  },
+  "tabs": {
+    "info": "Info",
+    "boards": "Placas",
+    "shelves": "Shelves",
+    "pons": "PONs",
+    "onus": "ONUs",
+    "states": "Estados",
+    "unreg": "Não-registradas",
+    "alarms": "Alarmes",
+    "locate": "Localizar ONU"
+  },
+  "loader": {
+    "reload": "Recarregar"
+  },
+  "lists": {
+    "noInfo": "Sem informações",
+    "noBoards": "Sem placas",
+    "noShelves": "Sem shelves",
+    "noStates": "Sem estados",
+    "noUnregistered": "Nenhuma ONU não-registrada"
+  },
+  "pons": {
+    "empty": "Sem PONs",
+    "seeOnus": "Ver ONUs"
+  },
+  "onus": {
+    "empty": "Sem ONUs",
+    "filterPlaceholder": "Filtrar por PON (ex.: NA-NA-1-1) — vazio = todas",
+    "hint": "Informe uma PON (ou deixe vazio para todas) e clique em Buscar. Listar todas pode levar alguns segundos."
+  },
+  "alarms": {
+    "empty": "Sem alarmes",
+    "sincePlaceholder": "Desde (ex.: 2026-06-23 00:00:00) — opcional",
+    "query": "Consultar",
+    "hint": "Consulte os alarmes ativos da OLT (opcionalmente a partir de uma data/hora)."
+  },
+  "locate": {
+    "heading": "Localizar ONU por ID",
+    "idType": "Tipo de ID",
+    "idPlaceholder": "ex.: 48575443A1B2",
+    "locate": "Localizar",
+    "empty": "—"
+  },
+  "locateSections": {
+    "query": "Localização (slot/PON)",
+    "state": "Estado",
+    "optical": "Sinal óptico (DDM)",
+    "info": "Informações do equipamento",
+    "lan_port": "Portas LAN",
+    "config": "Configuração",
+    "macaddress": "MACs aprendidos",
+    "lan_info": "Status das portas LAN"
+  },
+  "errorStatus": "Erro {{status}}: {{message}}"
+}

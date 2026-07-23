@@ -23,6 +23,7 @@ import {
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api";
+import i18n from "@/i18n";
 
 type Variant = "error" | "success" | "warning" | "info";
 
@@ -75,7 +76,7 @@ export function errorMessage(e: unknown): string {
   if (typeof e === "string") return e;
   if (e instanceof ApiError) return e.message;
   if (e instanceof Error) return e.message;
-  return "Ocorreu um erro inesperado.";
+  return i18n.t("common:state.unexpectedError");
 }
 
 const STYLES: Record<Variant, { icon: typeof Info; bar: string; fg: string }> = {
@@ -160,7 +161,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div
         className="pointer-events-none fixed right-4 top-20 z-[60] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-2"
         role="region"
-        aria-label="Notificações"
+        aria-label={i18n.t("common:a11y.notifications")}
       >
         {items.map((t) => (
           <ToastItem key={t.id} toast={t} onDismiss={dismiss} />
@@ -236,7 +237,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
         {toast.count > 1 && (
           <span
             className={cn("shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold tabular-nums", fg, "bg-surface-2")}
-            aria-label={`repetido ${toast.count} vezes`}
+            aria-label={i18n.t("common:a11y.repeated", { count: toast.count })}
           >
             ×{toast.count}
           </span>
@@ -245,7 +246,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
           type="button"
           onClick={() => onDismiss(toast.id)}
           className="shrink-0 rounded p-0.5 text-muted transition-colors hover:bg-surface-2 hover:text-text focus:outline-none focus:ring-2 focus:ring-primary"
-          aria-label="Fechar notificação"
+          aria-label={i18n.t("common:a11y.closeNotification")}
         >
           <X className="h-4 w-4" aria-hidden />
         </button>

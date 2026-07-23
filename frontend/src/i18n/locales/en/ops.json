@@ -1,0 +1,134 @@
+{
+  "shared": {
+    "errorWithStatus": "Error {{status}}: {{message}}",
+    "errorStatus": "Error {{status}}",
+    "selectRouterOS": "— select a RouterOS —",
+    "selectDeviceTitle": "Select a device",
+    "emptyParens": "(empty)"
+  },
+  "commands": {
+    "title": "Bulk Commands",
+    "runTitle": "Run Command",
+    "commandLabel": "Command",
+    "readOnlyNote": "Read-only — write commands are rejected by the allowlist.",
+    "selectDevices": "Select Devices",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "results": "Results",
+    "ok": "ok",
+    "fail": "fail",
+    "noOutput": "(no output)",
+    "history": "Command History",
+    "historyEmpty": "No commands yet",
+    "col": {
+      "command": "Command",
+      "proto": "Proto",
+      "result": "Result"
+    }
+  },
+  "templates": {
+    "title": "Command Templates",
+    "add": "Add Template",
+    "emptyTitle": "No templates yet",
+    "emptyHint": "Create predefined command sets for quick configuration.",
+    "typeScript": "Script",
+    "typeCommands": "Commands",
+    "lines": "{{count}} line(s)",
+    "deleteTitle": "Delete template",
+    "deleteMsg": "Delete the template \"{{name}}\"?",
+    "editTitle": "Edit Template",
+    "newTitle": "New Template",
+    "category": "Category",
+    "namePlaceholder": "e.g. Secure Services",
+    "descPlaceholder": "Optional description",
+    "typeCommandsRadio": "Commands (one per line)",
+    "typeScriptRadio": "Script (/system/script)",
+    "bodyScriptLabel": "Script",
+    "bodyCommandsLabel": "Commands (one per line)"
+  },
+  "upgrades": {
+    "title": "Upgrades",
+    "check": "Check for Updates",
+    "note": "Read-only view of versions. Upgrade actions (RouterOS/firmware) are write operations, disabled in the read-only MVP.",
+    "emptyTitle": "No RouterOS",
+    "emptyHint": "Register a RouterOS device.",
+    "fwPending": "FW pending",
+    "upToDate": "up to date",
+    "col": {
+      "device": "Device",
+      "rosCurrent": "Current ROS",
+      "fwCurrent": "Current FW",
+      "fwUpgrade": "Upgrade FW"
+    }
+  },
+  "scan": {
+    "title": "Scan Network",
+    "configTitle": "Scan Configuration",
+    "ipRange": "IP Range",
+    "rangeHint": "CIDR (192.168.88.0/24), range (192.168.88.1-254), or single IP · max. 512 hosts",
+    "sshPort": "SSH Port",
+    "apiHttpsPort": "API Port (HTTPS)",
+    "apiHttpPort": "API Port (HTTP)",
+    "scanning": "Scanning…",
+    "start": "Start Scan",
+    "results": "Results",
+    "resultCount": "{{found}} RouterOS of {{scanned}} host(s)",
+    "emptyTitle": "No RouterOS found",
+    "emptyHint": "Check the range, port and credentials.",
+    "col": {
+      "identity": "Identity"
+    }
+  },
+  "topology": {
+    "title": "Topology",
+    "allSites": "All sites",
+    "unknown": "unknown",
+    "unmanaged": "Unmanaged",
+    "counts": "{{devices}} devices · {{ghosts}} unmanaged · {{links}} links",
+    "unmanagedNode": "unmanaged",
+    "empty": "No devices."
+  },
+  "backups": {
+    "title": "Backups",
+    "subtitle": "RouterOS configuration export (/export)",
+    "newTitle": "New backup",
+    "sendFtp": "Send via FTP",
+    "sendS3": "Send via MinIO/S3",
+    "create": "Create backup",
+    "configHintPrefix": "Configure the destinations in",
+    "emptyTitle": "No backups",
+    "emptyHint": "Create a backup by selecting a device above.",
+    "deleteTitle": "Delete backup",
+    "deleteMsg": "Delete the backup of {{device}} ({{date}})?",
+    "viewTitle": "Backup #{{id}}",
+    "view": "View",
+    "col": {
+      "device": "Device",
+      "created": "Created at",
+      "size": "Size"
+    }
+  },
+  "logs": {
+    "title": "Logs",
+    "subtitle": "Device log (/log print)",
+    "filterPlaceholder": "Filter message/topic…",
+    "entryCount": "{{count}} entry(ies)",
+    "emptyHint": "Choose a RouterOS to view the logs.",
+    "noEntries": "No entries",
+    "col": {
+      "time": "Time",
+      "topics": "Topics",
+      "message": "Message"
+    }
+  },
+  "security": {
+    "title": "Security",
+    "subtitle": "RouterOS hardening checks",
+    "emptyHint": "Choose a RouterOS to run the checks.",
+    "sev": {
+      "ok": "OK",
+      "warn": "Warning",
+      "fail": "Fail"
+    }
+  }
+}

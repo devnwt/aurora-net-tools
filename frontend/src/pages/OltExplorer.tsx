@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, Network, RefreshCw, Search } from "lucide-react";
 import { ApiError } from "@/lib/api";
+import i18n from "@/i18n";
 import { cachedTl1, peekTl1 } from "@/lib/tl1cache";
 import type {
   AlarmsResp,
@@ -17,7 +19,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Badge, Button, Card, EmptyState, Input, Select, Spinner } from "@/components/ui";
 
-const errMsg = (e: unknown) => (e instanceof ApiError ? `Erro ${e.status}: ${e.message}` : String(e));
+const errMsg = (e: unknown) =>
+  e instanceof ApiError ? i18n.t("fiberhome:errorStatus", { status: e.status, message: e.message }) : String(e);
 
 // TTL do cache (frontend) para recursos estruturais que ~não mudam: 30 min.
 const STRUCT_TTL = 30 * 60 * 1000;
@@ -37,22 +40,23 @@ function pick(rec: Tl1Record, keys: string[]): string | null {
 }
 
 const oltIp = (r: Tl1Record) => pick(r, ["DEVIP", "NEIP", "OLTIP", "IP"]) ?? "";
-const oltName = (r: Tl1Record) => pick(r, ["DEVNAME", "NAME", "NENAME", "ALIAS"]) ?? "(sem nome)";
+const oltName = (r: Tl1Record) => pick(r, ["DEVNAME", "NAME", "NENAME", "ALIAS"]) ?? i18n.t("fiberhome:explorer.noName");
 
 /** Tabela genérica para registros TL1: colunas = união das chaves de todas as linhas. */
 function RecordsTable({
   data,
-  empty = "Sem registros",
+  empty,
   action,
 }: {
   data: Tl1Data;
   empty?: string;
   action?: { label: string; onClick: (r: Tl1Record) => void; show?: (r: Tl1Record) => boolean };
 }) {
+  const { t } = useTranslation();
   const err = dataError(data);
   if (err) return <p className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">{err}</p>;
   const rows = records(data);
-  if (rows.length === 0) return <EmptyState title={empty} />;
+  if (rows.length === 0) return <EmptyState title={empty ?? t("fiberhome:records.empty")} />;
   const cols = Array.from(
     rows.reduce((s, r) => {
       Object.keys(r).forEach((k) => s.add(k));
@@ -61,7 +65,7 @@ function RecordsTable({
   );
   return (
     <div>
-      <p className="mb-2 text-xs text-muted">{rows.length} registro(s)</p>
+      <p className="mb-2 text-xs text-muted">{t("fiberhome:records.count", { count: rows.length })}</p>
       <Table
         head={
           <>
@@ -119,6 +123,7 @@ function useTl1Query<T, R>(makeUrl: () => string, pick: (r: T) => R, ttl = STRUC
 }
 
 export function OltExplorer() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const cid = Number(id);
   const url = `/controllers/${cid}/olts`;
@@ -157,14 +162,14 @@ export function OltExplorer() {
   return (
     <div>
       <Link to="/controllers" className="mb-3 inline-flex items-center gap-1 text-sm text-muted hover:text-text cursor-pointer">
-        <ArrowLeft className="h-4 w-4" /> Controladoras
+        <ArrowLeft className="h-4 w-4" /> {t("fiberhome:explorer.back")}
       </Link>
       <PageHeader
-        title={controllerName || "OLTs"}
-        subtitle="Exploração ao vivo via TL1 (UNM2000)"
+        title={controllerName || t("fiberhome:explorer.oltsTitle")}
+        subtitle={t("fiberhome:explorer.subtitle")}
         actions={
           <Button variant="ghost" onClick={() => load(true, true)} disabled={loading}>
-            {loading ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Atualizar
+            {loading ? <Spinner /> : <RefreshCw className="h-4 w-4" />} {t("common:actions.refresh")}
           </Button>
         }
       />
@@ -178,17 +183,17 @@ export function OltExplorer() {
       ) : dataError(olts) ? (
         <p className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">{dataError(olts)}</p>
       ) : rows.length === 0 ? (
-        <EmptyState title="Nenhuma OLT" hint="O UNM2000 não retornou OLTs." />
+        <EmptyState title={t("fiberhome:explorer.noOlts")} hint={t("fiberhome:explorer.noOltsHint")} />
       ) : (
         <Card>
           <div className="mb-3 flex items-center gap-2">
             <Network className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold">OLTs ({rows.length})</h2>
+            <h2 className="text-sm font-semibold">{t("fiberhome:explorer.oltsHeading", { count: rows.length })}</h2>
           </div>
           <RecordsTable
             data={olts as Tl1Data}
             action={{
-              label: "Explorar",
+              label: t("fiberhome:explorer.explore"),
               onClick: (r) => setSelected({ ip: oltIp(r), name: oltName(r) }),
               show: (r) => !!oltIp(r),
             }}
@@ -200,19 +205,10 @@ export function OltExplorer() {
 }
 
 type TabKey = "info" | "boards" | "shelves" | "pons" | "onus" | "states" | "unreg" | "alarms" | "locate";
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "info", label: "Info" },
-  { key: "boards", label: "Placas" },
-  { key: "shelves", label: "Shelves" },
-  { key: "pons", label: "PONs" },
-  { key: "onus", label: "ONUs" },
-  { key: "states", label: "Estados" },
-  { key: "unreg", label: "Não-registradas" },
-  { key: "alarms", label: "Alarmes" },
-  { key: "locate", label: "Localizar ONU" },
-];
+const TABS: TabKey[] = ["info", "boards", "shelves", "pons", "onus", "states", "unreg", "alarms", "locate"];
 
 function OltDetail({ cid, olt, onBack }: { cid: number; olt: { ip: string; name: string }; onBack: () => void }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<TabKey>("pons");
   const [onuFilter, setOnuFilter] = useState<string>(""); // ponid pré-preenchido ao clicar numa PON
 
@@ -224,7 +220,7 @@ function OltDetail({ cid, olt, onBack }: { cid: number; olt: { ip: string; name:
   return (
     <div>
       <button onClick={onBack} className="mb-3 inline-flex items-center gap-1 text-sm text-muted hover:text-text cursor-pointer">
-        <ArrowLeft className="h-4 w-4" /> OLTs
+        <ArrowLeft className="h-4 w-4" /> {t("fiberhome:explorer.backToOlts")}
       </button>
       <div className="mb-4 flex items-center gap-3">
         <h2 className="text-lg font-semibold">{olt.name}</h2>
@@ -232,27 +228,27 @@ function OltDetail({ cid, olt, onBack }: { cid: number; olt: { ip: string; name:
       </div>
 
       <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
-        {TABS.map((t) => (
+        {TABS.map((key) => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={key}
+            onClick={() => setTab(key)}
             className={
               "cursor-pointer rounded-t-lg px-4 py-2 text-sm transition-colors duration-200 " +
-              (tab === t.key ? "border-b-2 border-primary font-medium text-primary" : "text-muted hover:text-text")
+              (tab === key ? "border-b-2 border-primary font-medium text-primary" : "text-muted hover:text-text")
             }
           >
-            {t.label}
+            {t(`fiberhome:tabs.${key}`)}
           </button>
         ))}
       </div>
 
-      {tab === "info" && <ListTab cid={cid} oltIp={olt.ip} path="" field="info" empty="Sem informações" ttl={STRUCT_TTL} />}
-      {tab === "boards" && <ListTab cid={cid} oltIp={olt.ip} path="/boards" field="boards" empty="Sem placas" ttl={STRUCT_TTL} />}
-      {tab === "shelves" && <ListTab cid={cid} oltIp={olt.ip} path="/shelves" field="shelves" empty="Sem shelves" ttl={STRUCT_TTL} />}
+      {tab === "info" && <ListTab cid={cid} oltIp={olt.ip} path="" field="info" empty={t("fiberhome:lists.noInfo")} ttl={STRUCT_TTL} />}
+      {tab === "boards" && <ListTab cid={cid} oltIp={olt.ip} path="/boards" field="boards" empty={t("fiberhome:lists.noBoards")} ttl={STRUCT_TTL} />}
+      {tab === "shelves" && <ListTab cid={cid} oltIp={olt.ip} path="/shelves" field="shelves" empty={t("fiberhome:lists.noShelves")} ttl={STRUCT_TTL} />}
       {tab === "pons" && <PonsTab cid={cid} oltIp={olt.ip} onSeeOnus={openOnus} />}
       {tab === "onus" && <OnusTab cid={cid} oltIp={olt.ip} initialPon={onuFilter} />}
-      {tab === "states" && <ListTab cid={cid} oltIp={olt.ip} path="/onu-states" field="states" empty="Sem estados" ttl={STRUCT_TTL} />}
-      {tab === "unreg" && <ListTab cid={cid} oltIp={olt.ip} path="/unregistered" field="unregistered" empty="Nenhuma ONU não-registrada" ttl={STRUCT_TTL} />}
+      {tab === "states" && <ListTab cid={cid} oltIp={olt.ip} path="/onu-states" field="states" empty={t("fiberhome:lists.noStates")} ttl={STRUCT_TTL} />}
+      {tab === "unreg" && <ListTab cid={cid} oltIp={olt.ip} path="/unregistered" field="unregistered" empty={t("fiberhome:lists.noUnregistered")} ttl={STRUCT_TTL} />}
       {tab === "alarms" && <AlarmsTab cid={cid} oltIp={olt.ip} />}
       {tab === "locate" && <LocateTab cid={cid} oltIp={olt.ip} />}
     </div>
@@ -263,7 +259,7 @@ function OltDetail({ cid, olt, onBack }: { cid: number; olt: { ip: string; name:
 function Loader({
   load,
   children,
-  cta = "Recarregar",
+  cta,
   auto = true,
   controls,
   primed = false,
@@ -275,6 +271,7 @@ function Loader({
   controls?: React.ReactNode;
   primed?: boolean; // já há dado de cache em tela → não mostra spinner inicial
 }) {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [loadedOnce, setLoadedOnce] = useState(primed);
@@ -301,7 +298,7 @@ function Loader({
       <div className="mb-3 flex items-center gap-2">
         {controls}
         <Button variant="ghost" onClick={() => run(true)} disabled={busy}>
-          {busy ? <Spinner /> : <RefreshCw className="h-4 w-4" />} {cta}
+          {busy ? <Spinner /> : <RefreshCw className="h-4 w-4" />} {cta ?? t("fiberhome:loader.reload")}
         </Button>
       </div>
       {error && <p className="mb-3 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">{error}</p>}
@@ -311,6 +308,7 @@ function Loader({
 }
 
 function PonsTab({ cid, oltIp, onSeeOnus }: { cid: number; oltIp: string; onSeeOnus: (ponid: string) => void }) {
+  const { t } = useTranslation();
   const url = `/controllers/${cid}/olts/${encodeURIComponent(oltIp)}/pons`;
   const [data, setData] = useState<Tl1Data | null>(() => peekTl1<PonsResp>(url, STRUCT_TTL)?.pons ?? null);
   return (
@@ -324,9 +322,9 @@ function PonsTab({ cid, oltIp, onSeeOnus }: { cid: number; oltIp: string; onSeeO
       {data && (
         <RecordsTable
           data={data}
-          empty="Sem PONs"
+          empty={t("fiberhome:pons.empty")}
           action={{
-            label: "Ver ONUs",
+            label: t("fiberhome:pons.seeOnus"),
             onClick: (r) => {
               const pid = pick(r, ["PONID", "PON", "PORTID", "PORT"]);
               if (pid) onSeeOnus(pid);
@@ -340,6 +338,7 @@ function PonsTab({ cid, oltIp, onSeeOnus }: { cid: number; oltIp: string; onSeeO
 }
 
 function OnusTab({ cid, oltIp, initialPon }: { cid: number; oltIp: string; initialPon: string }) {
+  const { t } = useTranslation();
   const [pon, setPon] = useState(initialPon);
   const makeUrl = () =>
     `/controllers/${cid}/olts/${encodeURIComponent(oltIp)}/onus${pon ? `?ponid=${encodeURIComponent(pon)}` : ""}`;
@@ -352,15 +351,15 @@ function OnusTab({ cid, oltIp, initialPon }: { cid: number; oltIp: string; initi
           value={pon}
           onChange={(e) => setPon(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !q.busy && q.run(false)}
-          placeholder="Filtrar por PON (ex.: NA-NA-1-1) — vazio = todas"
+          placeholder={t("fiberhome:onus.filterPlaceholder")}
           className="max-w-xs font-mono"
         />
         <Button onClick={() => q.run(false)} disabled={q.busy}>
-          {q.busy ? <Spinner /> : <Search className="h-4 w-4" />} Buscar
+          {q.busy ? <Spinner /> : <Search className="h-4 w-4" />} {t("common:actions.search")}
         </Button>
         {q.data && (
           <Button variant="ghost" onClick={() => q.run(true)} disabled={q.busy}>
-            <RefreshCw className="h-4 w-4" /> Atualizar
+            <RefreshCw className="h-4 w-4" /> {t("common:actions.refresh")}
           </Button>
         )}
       </div>
@@ -368,9 +367,9 @@ function OnusTab({ cid, oltIp, initialPon }: { cid: number; oltIp: string; initi
       {q.busy && !q.data ? (
         <div className="flex justify-center py-8"><Spinner className="h-6 w-6" /></div>
       ) : q.data ? (
-        <RecordsTable data={q.data} empty="Sem ONUs" />
+        <RecordsTable data={q.data} empty={t("fiberhome:onus.empty")} />
       ) : (
-        <p className="text-xs text-muted">Informe uma PON (ou deixe vazio para todas) e clique em Buscar. Listar todas pode levar alguns segundos.</p>
+        <p className="text-xs text-muted">{t("fiberhome:onus.hint")}</p>
       )}
     </Card>
   );
@@ -410,6 +409,7 @@ function ListTab({
 }
 
 function AlarmsTab({ cid, oltIp }: { cid: number; oltIp: string }) {
+  const { t } = useTranslation();
   const [since, setSince] = useState("");
   const makeUrl = () =>
     `/controllers/${cid}/olts/${encodeURIComponent(oltIp)}/alarms${since ? `?start=${encodeURIComponent(since)}` : ""}`;
@@ -422,15 +422,15 @@ function AlarmsTab({ cid, oltIp }: { cid: number; oltIp: string }) {
           value={since}
           onChange={(e) => setSince(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !q.busy && q.run(false)}
-          placeholder="Desde (ex.: 2026-06-23 00:00:00) — opcional"
+          placeholder={t("fiberhome:alarms.sincePlaceholder")}
           className="max-w-xs font-mono"
         />
         <Button onClick={() => q.run(false)} disabled={q.busy}>
-          {q.busy ? <Spinner /> : <Search className="h-4 w-4" />} Consultar
+          {q.busy ? <Spinner /> : <Search className="h-4 w-4" />} {t("fiberhome:alarms.query")}
         </Button>
         {q.data && (
           <Button variant="ghost" onClick={() => q.run(true)} disabled={q.busy}>
-            <RefreshCw className="h-4 w-4" /> Atualizar
+            <RefreshCw className="h-4 w-4" /> {t("common:actions.refresh")}
           </Button>
         )}
       </div>
@@ -439,31 +439,32 @@ function AlarmsTab({ cid, oltIp }: { cid: number; oltIp: string }) {
         <div className="flex justify-center py-8"><Spinner className="h-6 w-6" /></div>
       ) : q.data ? (
         q.data.length === 0 ? (
-          <EmptyState title="Sem alarmes" />
+          <EmptyState title={t("fiberhome:alarms.empty")} />
         ) : (
           <pre className="max-h-96 overflow-auto rounded-lg border border-border bg-bg p-3 font-mono text-xs text-text whitespace-pre-wrap">
             {q.data.join("\n")}
           </pre>
         )
       ) : (
-        <p className="text-xs text-muted">Consulte os alarmes ativos da OLT (opcionalmente a partir de uma data/hora).</p>
+        <p className="text-xs text-muted">{t("fiberhome:alarms.hint")}</p>
       )}
     </Card>
   );
 }
 
-const LOCATE_SECTIONS: { key: keyof LocateOnu; label: string }[] = [
-  { key: "query", label: "Localização (slot/PON)" },
-  { key: "state", label: "Estado" },
-  { key: "optical", label: "Sinal óptico (DDM)" },
-  { key: "info", label: "Informações do equipamento" },
-  { key: "lan_port", label: "Portas LAN" },
-  { key: "config", label: "Configuração" },
-  { key: "macaddress", label: "MACs aprendidos" },
-  { key: "lan_info", label: "Status das portas LAN" },
+const LOCATE_SECTIONS: (keyof LocateOnu)[] = [
+  "query",
+  "state",
+  "optical",
+  "info",
+  "lan_port",
+  "config",
+  "macaddress",
+  "lan_info",
 ];
 
 function LocateTab({ cid, oltIp }: { cid: number; oltIp: string }) {
+  const { t } = useTranslation();
   const [onuid, setOnuid] = useState("");
   const [onutype, setOnutype] = useState("MAC");
   const makeUrl = () =>
@@ -476,10 +477,10 @@ function LocateTab({ cid, oltIp }: { cid: number; oltIp: string }) {
     <Card>
       <div className="mb-3 flex items-center gap-2">
         <Search className="h-4 w-4 text-primary" />
-        <h2 className="text-sm font-semibold">Localizar ONU por ID</h2>
+        <h2 className="text-sm font-semibold">{t("fiberhome:locate.heading")}</h2>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Select className="w-28" value={onutype} onChange={(e) => setOnutype(e.target.value)} aria-label="Tipo de ID">
+        <Select className="w-28" value={onutype} onChange={(e) => setOnutype(e.target.value)} aria-label={t("fiberhome:locate.idType")}>
           <option value="MAC">MAC</option>
           <option value="LOID">LOID</option>
         </Select>
@@ -487,15 +488,15 @@ function LocateTab({ cid, oltIp }: { cid: number; oltIp: string }) {
           value={onuid}
           onChange={(e) => setOnuid(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !q.busy && onuid && q.run(false)}
-          placeholder="ex.: 48575443A1B2"
+          placeholder={t("fiberhome:locate.idPlaceholder")}
           className="max-w-xs font-mono"
         />
         <Button onClick={() => q.run(false)} disabled={q.busy || !onuid}>
-          {q.busy ? <Spinner /> : "Localizar"}
+          {q.busy ? <Spinner /> : t("fiberhome:locate.locate")}
         </Button>
         {q.data && !onuError && (
           <Button variant="ghost" onClick={() => q.run(true)} disabled={q.busy || !onuid}>
-            <RefreshCw className="h-4 w-4" /> Atualizar
+            <RefreshCw className="h-4 w-4" /> {t("common:actions.refresh")}
           </Button>
         )}
       </div>
@@ -505,10 +506,10 @@ function LocateTab({ cid, oltIp }: { cid: number; oltIp: string }) {
 
       {q.data && !onuError && (
         <div className="mt-4 space-y-5">
-          {LOCATE_SECTIONS.map(({ key, label }) => (
+          {LOCATE_SECTIONS.map((key) => (
             <div key={key}>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{label}</h3>
-              <RecordsTable data={(q.data as LocateOnu)[key]} empty="—" />
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{t(`fiberhome:locateSections.${key}`)}</h3>
+              <RecordsTable data={(q.data as LocateOnu)[key]} empty={t("fiberhome:locate.empty")} />
             </div>
           ))}
         </div>

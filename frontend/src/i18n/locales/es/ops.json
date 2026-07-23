@@ -1,0 +1,134 @@
+{
+  "shared": {
+    "errorWithStatus": "Error {{status}}: {{message}}",
+    "errorStatus": "Error {{status}}",
+    "selectRouterOS": "— seleccione un RouterOS —",
+    "selectDeviceTitle": "Seleccione un dispositivo",
+    "emptyParens": "(vacío)"
+  },
+  "commands": {
+    "title": "Comandos en Masa",
+    "runTitle": "Ejecutar Comando",
+    "commandLabel": "Comando",
+    "readOnlyNote": "Solo lectura — los comandos de escritura son rechazados por la allowlist.",
+    "selectDevices": "Seleccionar Dispositivos",
+    "selectAll": "Seleccionar Todos",
+    "deselectAll": "Deseleccionar Todos",
+    "results": "Resultados",
+    "ok": "ok",
+    "fail": "fallo",
+    "noOutput": "(sin salida)",
+    "history": "Historial de Comandos",
+    "historyEmpty": "Aún no hay comandos",
+    "col": {
+      "command": "Comando",
+      "proto": "Proto",
+      "result": "Resultado"
+    }
+  },
+  "templates": {
+    "title": "Plantillas de Comando",
+    "add": "Agregar Plantilla",
+    "emptyTitle": "Aún no hay plantillas",
+    "emptyHint": "Cree conjuntos de comandos predefinidos para una configuración rápida.",
+    "typeScript": "Script",
+    "typeCommands": "Comandos",
+    "lines": "{{count}} línea(s)",
+    "deleteTitle": "Eliminar plantilla",
+    "deleteMsg": "¿Eliminar la plantilla \"{{name}}\"?",
+    "editTitle": "Editar Plantilla",
+    "newTitle": "Nueva Plantilla",
+    "category": "Categoría",
+    "namePlaceholder": "ej.: Servicios Seguros",
+    "descPlaceholder": "Descripción opcional",
+    "typeCommandsRadio": "Comandos (uno por línea)",
+    "typeScriptRadio": "Script (/system/script)",
+    "bodyScriptLabel": "Script",
+    "bodyCommandsLabel": "Comandos (uno por línea)"
+  },
+  "upgrades": {
+    "title": "Actualizaciones",
+    "check": "Buscar Actualizaciones",
+    "note": "Vista de solo lectura de versiones. Las acciones de actualización (RouterOS/firmware) son operaciones de escritura, deshabilitadas en el MVP de solo lectura.",
+    "emptyTitle": "Ningún RouterOS",
+    "emptyHint": "Registre un dispositivo RouterOS.",
+    "fwPending": "FW pendiente",
+    "upToDate": "actualizado",
+    "col": {
+      "device": "Dispositivo",
+      "rosCurrent": "ROS Actual",
+      "fwCurrent": "FW Actual",
+      "fwUpgrade": "FW de Actualización"
+    }
+  },
+  "scan": {
+    "title": "Escanear Red",
+    "configTitle": "Configuración del Escaneo",
+    "ipRange": "Rango de IP",
+    "rangeHint": "CIDR (192.168.88.0/24), rango (192.168.88.1-254), o IP único · máx. 512 hosts",
+    "sshPort": "Puerto SSH",
+    "apiHttpsPort": "Puerto API (HTTPS)",
+    "apiHttpPort": "Puerto API (HTTP)",
+    "scanning": "Escaneando…",
+    "start": "Iniciar Escaneo",
+    "results": "Resultados",
+    "resultCount": "{{found}} RouterOS de {{scanned}} host(s)",
+    "emptyTitle": "Ningún RouterOS encontrado",
+    "emptyHint": "Verifique el rango, el puerto y las credenciales.",
+    "col": {
+      "identity": "Identidad"
+    }
+  },
+  "topology": {
+    "title": "Topología",
+    "allSites": "Todos los sitios",
+    "unknown": "desconocido",
+    "unmanaged": "No gestionados",
+    "counts": "{{devices}} dispositivos · {{ghosts}} no gestionados · {{links}} enlaces",
+    "unmanagedNode": "no gestionado",
+    "empty": "Ningún dispositivo."
+  },
+  "backups": {
+    "title": "Backups",
+    "subtitle": "Exportación de configuración RouterOS (/export)",
+    "newTitle": "Nuevo backup",
+    "sendFtp": "Enviar por FTP",
+    "sendS3": "Enviar por MinIO/S3",
+    "create": "Crear backup",
+    "configHintPrefix": "Configure los destinos en",
+    "emptyTitle": "Ningún backup",
+    "emptyHint": "Cree un backup seleccionando un dispositivo arriba.",
+    "deleteTitle": "Eliminar backup",
+    "deleteMsg": "¿Eliminar el backup de {{device}} ({{date}})?",
+    "viewTitle": "Backup #{{id}}",
+    "view": "Ver",
+    "col": {
+      "device": "Dispositivo",
+      "created": "Creado el",
+      "size": "Tamaño"
+    }
+  },
+  "logs": {
+    "title": "Logs",
+    "subtitle": "Registro del dispositivo (/log print)",
+    "filterPlaceholder": "Filtrar mensaje/tópico…",
+    "entryCount": "{{count}} entrada(s)",
+    "emptyHint": "Elija un RouterOS para ver los logs.",
+    "noEntries": "Sin entradas",
+    "col": {
+      "time": "Hora",
+      "topics": "Tópicos",
+      "message": "Mensaje"
+    }
+  },
+  "security": {
+    "title": "Seguridad",
+    "subtitle": "Verificaciones de hardening de RouterOS",
+    "emptyHint": "Elija un RouterOS para ejecutar las verificaciones.",
+    "sev": {
+      "ok": "OK",
+      "warn": "Atención",
+      "fail": "Fallo"
+    }
+  }
+}

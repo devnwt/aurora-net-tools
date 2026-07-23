@@ -50,8 +50,9 @@ export interface SiteGroup {
   devices: Device[];
 }
 
-/** Agrupa devices por site (group). Devices sem site caem em "Sem site". */
-export function groupBySite(devices: Device[], groups: Group[]): SiteGroup[] {
+/** Agrupa devices por site (group). Devices sem site caem em `noSiteLabel`
+ *  (passe t("common:labels.noSite") para traduzir; default pt-BR para não quebrar). */
+export function groupBySite(devices: Device[], groups: Group[], noSiteLabel = "Sem site"): SiteGroup[] {
   const byId = new Map(groups.map((g) => [g.id, g.name]));
   const buckets = new Map<number | null, Device[]>();
   for (const d of devices) {
@@ -60,7 +61,7 @@ export function groupBySite(devices: Device[], groups: Group[]): SiteGroup[] {
   }
   const out: SiteGroup[] = [];
   for (const [id, devs] of buckets) {
-    out.push({ id, name: id === null ? "Sem site" : byId.get(id) ?? `Site ${id}`, devices: devs });
+    out.push({ id, name: id === null ? noSiteLabel : byId.get(id) ?? `Site ${id}`, devices: devs });
   }
   return out;
 }

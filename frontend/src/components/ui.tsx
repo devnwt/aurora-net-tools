@@ -5,6 +5,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 export function Button({
@@ -110,6 +111,7 @@ export function Modal({
   footer?: ReactNode;
   wide?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -123,7 +125,7 @@ export function Modal({
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
           <h2 className="text-sm font-semibold">{title}</h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-muted hover:text-text cursor-pointer">✕</button>
+          <button onClick={onClose} aria-label={t("common:a11y.close")} className="text-muted hover:text-text cursor-pointer">✕</button>
         </div>
         <div className="px-5 py-4">{children}</div>
         {footer && <div className="flex justify-end gap-2 border-t border-border px-5 py-3">{footer}</div>}
@@ -133,11 +135,12 @@ export function Modal({
 }
 
 export function Spinner({ className }: { className?: string }) {
+  const { t } = useTranslation();
   return (
     <div
       className={cn("h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary", className)}
       role="status"
-      aria-label="carregando"
+      aria-label={t("common:a11y.loading")}
     />
   );
 }

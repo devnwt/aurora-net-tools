@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import type { Credential, CredentialKind, Device, Group } from "@/lib/types";
@@ -51,6 +52,7 @@ const EMPTY: FormState = {
 };
 
 export function DeviceForm() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const editing = Boolean(id);
   const nav = useNavigate();
@@ -90,41 +92,41 @@ export function DeviceForm() {
   return (
     <div>
       <Link to="/" className="mb-3 inline-flex items-center gap-1 text-sm text-muted hover:text-text cursor-pointer">
-        <ArrowLeft className="h-4 w-4" /> Inventário
+        <ArrowLeft className="h-4 w-4" /> {t("devices:form.inventory")}
       </Link>
-      <PageHeader title={editing ? "Editar equipamento" : "Novo equipamento"} />
+      <PageHeader title={editing ? t("devices:form.editTitle") : t("devices:form.newTitle")} />
 
       <form onSubmit={submit} className="max-w-3xl space-y-5">
         <Card>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nome">
+            <Field label={t("common:labels.name")}>
               <Input value={form.name} onChange={(e) => set("name", e.target.value)} required />
             </Field>
-            <Field label="IP / host">
+            <Field label={t("devices:form.ipHost")}>
               <Input value={form.ip} onChange={(e) => set("ip", e.target.value)} className="font-mono" required />
             </Field>
-            <Field label="Tipo">
+            <Field label={t("common:labels.type")}>
               <Select value={form.device_type} onChange={(e) => set("device_type", e.target.value)}>
                 <option value="routeros">RouterOS</option>
                 <option value="cisco">Cisco</option>
                 <option value="huawei">Huawei</option>
               </Select>
             </Field>
-            <Field label="Grupo">
+            <Field label={t("devices:form.group")}>
               <Select
                 value={form.group_id ?? ""}
                 onChange={(e) => set("group_id", e.target.value ? Number(e.target.value) : null)}
               >
-                <option value="">— sem grupo —</option>
+                <option value="">{t("devices:form.noGroup")}</option>
                 {groups.map((g) => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </Select>
             </Field>
-            <Field label="Latitude">
+            <Field label={t("devices:form.latitude")}>
               <Input type="number" step="any" value={form.latitude ?? ""} onChange={(e) => set("latitude", e.target.value ? Number(e.target.value) : null)} placeholder="-20.1234" className="font-mono" />
             </Field>
-            <Field label="Longitude">
+            <Field label={t("devices:form.longitude")}>
               <Input type="number" step="any" value={form.longitude ?? ""} onChange={(e) => set("longitude", e.target.value ? Number(e.target.value) : null)} placeholder="-40.1234" className="font-mono" />
             </Field>
           </div>
@@ -172,14 +174,14 @@ export function DeviceForm() {
               checked={form.api_enabled}
               onChange={(e) => set("api_enabled", e.target.checked)}
             />
-            API <span className="text-xs font-normal text-muted">(armazenada; sem execução no MVP)</span>
+            API <span className="text-xs font-normal text-muted">{t("devices:form.apiNote")}</span>
           </label>
           {form.api_enabled && (
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
-              <Field label="URL base">
+              <Field label={t("devices:form.baseUrl")}>
                 <Input value={form.api_base_url} onChange={(e) => set("api_base_url", e.target.value)} className="font-mono" />
               </Field>
-              <Field label="Credencial">
+              <Field label={t("devices:form.credential")}>
                 <CredSelect creds={creds} kind="api" value={form.api_credential_id} onChange={(v) => set("api_credential_id", v)} />
               </Field>
             </div>
@@ -188,8 +190,8 @@ export function DeviceForm() {
 
         {error && <p className="text-sm text-danger">{error}</p>}
         <div className="flex gap-2">
-          <Button type="submit" disabled={busy}>{busy ? "Salvando…" : editing ? "Salvar" : "Cadastrar"}</Button>
-          <Button type="button" variant="ghost" onClick={() => nav("/")}>Cancelar</Button>
+          <Button type="submit" disabled={busy}>{busy ? t("common:actions.saving") : editing ? t("common:actions.save") : t("devices:form.submitCreate")}</Button>
+          <Button type="button" variant="ghost" onClick={() => nav("/")}>{t("common:actions.cancel")}</Button>
         </div>
       </form>
     </div>
@@ -216,10 +218,11 @@ function CredSelect({
   value: number | null;
   onChange: (v: number | null) => void;
 }) {
+  const { t } = useTranslation();
   const options = creds.filter((c) => c.kind === kind);
   return (
     <Select value={value ?? ""} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}>
-      <option value="">— herdar do grupo —</option>
+      <option value="">{t("devices:form.inheritFromGroup")}</option>
       {options.map((c) => (
         <option key={c.id} value={c.id}>{c.name}</option>
       ))}
@@ -248,6 +251,7 @@ function AccessSection({
   creds: Credential[];
   kind: CredentialKind;
 }) {
+  const { t } = useTranslation();
   return (
     <Card>
       <label className="flex items-center gap-2 text-sm font-semibold">
@@ -261,10 +265,10 @@ function AccessSection({
       </label>
       {enabled && (
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
-          <Field label="Porta">
+          <Field label={t("common:labels.port")}>
             <Input type="number" value={port} onChange={(e) => onPort(Number(e.target.value))} className="font-mono" />
           </Field>
-          <Field label="Credencial">
+          <Field label={t("devices:form.credential")}>
             <CredSelect creds={creds} kind={kind} value={credId} onChange={onCred} />
           </Field>
         </div>

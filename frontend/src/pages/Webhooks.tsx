@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import type { Webhook } from "@/lib/types";
@@ -8,13 +9,14 @@ import { Badge, Button, EmptyState, Input, Modal, Spinner } from "@/components/u
 import { useConfirm } from "@/lib/confirm";
 
 const EVENTS = [
-  { key: "device.online", label: "Dispositivo online" },
-  { key: "device.offline", label: "Dispositivo offline / não-acessível" },
+  { key: "device.online", labelKey: "access:webhooks.events.online" },
+  { key: "device.offline", labelKey: "access:webhooks.events.offline" },
 ];
 
 const BLANK = { name: "", url: "", events: "", secret: "", enabled: true };
 
 export function Webhooks() {
+  const { t } = useTranslation();
   const { confirm } = useConfirm();
   const [items, setItems] = useState<Webhook[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,17 +74,17 @@ export function Webhooks() {
   }
 
   async function test(w: Webhook) {
-    setTested((t) => ({ ...t, [w.id]: "…" }));
+    setTested((prev) => ({ ...prev, [w.id]: "…" }));
     try {
       const r = await api.post<{ ok: boolean; status: number }>(`/webhooks/${w.id}/test`);
-      setTested((t) => ({ ...t, [w.id]: r.ok ? `entregue (${r.status})` : `resposta ${r.status}` }));
+      setTested((prev) => ({ ...prev, [w.id]: r.ok ? t("access:webhooks.test.delivered", { status: r.status }) : t("access:webhooks.test.response", { status: r.status }) }));
     } catch (e) {
-      setTested((t) => ({ ...t, [w.id]: e instanceof ApiError ? `erro ${e.status}` : "falhou" }));
+      setTested((prev) => ({ ...prev, [w.id]: e instanceof ApiError ? t("access:webhooks.test.error", { status: e.status }) : t("access:webhooks.test.failed") }));
     }
   }
 
   async function remove(w: Webhook) {
-    if (!(await confirm({ title: "Excluir webhook", message: `Excluir o webhook "${w.name}"?` }))) return;
+    if (!(await confirm({ title: t("access:webhooks.delete.title"), message: t("access:webhooks.delete.message", { name: w.name }) }))) return;
     await api.del(`/webhooks/${w.id}`);
     load();
   }
@@ -90,29 +92,29 @@ export function Webhooks() {
   return (
     <div>
       <PageHeader
-        title="Webhooks"
-        subtitle="Notificações HTTP em eventos (ex.: dispositivo caiu / voltou)"
-        actions={<Button onClick={openNew}><Plus className="h-4 w-4" /> Adicionar Webhook</Button>}
+        title={t("access:webhooks.title")}
+        subtitle={t("access:webhooks.subtitle")}
+        actions={<Button onClick={openNew}><Plus className="h-4 w-4" /> {t("access:webhooks.add")}</Button>}
       />
 
       {loading ? (
         <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>
       ) : items.length === 0 ? (
-        <EmptyState title="Nenhum webhook" hint="Crie um para receber notificações de eventos." />
+        <EmptyState title={t("access:webhooks.empty.title")} hint={t("access:webhooks.empty.hint")} />
       ) : (
-        <Table head={<><Th>Nome</Th><Th>URL</Th><Th>Eventos</Th><Th>Status</Th><Th className="text-right">Ações</Th></>}>
+        <Table head={<><Th>{t("common:labels.name")}</Th><Th>{t("access:webhooks.columns.url")}</Th><Th>{t("access:webhooks.columns.events")}</Th><Th>{t("common:labels.status")}</Th><Th className="text-right">{t("common:labels.actions")}</Th></>}>
           {items.map((w) => (
             <tr key={w.id} className="hover:bg-surface-2 transition-colors duration-200">
-              <Td className="font-medium">{w.name} {w.has_secret && <Badge tone="muted">assinado</Badge>}</Td>
+              <Td className="font-medium">{w.name} {w.has_secret && <Badge tone="muted">{t("access:webhooks.signed")}</Badge>}</Td>
               <Td className="max-w-xs truncate font-mono text-xs text-muted" title={w.url}>{w.url}</Td>
-              <Td className="text-xs text-muted">{w.events || "todos"}</Td>
-              <Td>{w.enabled ? <Badge tone="ok">ativo</Badge> : <Badge tone="muted">inativo</Badge>}</Td>
+              <Td className="text-xs text-muted">{w.events || t("access:webhooks.allEvents")}</Td>
+              <Td>{w.enabled ? <Badge tone="ok">{t("access:webhooks.active")}</Badge> : <Badge tone="muted">{t("access:webhooks.inactive")}</Badge>}</Td>
               <Td className="text-right">
                 <div className="flex items-center justify-end gap-2">
                   {tested[w.id] && <span className="text-xs text-muted">{tested[w.id]}</span>}
-                  <Button variant="ghost" onClick={() => test(w)}>Testar</Button>
-                  <Button variant="ghost" onClick={() => openEdit(w)}>Editar</Button>
-                  <Button variant="danger" onClick={() => remove(w)}>Excluir</Button>
+                  <Button variant="ghost" onClick={() => test(w)}>{t("common:actions.test")}</Button>
+                  <Button variant="ghost" onClick={() => openEdit(w)}>{t("common:actions.edit")}</Button>
+                  <Button variant="danger" onClick={() => remove(w)}>{t("common:actions.delete")}</Button>
                 </div>
               </Td>
             </tr>
@@ -122,32 +124,32 @@ export function Webhooks() {
 
       {open && (
         <Modal
-          title={editing ? "Editar Webhook" : "Adicionar Webhook"}
+          title={editing ? t("access:webhooks.editTitle") : t("access:webhooks.add")}
           onClose={() => setOpen(false)}
           footer={
             <>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button onClick={save} disabled={saving || !form.name || !form.url}>{saving ? "Salvando…" : editing ? "Salvar" : "Criar"}</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}>{t("common:actions.cancel")}</Button>
+              <Button onClick={save} disabled={saving || !form.name || !form.url}>{saving ? t("common:actions.saving") : editing ? t("common:actions.save") : t("common:actions.create")}</Button>
             </>
           }
         >
           <div className="space-y-3">
-            <Fld label="NOME"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus /></Fld>
-            <Fld label="URL"><Input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://exemplo.com/hook" className="font-mono" /></Fld>
-            <Fld label="EVENTOS (vazio = todos)">
+            <Fld label={t("common:labels.name")}><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus /></Fld>
+            <Fld label={t("access:webhooks.urlLabel")}><Input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder={t("access:webhooks.urlPlaceholder")} className="font-mono" /></Fld>
+            <Fld label={t("access:webhooks.eventsLabel")}>
               <div className="flex flex-col gap-1">
                 {EVENTS.map((ev) => (
                   <label key={ev.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="checkbox" checked={selected.has(ev.key)} onChange={() => toggleEvent(ev.key)} /> {ev.label}
+                    <input type="checkbox" checked={selected.has(ev.key)} onChange={() => toggleEvent(ev.key)} /> {t(ev.labelKey)}
                   </label>
                 ))}
               </div>
             </Fld>
-            <Fld label={editing ? "SEGREDO (opcional — em branco mantém)" : "SEGREDO (opcional, HMAC-SHA256)"}>
-              <Input value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} placeholder="assina o corpo se preenchido" className="font-mono" />
+            <Fld label={editing ? t("access:webhooks.secretLabelEdit") : t("access:webhooks.secretLabelNew")}>
+              <Input value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} placeholder={t("access:webhooks.secretPlaceholder")} className="font-mono" />
             </Fld>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /> Habilitado
+              <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /> {t("common:labels.enabled")}
             </label>
             {err && <p className="rounded-lg border border-danger/40 bg-danger/10 p-2 text-sm text-danger">{err}</p>}
           </div>

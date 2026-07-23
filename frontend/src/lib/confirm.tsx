@@ -5,6 +5,7 @@
 //   if (!(await confirm({ title: "Excluir", message: "..." }))) return;
 //   await alert({ title: "Erro", message: "...", tone: "danger" });
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, Modal } from "@/components/ui";
 import { AlertTriangle, Info } from "lucide-react";
 
@@ -39,6 +40,7 @@ type State =
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>(null);
+  const { t } = useTranslation();
 
   const confirm = useCallback(
     (opts: ConfirmOptions) => new Promise<boolean>((resolve) => setState({ kind: "confirm", opts, resolve })),
@@ -70,21 +72,21 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       {children}
       {state && (
         <Modal
-          title={state.opts.title ?? (state.kind === "confirm" ? "Confirmar ação" : "Aviso")}
+          title={state.opts.title ?? (state.kind === "confirm" ? t("common:actions.confirmAction") : t("common:actions.warning", "Aviso"))}
           onClose={() => done(false)}
           footer={
             state.kind === "confirm" ? (
               <>
                 <Button variant="ghost" onClick={() => done(false)}>
-                  {(state.opts as ConfirmOptions).cancelText ?? "Cancelar"}
+                  {(state.opts as ConfirmOptions).cancelText ?? t("common:actions.cancel")}
                 </Button>
                 <Button onClick={() => done(true)} className={actionClass}>
-                  {(state.opts as ConfirmOptions).confirmText ?? "Excluir"}
+                  {(state.opts as ConfirmOptions).confirmText ?? t("common:actions.delete")}
                 </Button>
               </>
             ) : (
               <Button onClick={() => done(true)} className={actionClass}>
-                {(state.opts as AlertOptions).okText ?? "OK"}
+                {(state.opts as AlertOptions).okText ?? t("common:actions.ok")}
               </Button>
             )
           }

@@ -1,0 +1,86 @@
+{
+  "actions": {
+    "save": "Salvar",
+    "saving": "Salvando…",
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "confirm": "Confirmar",
+    "confirmAction": "Confirmar ação",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "create": "Criar",
+    "add": "Adicionar",
+    "remove": "Remover",
+    "back": "Voltar",
+    "retry": "Tentar novamente",
+    "refresh": "Atualizar",
+    "test": "Testar",
+    "search": "Buscar",
+    "run": "Executar",
+    "send": "Enviar",
+    "sending": "Enviando…",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "download": "Baixar",
+    "apply": "Aplicar",
+    "clear": "Limpar",
+    "new": "Novo",
+    "ok": "OK",
+    "warning": "Aviso"
+  },
+  "state": {
+    "loading": "Carregando…",
+    "empty": "Nada por aqui.",
+    "noResults": "Nenhum resultado.",
+    "error": "Ocorreu um erro.",
+    "unexpectedError": "Ocorreu um erro inesperado.",
+    "serverUnreachable": "Não foi possível falar com o servidor.",
+    "success": "Operação concluída."
+  },
+  "labels": {
+    "name": "Nome",
+    "description": "Descrição",
+    "host": "Host",
+    "port": "Porta",
+    "username": "Usuário",
+    "password": "Senha",
+    "status": "Status",
+    "actions": "Ações",
+    "type": "Tipo",
+    "enabled": "Habilitado",
+    "disabled": "Desabilitado",
+    "all": "Todos",
+    "none": "Nenhum",
+    "date": "Data",
+    "details": "Detalhes",
+    "yes": "Sim",
+    "no": "Não",
+    "noSite": "Sem site"
+  },
+  "validation": {
+    "required": "Campo obrigatório.",
+    "invalid": "Valor inválido."
+  },
+  "roles": {
+    "master": "Master",
+    "admin": "Administrador",
+    "operator": "Operador"
+  },
+  "deviceStatus": {
+    "online": "Online",
+    "not_accessible": "Inacessível",
+    "offline": "Offline",
+    "unknown": "Desconhecido",
+    "disabled": "Desabilitado"
+  },
+  "a11y": {
+    "close": "Fechar",
+    "loading": "carregando",
+    "notifications": "Notificações",
+    "closeNotification": "Fechar notificação",
+    "repeated": "repetido {{count}} vezes"
+  },
+  "comingSoon": { "badge": "Em breve", "hint": "Esta tela está em construção." },
+  "graph": { "center": "Centralizar/zoom 100%", "rearrange": "Rearranjar (limpa posições salvas)" },
+  "chart": { "collecting": "Coletando amostras…" }
+}

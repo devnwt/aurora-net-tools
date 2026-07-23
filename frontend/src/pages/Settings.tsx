@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, Save, Server } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Languages, RefreshCw, Save, Server } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { Integrations } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
+import { LanguageSelect } from "@/components/LanguageSelect";
 import { Badge, Button, Card, Input, Spinner } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import i18n from "@/i18n";
 
 interface Info {
   app: string;
@@ -16,42 +19,61 @@ interface Info {
   counts: { devices: number; statuses: number; samples: number };
 }
 
-type Tab = "home" | "ftp";
-const TABS: { key: Tab; label: string }[] = [
-  { key: "home", label: "Início" },
-  { key: "ftp", label: "FTP" },
-];
-
-const errMsg = (e: unknown) => (e instanceof ApiError ? `Erro ${e.status}: ${e.message}` : String(e));
+type Tab = "preferences" | "home" | "ftp";
+const TABS: Tab[] = ["preferences", "home", "ftp"];
 
 export function Settings() {
-  const [tab, setTab] = useState<Tab>("home");
+  const { t } = useTranslation();
+  const [tab, setTab] = useState<Tab>("preferences");
   return (
     <div>
-      <PageHeader title="Configurações" subtitle="Sistema, poller e integrações" />
+      <PageHeader title={t("settings:title")} subtitle={t("settings:subtitle")} />
       <div className="mb-5 flex flex-wrap items-center gap-1 border-b border-border">
-        {TABS.map((t) => (
+        {TABS.map((key) => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={key}
+            onClick={() => setTab(key)}
             className={cn(
               "cursor-pointer rounded-t-lg px-4 py-2 text-sm transition-colors duration-200",
-              tab === t.key ? "border-b-2 border-primary font-medium text-primary" : "text-muted hover:text-text",
+              tab === key ? "border-b-2 border-primary font-medium text-primary" : "text-muted hover:text-text",
             )}
           >
-            {t.label}
+            {t(`settings:tabs.${key}`)}
           </button>
         ))}
       </div>
+      {tab === "preferences" && <PreferencesTab />}
       {tab === "home" && <HomeTab />}
       {tab === "ftp" && <FtpTab />}
     </div>
   );
 }
 
+// === Preferências da interface (idioma) ===
+
+function PreferencesTab() {
+  const { t } = useTranslation();
+  return (
+    <Card className="max-w-xl">
+      <div className="mb-4 flex items-center gap-2">
+        <Languages className="h-4 w-4 text-primary" />
+        <h2 className="text-sm font-semibold">{t("settings:preferences.title")}</h2>
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="language" className="text-[11px] uppercase tracking-wide text-muted">
+          {t("settings:preferences.language")}
+        </label>
+        <LanguageSelect id="language" className="max-w-xs" />
+        <p className="text-xs text-muted">{t("settings:preferences.languageDesc")}</p>
+      </div>
+    </Card>
+  );
+}
+
 // === Home (sistema & poller) ===
 
 function HomeTab() {
+  const { t } = useTranslation();
   const [info, setInfo] = useState<Info | null>(null);
   const [polling, setPolling] = useState(false);
   const [note, setNote] = useState("");
@@ -66,7 +88,7 @@ function HomeTab() {
     setNote("");
     try {
       await api.post("/settings/poll");
-      setNote("Ciclo de poll disparado — os status/métricas atualizam em alguns segundos.");
+      setNote(t("settings:system.pollTriggered"));
       setTimeout(load, 6000);
     } finally {
       setPolling(false);
@@ -76,23 +98,23 @@ function HomeTab() {
   if (!info) return <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>;
 
   const rows: [string, React.ReactNode][] = [
-    ["Aplicação", info.app],
-    ["Poller", info.poll_enabled ? <Badge tone="ok">habilitado</Badge> : <Badge tone="muted">desabilitado</Badge>],
-    ["Intervalo do poller", `${info.poll_interval_seconds}s`],
-    ["Concorrência do poller", String(info.poll_concurrency)],
-    ["Retenção de amostras", `${info.sample_retention_days} dias`],
+    [t("settings:system.app"), info.app],
+    [t("settings:system.poller"), info.poll_enabled ? <Badge tone="ok">{t("settings:system.enabled")}</Badge> : <Badge tone="muted">{t("settings:system.disabled")}</Badge>],
+    [t("settings:system.interval"), `${info.poll_interval_seconds}s`],
+    [t("settings:system.concurrency"), String(info.poll_concurrency)],
+    [t("settings:system.retention"), t("settings:system.retentionValue", { days: info.sample_retention_days })],
   ];
 
   return (
     <div>
       <div className="mb-4 flex justify-end">
         <Button onClick={pollNow} disabled={polling}>
-          {polling ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Poll agora
+          {polling ? <Spinner /> : <RefreshCw className="h-4 w-4" />} {t("settings:system.pollNow")}
         </Button>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-3 text-sm font-semibold">Sistema & Poller</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("settings:system.title")}</h2>
           <dl className="space-y-2 text-sm">
             {rows.map(([k, v]) => (
               <div key={k} className="flex items-center justify-between gap-2">
@@ -101,18 +123,15 @@ function HomeTab() {
               </div>
             ))}
           </dl>
-          <p className="mt-3 text-xs text-muted">
-            Configurável via variáveis de ambiente (<span className="font-mono">POLL_INTERVAL_SECONDS</span>,{" "}
-            <span className="font-mono">POLL_CONCURRENCY</span>, <span className="font-mono">SAMPLE_RETENTION_DAYS</span>).
-          </p>
+          <p className="mt-3 text-xs text-muted">{t("settings:system.envNote")}</p>
         </Card>
 
         <Card>
-          <h2 className="mb-3 text-sm font-semibold">Dados coletados</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("settings:system.collected")}</h2>
           <div className="grid grid-cols-3 gap-3 text-center">
-            <Stat label="Dispositivos" value={info.counts.devices} />
-            <Stat label="Status" value={info.counts.statuses} />
-            <Stat label="Amostras" value={info.counts.samples} />
+            <Stat label={t("settings:system.devices")} value={info.counts.devices} />
+            <Stat label={t("settings:system.statuses")} value={info.counts.statuses} />
+            <Stat label={t("settings:system.samples")} value={info.counts.samples} />
           </div>
         </Card>
       </div>
@@ -162,6 +181,9 @@ function Field({ label, children, hint }: { label: string; children: React.React
 
 /** Carrega /settings/integrations e expõe save + test. */
 function useIntegrations() {
+  const { t } = useTranslation();
+  const errMsg = (e: unknown) =>
+    e instanceof ApiError ? t("settings:errPrefix", { status: e.status, message: e.message }) : String(e);
   const [data, setData] = useState<Integrations | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -179,7 +201,7 @@ function useIntegrations() {
       // Relê do servidor para confirmar que gravou de fato (fonte da verdade).
       const fresh = await api.get<Integrations>("/settings/integrations");
       setData(fresh);
-      setMsg({ ok: true, text: `Salvo e confirmado no servidor às ${new Date().toLocaleTimeString("pt-BR")}.` });
+      setMsg({ ok: true, text: t("settings:saved", { time: new Date().toLocaleTimeString(i18n.language) }) });
     } catch (e) {
       setMsg({ ok: false, text: errMsg(e) });
     } finally {
@@ -215,6 +237,7 @@ function ResultNote({ msg }: { msg: { ok: boolean; text: string } | null }) {
 // === FTP ===
 
 function FtpTab() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin" || user?.role === "master";
   const { data, busy, msg, save, test } = useIntegrations();
@@ -240,29 +263,28 @@ function FtpTab() {
     <Card>
       <div className="mb-4 flex items-center gap-2">
         <Server className="h-4 w-4 text-primary" />
-        <h2 className="text-sm font-semibold">Servidor FTP</h2>
-        <div className="ml-auto"><Toggle checked={f.enabled} onChange={(v) => setF({ ...f, enabled: v })} label="Habilitado" disabled={!isAdmin} /></div>
+        <h2 className="text-sm font-semibold">{t("settings:ftp.title")}</h2>
+        <div className="ml-auto"><Toggle checked={f.enabled} onChange={(v) => setF({ ...f, enabled: v })} label={t("settings:ftp.enabled")} disabled={!isAdmin} /></div>
       </div>
-      <p className="mb-4 text-xs text-muted">Destino para envio/armazenamento de backups e exportações.</p>
+      <p className="mb-4 text-xs text-muted">{t("settings:ftp.desc")}</p>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Host"><Input value={f.host} onChange={(e) => setF({ ...f, host: e.target.value })} placeholder="ftp.dominio.com" disabled={!isAdmin} /></Field>
-        <Field label="Porta"><Input value={f.port} onChange={(e) => setF({ ...f, port: e.target.value })} className="font-mono" inputMode="numeric" disabled={!isAdmin} /></Field>
-        <Field label="Usuário"><Input value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} disabled={!isAdmin} /></Field>
-        <Field label="Senha" hint={pwSet ? "Já definida — preencha para trocar." : undefined}>
-          <Input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder={pwSet ? "•••••••• (definida)" : ""} disabled={!isAdmin} />
+        <Field label={t("common:labels.host")}><Input value={f.host} onChange={(e) => setF({ ...f, host: e.target.value })} placeholder={t("settings:ftp.hostPlaceholder")} disabled={!isAdmin} /></Field>
+        <Field label={t("common:labels.port")}><Input value={f.port} onChange={(e) => setF({ ...f, port: e.target.value })} className="font-mono" inputMode="numeric" disabled={!isAdmin} /></Field>
+        <Field label={t("common:labels.username")}><Input value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} disabled={!isAdmin} /></Field>
+        <Field label={t("common:labels.password")} hint={pwSet ? t("settings:ftp.pwSet") : undefined}>
+          <Input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder={pwSet ? t("settings:ftp.pwPlaceholder") : ""} disabled={!isAdmin} />
         </Field>
-        <Field label="Diretório"><Input value={f.path} onChange={(e) => setF({ ...f, path: e.target.value })} placeholder="/backups" className="font-mono" disabled={!isAdmin} /></Field>
-        <div className="flex items-end"><Toggle checked={f.use_tls} onChange={(v) => setF({ ...f, use_tls: v })} label="FTPS (TLS explícito)" disabled={!isAdmin} /></div>
+        <Field label={t("settings:ftp.directory")}><Input value={f.path} onChange={(e) => setF({ ...f, path: e.target.value })} placeholder={t("settings:ftp.dirPlaceholder")} className="font-mono" disabled={!isAdmin} /></Field>
+        <div className="flex items-end"><Toggle checked={f.use_tls} onChange={(v) => setF({ ...f, use_tls: v })} label={t("settings:ftp.ftps")} disabled={!isAdmin} /></div>
       </div>
 
       {isAdmin && (
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
-          <Button onClick={onSave} disabled={busy}><Save className="h-4 w-4" /> Salvar</Button>
-          <Button variant="ghost" className="ml-auto" onClick={() => test("ftp")} disabled={busy}>Testar conexão</Button>
+          <Button onClick={onSave} disabled={busy}><Save className="h-4 w-4" /> {t("common:actions.save")}</Button>
+          <Button variant="ghost" className="ml-auto" onClick={() => test("ftp")} disabled={busy}>{t("settings:ftp.test")}</Button>
         </div>
       )}
       <ResultNote msg={msg} />
     </Card>
   );
 }
-

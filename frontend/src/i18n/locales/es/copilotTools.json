@@ -1,0 +1,24 @@
+{
+  "errPrefix": "Error {{status}}: {{message}}",
+  "builtinTitle": "Integradas (habilitadas por defecto)",
+  "builtinSaved": "Herramientas integradas guardadas.",
+  "webNote": "La instancia debe tener habilitado el formato JSON. Sin URL, la búsqueda no está disponible.",
+  "webPlaceholder": "https://searxng.local (instancia SearXNG)",
+  "fsDraft": "(borrador para el chat)",
+  "fsNote": "Acceso restringido a esta raíz (list/read/write). Predeterminado",
+  "intro": {
+    "p1": "Amplía Copilot con servidores ",
+    "p2": ", APIs ",
+    "p3": " o ",
+    "p4": " — puedes registrar varios de cada tipo; todos quedan disponibles en las conversaciones (con alcance por ORG)."
+  },
+  "namePlaceholder": "nombre",
+  "specPlaceholder": "URL de la spec (openapi.json)",
+  "basePlaceholder": "URL base (opcional)",
+  "authHeaderPlaceholder": "encabezado de auth (opcional)",
+  "authValuePlaceholder": "valor del encabezado (opcional)",
+  "skillPlaceholder": "contenido del skill (SKILL.md) — instrucciones inyectadas en el system prompt",
+  "addKind": "Añadir {{kind}}",
+  "kindAdded": "{{kind}} añadido.",
+  "empty": "Ninguno."
+}

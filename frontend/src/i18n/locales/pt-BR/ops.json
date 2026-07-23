@@ -1,0 +1,134 @@
+{
+  "shared": {
+    "errorWithStatus": "Erro {{status}}: {{message}}",
+    "errorStatus": "Erro {{status}}",
+    "selectRouterOS": "— selecione um RouterOS —",
+    "selectDeviceTitle": "Selecione um device",
+    "emptyParens": "(vazio)"
+  },
+  "commands": {
+    "title": "Comandos em Massa",
+    "runTitle": "Executar Comando",
+    "commandLabel": "Comando",
+    "readOnlyNote": "Somente leitura — comandos de escrita são recusados pela allowlist.",
+    "selectDevices": "Selecionar Dispositivos",
+    "selectAll": "Selecionar Todos",
+    "deselectAll": "Desmarcar Todos",
+    "results": "Resultados",
+    "ok": "ok",
+    "fail": "falha",
+    "noOutput": "(sem saída)",
+    "history": "Histórico de Comandos",
+    "historyEmpty": "Nenhum comando ainda",
+    "col": {
+      "command": "Comando",
+      "proto": "Proto",
+      "result": "Resultado"
+    }
+  },
+  "templates": {
+    "title": "Modelos de Comando",
+    "add": "Adicionar Modelo",
+    "emptyTitle": "Nenhum modelo ainda",
+    "emptyHint": "Crie conjuntos de comandos predefinidos para configuração rápida.",
+    "typeScript": "Script",
+    "typeCommands": "Comandos",
+    "lines": "{{count}} linha(s)",
+    "deleteTitle": "Excluir template",
+    "deleteMsg": "Excluir o template \"{{name}}\"?",
+    "editTitle": "Editar Modelo",
+    "newTitle": "Novo Modelo",
+    "category": "Categoria",
+    "namePlaceholder": "ex.: Serviços Seguros",
+    "descPlaceholder": "Descrição opcional",
+    "typeCommandsRadio": "Comandos (um por linha)",
+    "typeScriptRadio": "Script (/system/script)",
+    "bodyScriptLabel": "Script",
+    "bodyCommandsLabel": "Comandos (um por linha)"
+  },
+  "upgrades": {
+    "title": "Atualizações",
+    "check": "Verificar Atualizações",
+    "note": "Visão somente leitura de versões. As ações de upgrade (RouterOS/firmware) são operações de escrita, desabilitadas no MVP read-only.",
+    "emptyTitle": "Nenhum RouterOS",
+    "emptyHint": "Cadastre um device RouterOS.",
+    "fwPending": "FW pendente",
+    "upToDate": "atualizado",
+    "col": {
+      "device": "Dispositivo",
+      "rosCurrent": "ROS Atual",
+      "fwCurrent": "FW Atual",
+      "fwUpgrade": "FW de Upgrade"
+    }
+  },
+  "scan": {
+    "title": "Escanear Rede",
+    "configTitle": "Configuração do Scan",
+    "ipRange": "Faixa de IP",
+    "rangeHint": "CIDR (192.168.88.0/24), range (192.168.88.1-254), ou IP único · máx. 512 hosts",
+    "sshPort": "Porta SSH",
+    "apiHttpsPort": "Porta API (HTTPS)",
+    "apiHttpPort": "Porta API (HTTP)",
+    "scanning": "Escaneando…",
+    "start": "Iniciar Scan",
+    "results": "Resultados",
+    "resultCount": "{{found}} RouterOS de {{scanned}} host(s)",
+    "emptyTitle": "Nenhum RouterOS encontrado",
+    "emptyHint": "Verifique faixa, porta e credenciais.",
+    "col": {
+      "identity": "Identidade"
+    }
+  },
+  "topology": {
+    "title": "Topologia",
+    "allSites": "Todos os sites",
+    "unknown": "desconhecido",
+    "unmanaged": "Não-gerenciados",
+    "counts": "{{devices}} dispositivos · {{ghosts}} não-gerenciados · {{links}} enlaces",
+    "unmanagedNode": "não-gerenciado",
+    "empty": "Nenhum device."
+  },
+  "backups": {
+    "title": "Backups",
+    "subtitle": "Export de configuração RouterOS (/export)",
+    "newTitle": "Novo backup",
+    "sendFtp": "Enviar por FTP",
+    "sendS3": "Enviar por MinIO/S3",
+    "create": "Criar backup",
+    "configHintPrefix": "Configure os destinos em",
+    "emptyTitle": "Nenhum backup",
+    "emptyHint": "Crie um backup selecionando um device acima.",
+    "deleteTitle": "Excluir backup",
+    "deleteMsg": "Excluir o backup de {{device}} ({{date}})?",
+    "viewTitle": "Backup #{{id}}",
+    "view": "Ver",
+    "col": {
+      "device": "Device",
+      "created": "Criado em",
+      "size": "Tamanho"
+    }
+  },
+  "logs": {
+    "title": "Logs",
+    "subtitle": "Registro do device (/log print)",
+    "filterPlaceholder": "Filtrar mensagem/tópico…",
+    "entryCount": "{{count}} entrada(s)",
+    "emptyHint": "Escolha um RouterOS para ver os logs.",
+    "noEntries": "Sem entradas",
+    "col": {
+      "time": "Hora",
+      "topics": "Tópicos",
+      "message": "Mensagem"
+    }
+  },
+  "security": {
+    "title": "Segurança",
+    "subtitle": "Checagens de hardening do RouterOS",
+    "emptyHint": "Escolha um RouterOS para rodar as checagens.",
+    "sev": {
+      "ok": "OK",
+      "warn": "Atenção",
+      "fail": "Falha"
+    }
+  }
+}

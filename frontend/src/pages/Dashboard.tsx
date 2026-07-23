@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/lib/toast";
@@ -10,13 +11,14 @@ import { Table, Td, Th } from "@/components/Table";
 import { Badge, Button, Card, Spinner } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
-const STAT_CARDS: { key: DeviceStatus | "total" | "sites"; label: string; color: string }[] = [
-  { key: "total", label: "Total de Dispositivos", color: "text-text" },
-  { key: "online", label: "Online", color: "text-ok" },
-  { key: "not_accessible", label: "Inacessível", color: "text-accent" },
-  { key: "offline", label: "Offline", color: "text-danger" },
-  { key: "unknown", label: "Desconhecido", color: "text-muted" },
-  { key: "sites", label: "Sites", color: "text-primary" },
+// `key` também é a chave em dashboard:stats.* — o rótulo é traduzido no render.
+const STAT_CARDS: { key: DeviceStatus | "total" | "sites"; color: string }[] = [
+  { key: "total", color: "text-text" },
+  { key: "online", color: "text-ok" },
+  { key: "not_accessible", color: "text-accent" },
+  { key: "offline", color: "text-danger" },
+  { key: "unknown", color: "text-muted" },
+  { key: "sites", color: "text-primary" },
 ];
 
 export function Dashboard() {
@@ -27,6 +29,7 @@ export function Dashboard() {
   const [failed, setFailed] = useState(false);
   const [order, setOrder] = useState<"az" | "count">("az");
   const toast = useToast();
+  const { t } = useTranslation();
 
   function load() {
     setLoading(true);
@@ -46,7 +49,7 @@ export function Dashboard() {
       // a rejeição virava unhandled.
       .catch((e) => {
         setFailed(true);
-        toast.error(e, { title: "Falha ao carregar o painel" });
+        toast.error(e, { title: t("dashboard:loadFailTitle") });
       })
       .finally(() => setLoading(false));
   }
@@ -59,10 +62,10 @@ export function Dashboard() {
   }, [devices, statuses]);
 
   const sites = useMemo(() => {
-    const list = groupBySite(devices, groups);
+    const list = groupBySite(devices, groups, t("common:labels.noSite"));
     list.sort((a, b) => (order === "az" ? a.name.localeCompare(b.name) : b.devices.length - a.devices.length));
     return list;
-  }, [devices, groups, order]);
+  }, [devices, groups, order, t]);
 
   // Quando a carga falhou e não há nada em mãos, "0" seria mentira — e mentira
   // que dura, porque o toast some em 8s. "—" diz "não sei", que é a verdade.
@@ -79,10 +82,10 @@ export function Dashboard() {
   return (
     <div>
       <PageHeader
-        title="Painel"
+        title={t("dashboard:title")}
         actions={
           <Button onClick={load} disabled={loading}>
-            {loading ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Atualizar Tudo
+            {loading ? <Spinner /> : <RefreshCw className="h-4 w-4" />} {t("dashboard:refreshAll")}
           </Button>
         }
       />
@@ -91,16 +94,16 @@ export function Dashboard() {
         {STAT_CARDS.map((s) => (
           <Card key={s.key} className="p-4">
             <p className={cn("text-3xl font-semibold tabular-nums", s.color)}>{statValue(s.key)}</p>
-            <p className="mt-1 text-xs text-muted">{s.label}</p>
+            <p className="mt-1 text-xs text-muted">{t(`dashboard:stats.${s.key}`)}</p>
           </Card>
         ))}
       </div>
 
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Dispositivos por Site</h2>
+        <h2 className="text-sm font-semibold">{t("dashboard:bySite")}</h2>
         <div className="flex gap-1 rounded-lg border border-border p-0.5 text-xs">
-          <button onClick={() => setOrder("az")} className={cn("rounded px-2 py-1 cursor-pointer", order === "az" ? "bg-surface-2 text-text" : "text-muted")}>A-Z</button>
-          <button onClick={() => setOrder("count")} className={cn("rounded px-2 py-1 cursor-pointer", order === "count" ? "bg-surface-2 text-text" : "text-muted")}>Por quantidade</button>
+          <button onClick={() => setOrder("az")} className={cn("rounded px-2 py-1 cursor-pointer", order === "az" ? "bg-surface-2 text-text" : "text-muted")}>{t("dashboard:order.az")}</button>
+          <button onClick={() => setOrder("count")} className={cn("rounded px-2 py-1 cursor-pointer", order === "count" ? "bg-surface-2 text-text" : "text-muted")}>{t("dashboard:order.count")}</button>
         </div>
       </div>
 
@@ -110,8 +113,8 @@ export function Dashboard() {
         <Table
           head={
             <>
-              <Th>Dispositivo</Th><Th>Host</Th><Th>Status</Th><Th>Método</Th><Th>RouterOS</Th>
-              <Th>Board</Th><Th>CPU</Th><Th>RAM</Th><Th>Temp</Th><Th>Uptime</Th>
+              <Th>{t("dashboard:columns.device")}</Th><Th>{t("dashboard:columns.host")}</Th><Th>{t("dashboard:columns.status")}</Th><Th>{t("dashboard:columns.method")}</Th><Th>{t("dashboard:columns.routeros")}</Th>
+              <Th>{t("dashboard:columns.board")}</Th><Th>{t("dashboard:columns.cpu")}</Th><Th>{t("dashboard:columns.ram")}</Th><Th>{t("dashboard:columns.temp")}</Th><Th>{t("dashboard:columns.uptime")}</Th>
             </>
           }
         >
@@ -125,6 +128,7 @@ export function Dashboard() {
 }
 
 function SiteRows({ name, devices, statuses }: { name: string; devices: Device[]; statuses: StatusMap }) {
+  const { t } = useTranslation();
   return (
     <>
       <tr className="bg-surface-2/50">
@@ -132,14 +136,15 @@ function SiteRows({ name, devices, statuses }: { name: string; devices: Device[]
         <Td /><Td /><Td /><Td /><Td /><Td /><Td /><Td /><Td />
       </tr>
       {devices.map((d) => {
-        const meta = STATUS_META[statusOf(statuses, d.id)];
+        const status = statusOf(statuses, d.id);
+        const meta = STATUS_META[status];
         const st = statuses.get(d.id);
         const v = (x: string | number | null | undefined) => (x == null || x === "" ? "—" : String(x));
         return (
           <tr key={d.id} className="hover:bg-surface-2 transition-colors duration-200">
             <Td className="font-medium"><Link to={`/devices/${d.id}`} className="hover:text-primary cursor-pointer">{d.name}</Link></Td>
             <Td className="font-mono text-muted">{d.ip}</Td>
-            <Td><span className="inline-flex items-center gap-1.5 text-xs"><span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} /> {meta.label}</span></Td>
+            <Td><span className="inline-flex items-center gap-1.5 text-xs"><span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} /> {t(`common:deviceStatus.${status}`)}</span></Td>
             <Td className="text-muted"><Badge>{methodOf(d)}</Badge></Td>
             <Td className="font-mono text-muted">{v(st?.version)}</Td>
             <Td className="font-mono text-muted">{v(st?.board)}</Td>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { RefreshCw } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { rosGet } from "@/lib/rosClient";
@@ -7,8 +8,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Button, Card, EmptyState, Input, Select, Spinner } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import i18n from "@/i18n";
 
-const errMsg = (e: unknown) => (e instanceof ApiError ? `Erro ${e.status}: ${e.message}` : String(e));
+const errMsg = (e: unknown) =>
+  e instanceof ApiError ? i18n.t("ops:shared.errorWithStatus", { status: e.status, message: e.message }) : String(e);
 
 function tone(topics: string): string {
   const t = (topics || "").toLowerCase();
@@ -18,6 +21,7 @@ function tone(topics: string): string {
 }
 
 export function Logs() {
+  const { t } = useTranslation();
   const [devices, setDevices] = useState<Device[]>([]);
   const [target, setTarget] = useState("");
   const [rows, setRows] = useState<RosRecord[] | null>(null);
@@ -53,7 +57,7 @@ export function Logs() {
 
   return (
     <div>
-      <PageHeader title="Logs" subtitle="Registro do device (/log print)" />
+      <PageHeader title={t("ops:logs.title")} subtitle={t("ops:logs.subtitle")} />
 
       <Card className="mb-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -65,14 +69,14 @@ export function Logs() {
             }}
             className="w-64"
           >
-            <option value="">— selecione um RouterOS —</option>
+            <option value="">{t("ops:shared.selectRouterOS")}</option>
             {devices.map((d) => <option key={d.id} value={d.id}>{d.name} · {d.ip}</option>)}
           </Select>
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filtrar mensagem/tópico…" className="max-w-xs" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("ops:logs.filterPlaceholder")} className="max-w-xs" />
           <Button variant="ghost" onClick={() => load(target)} disabled={!target || busy}>
-            {busy ? <Spinner /> : <RefreshCw className="h-4 w-4" />} Atualizar
+            {busy ? <Spinner /> : <RefreshCw className="h-4 w-4" />} {t("common:actions.refresh")}
           </Button>
-          {rows && <span className="text-xs text-muted">{filtered.length} entrada(s)</span>}
+          {rows && <span className="text-xs text-muted">{t("ops:logs.entryCount", { count: filtered.length })}</span>}
         </div>
         {err && <p className="mt-3 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">{err}</p>}
       </Card>
@@ -80,11 +84,11 @@ export function Logs() {
       {busy && !rows ? (
         <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>
       ) : !rows ? (
-        <EmptyState title="Selecione um device" hint="Escolha um RouterOS para ver os logs." />
+        <EmptyState title={t("ops:shared.selectDeviceTitle")} hint={t("ops:logs.emptyHint")} />
       ) : filtered.length === 0 ? (
-        <EmptyState title="Sem entradas" />
+        <EmptyState title={t("ops:logs.noEntries")} />
       ) : (
-        <Table head={<><Th>Hora</Th><Th>Tópicos</Th><Th>Mensagem</Th></>}>
+        <Table head={<><Th>{t("ops:logs.col.time")}</Th><Th>{t("ops:logs.col.topics")}</Th><Th>{t("ops:logs.col.message")}</Th></>}>
           {filtered.map((r, i) => (
             <tr key={i} className="hover:bg-surface-2 transition-colors duration-200">
               <Td className="whitespace-nowrap font-mono text-xs text-muted">{r.time ?? "—"}</Td>

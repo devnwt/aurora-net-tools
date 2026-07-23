@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface GNode {
   id: string;
@@ -39,6 +40,7 @@ export function ForceGraph({
   color: (n: GNode) => string;
   storageKey?: string;
 }) {
+  const { t } = useTranslation();
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [width, setWidth] = useState(800);
@@ -230,8 +232,8 @@ export function ForceGraph({
       <div className="absolute right-2 top-2 z-10 flex gap-1">
         <ZoomBtn onClick={() => { view.current.scale = Math.min(4, scale * 1.2); render(); }}>+</ZoomBtn>
         <ZoomBtn onClick={() => { view.current.scale = Math.max(0.25, scale / 1.2); render(); }}>−</ZoomBtn>
-        <ZoomBtn onClick={resetView} title="Centralizar/zoom 100%">⌂</ZoomBtn>
-        <ZoomBtn onClick={resetLayout} title="Rearranjar (limpa posições salvas)">⟲</ZoomBtn>
+        <ZoomBtn onClick={resetView} title={t("common:graph.center")}>⌂</ZoomBtn>
+        <ZoomBtn onClick={resetLayout} title={t("common:graph.rearrange")}>⟲</ZoomBtn>
       </div>
       <svg
         ref={svgRef}

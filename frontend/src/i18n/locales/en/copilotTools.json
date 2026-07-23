@@ -1,0 +1,24 @@
+{
+  "errPrefix": "Error {{status}}: {{message}}",
+  "builtinTitle": "Built-in (enabled by default)",
+  "builtinSaved": "Built-in tools saved.",
+  "webNote": "The instance must have the JSON format enabled. Without a URL, search is unavailable.",
+  "webPlaceholder": "https://searxng.local (SearXNG instance)",
+  "fsDraft": "(scratchpad for the chat)",
+  "fsNote": "Access restricted to this root (list/read/write). Default",
+  "intro": {
+    "p1": "Extend Copilot with ",
+    "p2": " servers, ",
+    "p3": " APIs or ",
+    "p4": " — you can register several of each type; all are available in conversations (scoped per ORG)."
+  },
+  "namePlaceholder": "name",
+  "specPlaceholder": "spec URL (openapi.json)",
+  "basePlaceholder": "base URL (optional)",
+  "authHeaderPlaceholder": "auth header (optional)",
+  "authValuePlaceholder": "header value (optional)",
+  "skillPlaceholder": "skill content (SKILL.md) — instructions injected into the system prompt",
+  "addKind": "Add {{kind}}",
+  "kindAdded": "{{kind}} added.",
+  "empty": "None."
+}

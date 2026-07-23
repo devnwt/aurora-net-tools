@@ -1,0 +1,59 @@
+{
+  "title": "Super Admin",
+  "subtitle": "Multi-tenant system administration",
+  "restricted": "Restricted to the system Master.",
+  "tabs": {
+    "orgs": "Organizations",
+    "plans": "Plans",
+    "smtp": "Global SMTP",
+    "llm": "Global LLM",
+    "s3": "MinIO / S3",
+    "copilot": "Copilot Tools"
+  },
+  "copilot": {
+    "title": "Copilot Tools (global)"
+  },
+  "secretSet": "Already set — fill in to change.",
+  "secretPlaceholder": "•••••••• (set)",
+  "saved": "Saved and confirmed at {{time}}.",
+  "errPrefix": "Error {{status}}: {{message}}",
+  "s3": {
+    "title": "Global MinIO / S3",
+    "descPre": "S3-compatible storage (MinIO, AWS S3, Ceph…) — ",
+    "descBold": "backup destination for all ORGs",
+    "descPost": ".",
+    "endpoint": "Endpoint",
+    "endpointHint": "host:port or URL",
+    "bucket": "Bucket",
+    "accessKey": "Access Key",
+    "secretKey": "Secret Key",
+    "region": "Region",
+    "prefix": "Prefix (folder)",
+    "prefixHint": "optional",
+    "https": "HTTPS (TLS)",
+    "testBucket": "Test bucket"
+  },
+  "llm": {
+    "title": "Global LLM (OpenAI-compatible)",
+    "descPre": "System LLM provider — used by the ",
+    "descBold": "Copilot of all organizations",
+    "descPost": ". Any endpoint compatible with the OpenAI API (OpenAI, Groq, Ollama, vLLM, LM Studio…).",
+    "baseUrl": "Base URL",
+    "baseUrlHint": "include /v1 when applicable",
+    "model": "Model",
+    "apiKey": "API Key",
+    "testConnection": "Test connection"
+  },
+  "smtp": {
+    "title": "Global SMTP",
+    "descPre": "System email server — used for ",
+    "descBold1": "welcome emails for new sign-ups",
+    "descMid": " and ",
+    "descBold2": "login resend",
+    "descPost": ".",
+    "from": "Sender (From)",
+    "starttls": "STARTTLS",
+    "testToPlaceholder": "test recipient",
+    "sendTest": "Send test"
+  }
+}

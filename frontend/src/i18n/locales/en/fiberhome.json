@@ -1,0 +1,91 @@
+{
+  "controllers": {
+    "title": "Controllers",
+    "subtitle": "EMS/controllers (e.g. Fiberhome UNM2000)",
+    "empty": "No controllers",
+    "emptyHint": "Register an EMS on the side.",
+    "testTl1": "Test TL1",
+    "olts": "OLTs",
+    "connected": "connected",
+    "delete": {
+      "title": "Delete controller",
+      "message": "Delete this controller?"
+    },
+    "form": {
+      "editTitle": "Edit controller",
+      "newTitle": "New controller (UNM2000)",
+      "portTl1": "TL1 port",
+      "credentialTl1": "TL1 credential",
+      "noCredential": "— none —"
+    }
+  },
+  "explorer": {
+    "back": "Controllers",
+    "oltsTitle": "OLTs",
+    "subtitle": "Live exploration via TL1 (UNM2000)",
+    "noOlts": "No OLTs",
+    "noOltsHint": "UNM2000 returned no OLTs.",
+    "oltsHeading": "OLTs ({{count}})",
+    "explore": "Explore",
+    "backToOlts": "OLTs",
+    "noName": "(no name)"
+  },
+  "records": {
+    "empty": "No records",
+    "count": "{{count}} record(s)"
+  },
+  "tabs": {
+    "info": "Info",
+    "boards": "Boards",
+    "shelves": "Shelves",
+    "pons": "PONs",
+    "onus": "ONUs",
+    "states": "States",
+    "unreg": "Unregistered",
+    "alarms": "Alarms",
+    "locate": "Locate ONU"
+  },
+  "loader": {
+    "reload": "Reload"
+  },
+  "lists": {
+    "noInfo": "No information",
+    "noBoards": "No boards",
+    "noShelves": "No shelves",
+    "noStates": "No states",
+    "noUnregistered": "No unregistered ONUs"
+  },
+  "pons": {
+    "empty": "No PONs",
+    "seeOnus": "View ONUs"
+  },
+  "onus": {
+    "empty": "No ONUs",
+    "filterPlaceholder": "Filter by PON (e.g. NA-NA-1-1) — empty = all",
+    "hint": "Enter a PON (or leave empty for all) and click Search. Listing all may take a few seconds."
+  },
+  "alarms": {
+    "empty": "No alarms",
+    "sincePlaceholder": "Since (e.g. 2026-06-23 00:00:00) — optional",
+    "query": "Query",
+    "hint": "Query the OLT's active alarms (optionally from a date/time)."
+  },
+  "locate": {
+    "heading": "Locate ONU by ID",
+    "idType": "ID type",
+    "idPlaceholder": "e.g. 48575443A1B2",
+    "locate": "Locate",
+    "empty": "—"
+  },
+  "locateSections": {
+    "query": "Location (slot/PON)",
+    "state": "State",
+    "optical": "Optical signal (DDM)",
+    "info": "Equipment information",
+    "lan_port": "LAN ports",
+    "config": "Configuration",
+    "macaddress": "Learned MACs",
+    "lan_info": "LAN port status"
+  },
+  "errorStatus": "Error {{status}}: {{message}}"
+}

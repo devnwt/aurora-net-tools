@@ -1,0 +1,76 @@
+{
+  "title": "Sites",
+  "addSite": "Adicionar Site",
+  "editSite": "Editar Site",
+  "empty": {
+    "title": "Nenhum site",
+    "hint": "Crie um site para agrupar seus dispositivos."
+  },
+  "columns": {
+    "location": "Local",
+    "devices": "Dispositivos"
+  },
+  "delete": {
+    "title": "Excluir site",
+    "message": "Excluir o site \"{{name}}\"?"
+  },
+  "fields": {
+    "latitude": "Latitude",
+    "longitude": "Longitude"
+  },
+  "placeholders": {
+    "location": "ex.: Vitória, POP Centro",
+    "description": "Descrição opcional",
+    "latitude": "-20.1234",
+    "longitude": "-40.1234"
+  },
+  "mapHint": "Clique no mapa (ou arraste o pino) para definir a localização.",
+  "racks": {
+    "title": "Racks & Mapa",
+    "subtitle": "Site → Rack → Device e ligações entre racks",
+    "legend": {
+      "site": "Site",
+      "rack": "Rack",
+      "device": "Device",
+      "group": "Grupo",
+      "user": "Usuário"
+    },
+    "dragNodes": "arraste os nós",
+    "emptyGraph": {
+      "title": "Sem estrutura",
+      "hint": "Crie um site, racks e atribua devices para ver o grafo."
+    },
+    "racksHeading": "Racks",
+    "selectSite": "— site —",
+    "rackNamePlaceholder": "nome do rack",
+    "createSiteFirst": "Crie um Site primeiro (menu Sites).",
+    "deviceCount": "{{n}} devices",
+    "deleteRack": {
+      "title": "Excluir rack",
+      "message": "Excluir o rack \"{{name}}\"? Os devices ficam sem rack."
+    },
+    "devicesToRack": "Devices → Rack",
+    "noDevices": "Nenhum device.",
+    "noRackOption": "— sem rack —",
+    "linksHeading": "Ligações entre racks",
+    "rackAOption": "— rack A —",
+    "rackBOption": "— rack B —",
+    "ifaceAPlaceholder": "iface A (ex.: ether5)",
+    "ifaceBPlaceholder": "iface B (ex.: ether1)",
+    "link": "Ligar",
+    "noLinks": "Sem ligações.",
+    "errorTitle": "Erro",
+    "userGroupsHeading": "Grupos de usuários",
+    "groupNamePlaceholder": "nome do grupo",
+    "noParentOption": "— sem pai —",
+    "noGroups": "Nenhum grupo. Crie grupos aninháveis para organizar usuários.",
+    "userCount": "{{n}} usuários",
+    "deleteGroup": {
+      "title": "Excluir grupo",
+      "message": "Excluir o grupo \"{{name}}\"? Os usuários ficam sem grupo."
+    },
+    "usersToGroup": "Usuários → Grupo",
+    "noUsers": "Nenhum usuário.",
+    "noGroupOption": "— sem grupo —"
+  }
+}

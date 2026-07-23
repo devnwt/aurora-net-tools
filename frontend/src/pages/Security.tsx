@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CheckCircle2, ShieldAlert, XCircle } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { rosGet } from "@/lib/rosClient";
@@ -6,16 +7,19 @@ import type { Device, SecurityResp } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, EmptyState, Select, Spinner } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import i18n from "@/i18n";
 
-const errMsg = (e: unknown) => (e instanceof ApiError ? `Erro ${e.status}: ${e.message}` : String(e));
+const errMsg = (e: unknown) =>
+  e instanceof ApiError ? i18n.t("ops:shared.errorWithStatus", { status: e.status, message: e.message }) : String(e);
 
 const SEV = {
-  ok: { icon: CheckCircle2, color: "text-ok", ring: "border-ok/40", label: "OK" },
-  warn: { icon: ShieldAlert, color: "text-accent", ring: "border-accent/40", label: "Atenção" },
-  fail: { icon: XCircle, color: "text-danger", ring: "border-danger/40", label: "Falha" },
+  ok: { icon: CheckCircle2, color: "text-ok", ring: "border-ok/40" },
+  warn: { icon: ShieldAlert, color: "text-accent", ring: "border-accent/40" },
+  fail: { icon: XCircle, color: "text-danger", ring: "border-danger/40" },
 } as const;
 
 export function Security() {
+  const { t } = useTranslation();
   const [devices, setDevices] = useState<Device[]>([]);
   const [target, setTarget] = useState("");
   const [data, setData] = useState<SecurityResp | null>(null);
@@ -42,7 +46,7 @@ export function Security() {
 
   return (
     <div>
-      <PageHeader title="Segurança" subtitle="Checagens de hardening do RouterOS" />
+      <PageHeader title={t("ops:security.title")} subtitle={t("ops:security.subtitle")} />
 
       <Card className="mb-5">
         <div className="flex flex-wrap items-center gap-2">
@@ -54,7 +58,7 @@ export function Security() {
             }}
             className="w-64"
           >
-            <option value="">— selecione um RouterOS —</option>
+            <option value="">{t("ops:shared.selectRouterOS")}</option>
             {devices.map((d) => <option key={d.id} value={d.id}>{d.name} · {d.ip}</option>)}
           </Select>
           {busy && <Spinner />}
@@ -63,7 +67,7 @@ export function Security() {
       </Card>
 
       {!data ? (
-        !busy && <EmptyState title="Selecione um device" hint="Escolha um RouterOS para rodar as checagens." />
+        !busy && <EmptyState title={t("ops:shared.selectDeviceTitle")} hint={t("ops:security.emptyHint")} />
       ) : (
         <>
           <div className="mb-5 grid grid-cols-3 gap-3">
@@ -74,7 +78,7 @@ export function Security() {
                   <M.icon className={cn("h-6 w-6", M.color)} />
                   <div>
                     <p className={cn("text-2xl font-semibold tabular-nums", M.color)}>{data.summary[s]}</p>
-                    <p className="text-xs text-muted">{M.label}</p>
+                    <p className="text-xs text-muted">{t(`ops:security.sev.${s}`)}</p>
                   </div>
                 </Card>
               );

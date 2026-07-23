@@ -1,0 +1,226 @@
+{
+  "errPrefix": "Error {{status}}: {{message}}",
+  "list": {
+    "title": "Dispositivos",
+    "subtitle": "{{count}} dispositivo(s)",
+    "add": "Agregar Dispositivo",
+    "searchPlaceholder": "Buscar por nombre o host…",
+    "emptyTitle": "Ningún dispositivo",
+    "emptyHint": "Registre un dispositivo o ajuste los filtros."
+  },
+  "labels": {
+    "method": "Método",
+    "routeros": "RouterOS",
+    "board": "Board",
+    "uptime": "Uptime",
+    "cpu": "CPU",
+    "architecture": "Arquitectura",
+    "lastCheck": "Última verificación",
+    "interface": "Interfaz",
+    "comment": "Comentario",
+    "optional": "opcional",
+    "any": "cualquiera",
+    "dynamic": "dinámico",
+    "address": "Dirección",
+    "network": "Red"
+  },
+  "actions": {
+    "enable": "Habilitar",
+    "disable": "Deshabilitar",
+    "makeStatic": "Convertir en estática",
+    "any": "— cualquiera —"
+  },
+  "form": {
+    "inventory": "Inventario",
+    "editTitle": "Editar equipo",
+    "newTitle": "Nuevo equipo",
+    "ipHost": "IP / host",
+    "group": "Grupo",
+    "latitude": "Latitud",
+    "longitude": "Longitud",
+    "noGroup": "— sin grupo —",
+    "apiNote": "(almacenada; sin ejecución en el MVP)",
+    "baseUrl": "URL base",
+    "credential": "Credencial",
+    "inheritFromGroup": "— heredar del grupo —",
+    "submitCreate": "Registrar"
+  },
+  "detail": {
+    "checking": "Verificando…",
+    "deleteTitle": "Eliminar dispositivo",
+    "deleteMsg": "¿Eliminar el dispositivo \"{{name}}\"?",
+    "neighbors": "Vecinos",
+    "testConnection": "Probar conexión",
+    "nonRosPrefix": "Este dispositivo es",
+    "nonRosText": "Las pantallas en vivo son específicas de RouterOS — use la pestaña Comando abajo.",
+    "cpuLoad": "Carga CPU",
+    "ramUsed": "RAM usada",
+    "temperature": "Temperatura",
+    "services": "Servicios",
+    "interfaces": "Interfaces"
+  },
+  "ping": {
+    "testNow": "Probar ahora",
+    "loss": "pérdida",
+    "measuring": "midiendo…"
+  },
+  "map": {
+    "hint": "Haga clic en el mapa para definir la ubicación",
+    "fromSite": "(del sitio)"
+  },
+  "protocols": {
+    "title": "Protocolos — OSPF · MPLS · VPLS",
+    "instances": "Instancias",
+    "adjacencies": "Adyacencias",
+    "interfaces": "Interfaces",
+    "tunnels": "Túneles",
+    "active": "activo",
+    "inactive": "inactivo"
+  },
+  "health": {
+    "title": "Salud",
+    "metrics": {
+      "temperature": "Temperatura de la CPU",
+      "cpuLoad": "Carga de la CPU",
+      "ramUsed": "RAM usada"
+    },
+    "current": "Actual",
+    "min": "mín",
+    "max": "máx",
+    "avg": "prom"
+  },
+  "traffic": {
+    "title": "Tráfico en vivo",
+    "optical": "óptica",
+    "clickHint": "haga clic en una interfaz arriba o:",
+    "live": "● En vivo",
+    "paused": "Pausado",
+    "measuring": "Midiendo tráfico en vivo…",
+    "pausedShort": "Pausado.",
+    "peak": "Pico",
+    "noSfp": "No hay módulo SFP presente en este puerto.",
+    "txPower": "Potencia TX",
+    "rxPower": "Potencia RX",
+    "temp": "Temp",
+    "voltage": "Tensión",
+    "vendor": "Fabricante",
+    "model": "Modelo",
+    "wavelength": "Longitud de onda",
+    "poeStatus": "Estado PoE",
+    "current": "Corriente",
+    "power": "Potencia"
+  },
+  "ports": {
+    "sfpTip": "SFP / óptica — clic para ver potencia TX/RX",
+    "tip": "clic para ver el tráfico",
+    "disabled": "deshabilitada",
+    "inactive": "inactiva",
+    "optical": "(óptica)"
+  },
+  "ifaces": {
+    "physical": "Ethernet / Físicas",
+    "inactive": "Inactiva",
+    "active": "Activa",
+    "sfp": "SFP / óptica",
+    "wifi": "CAPSMAN / WiFi",
+    "empty": "Sin interfaces.",
+    "cat": {
+      "vlan": "VLAN",
+      "pppoe": "PPPoE",
+      "bridge": "Bridge",
+      "bond": "Bond",
+      "other": "Otras (túneles/virtuales)"
+    }
+  },
+  "neighbors": {
+    "title": "Neighbors — {{name}}",
+    "empty": "Ningún vecino anunciado (MNDP/CDP/LLDP).",
+    "thisDevice": "este dispositivo",
+    "neighbor": "vecino",
+    "legend": "{{count}} vecino(s) · la arista = puerto local · scroll: zoom · arrastre nodos/fondo · la posición se guarda"
+  },
+  "tabs": {
+    "ip_addr": "IP · Direcciones",
+    "services": "Servicios",
+    "fw_filter": "Firewall · Filtro",
+    "fw_nat": "Firewall · NAT",
+    "dhcp_servers": "DHCP · Servidores",
+    "dhcp_leases": "DHCP · Concesiones",
+    "routes": "Rutas"
+  },
+  "ip": {
+    "add": "Agregar dirección",
+    "empty": "Sin direcciones IP.",
+    "modalTitle": "Agregar dirección IP",
+    "removeMsg": "¿Eliminar {{address}} de {{interface}}?",
+    "fieldAddress": "Dirección (CIDR)"
+  },
+  "services": {
+    "empty": "Sin servicios.",
+    "insecure": "inseguro",
+    "infoPrefix": "Servicios de acceso al router (",
+    "infoMid": "). Deshabilite los inseguros (",
+    "infoSuffix": ") y restrinja el acceso por red en",
+    "availableFrom": "Disponible desde",
+    "colService": "Servicio",
+    "colCertificate": "Certificado",
+    "editTitle": "Editar servicio \"{{name}}\"",
+    "fieldPort": "Puerto",
+    "fieldAvailable": "Disponible desde (redes permitidas)",
+    "portPlaceholder": "ej.: 22",
+    "availablePlaceholder": "ej.: 10.0.0.0/8,192.168.0.0/16 (vacío = cualquiera)"
+  },
+  "dhcpServers": {
+    "add": "Agregar servidor",
+    "empty": "Sin servidores DHCP.",
+    "modalTitle": "Agregar servidor DHCP",
+    "removeMsg": "¿Eliminar el servidor DHCP \"{{name}}\"?",
+    "colPool": "Pool",
+    "colLease": "Lease",
+    "poolPlaceholder": "opcional (ej.: dhcp_pool0)",
+    "leasePlaceholder": "opcional (ej.: 30m, 1d)"
+  },
+  "dhcpLeases": {
+    "add": "Agregar concesión estática",
+    "empty": "Sin concesiones.",
+    "modalTitle": "Agregar concesión estática",
+    "removeMsg": "¿Eliminar la concesión {{address}}?",
+    "colServer": "Servidor",
+    "fieldAddressIp": "Dirección (IP)",
+    "fieldMac": "Dirección MAC",
+    "fieldServer": "Servidor",
+    "serverPlaceholder": "opcional (ej.: defconf)"
+  },
+  "firewall": {
+    "add": "Agregar regla",
+    "empty": "Sin reglas estáticas.",
+    "removeMsg": "¿Eliminar la regla #{{number}} ({{chain}}/{{action}})?",
+    "addRule": "Agregar regla",
+    "colAction": "Acción",
+    "colExtra": "Extra",
+    "fieldAction": "Acción",
+    "fieldProtocol": "Protocolo",
+    "fieldSrc": "Dirección de origen",
+    "fieldDst": "Dirección de destino",
+    "fieldDstPort": "Puerto de destino",
+    "fieldToAddresses": "Direcciones de destino (NAT)",
+    "fieldToPorts": "Puertos de destino (NAT)",
+    "fieldInIface": "Interfaz de entrada",
+    "fieldOutIface": "Interfaz de salida"
+  },
+  "routes": {
+    "add": "Agregar ruta",
+    "empty": "Sin rutas.",
+    "modalTitle": "Agregar ruta estática",
+    "removeMsg": "¿Eliminar la ruta {{dst}} vía {{gateway}}?",
+    "fieldDistance": "Distancia",
+    "gatewayPlaceholder": "192.168.88.1 o ether1",
+    "distancePlaceholder": "opcional (ej.: 1)",
+    "commentPlaceholder": "opcional"
+  },
+  "command": {
+    "title": "Comando (solo lectura)",
+    "noOutput": "(sin salida)",
+    "note": "Los comandos de escritura son rechazados por la allowlist."
+  }
+}

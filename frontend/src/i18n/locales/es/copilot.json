@@ -1,0 +1,62 @@
+{
+  "title": "Copilot",
+  "subtitle": "Asistente LLM para operar dispositivos (Configuración → LLM)",
+  "tools": "Herramientas (Configuración)",
+  "modes": {
+    "chat": {
+      "label": "Chat",
+      "hint": "Solo conversa, nunca ejecuta."
+    },
+    "manual": {
+      "label": "Manual",
+      "hint": "Toda escritura pide aprobación."
+    },
+    "auto": {
+      "label": "Automático",
+      "hint": "Escribe solo (alto riesgo pide aprobación)."
+    }
+  },
+  "newConversation": "Nueva conversación",
+  "devicesLabel": "Dispositivos ({{count}})",
+  "noDevices": "Ningún dispositivo.",
+  "start": "Iniciar",
+  "conversations": "Conversaciones",
+  "noConversations": "Aún no hay conversaciones.",
+  "empty": {
+    "select": "Seleccione o inicie una conversación.",
+    "hint": "Elija los dispositivos y el modo a la izquierda."
+  },
+  "noDevice": "sin dispositivo",
+  "deviceFallback": "dispositivo {{id}}",
+  "reasoning": "Razonamiento",
+  "thinking": "pensando…",
+  "action": {
+    "highRisk": "alto riesgo",
+    "awaiting": "esperando aprobación",
+    "approve": "Aprobar y ejecutar",
+    "reject": "Rechazar"
+  },
+  "placeholder": {
+    "pending": "Resuelva las acciones pendientes arriba…",
+    "ask": "Pregunte algo sobre el/los dispositivo(s)…"
+  },
+  "tokens": {
+    "context": "Contexto",
+    "total": "Total usado",
+    "unit": "tokens"
+  },
+  "backup": {
+    "title": "Backup antes de iniciar",
+    "message_one": "¿Desea hacer backup del dispositivo {{names}} antes de iniciar la conversación?",
+    "message_other": "¿Desea hacer backup de los dispositivos {{names}} antes de iniciar la conversación?",
+    "confirm": "Hacer backup",
+    "skip": "Omitir",
+    "failed": "El backup falló en: {{list}}"
+  },
+  "delete": {
+    "title": "Eliminar conversación",
+    "message": "¿Eliminar esta conversación?"
+  },
+  "streamError": "error",
+  "errorStatus": "Error {{status}}: {{message}}"
+}

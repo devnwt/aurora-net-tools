@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { api, ApiError } from "@/lib/api";
 import type { Controller, Credential } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
@@ -11,6 +12,7 @@ const BLANK = { name: "", host: "", port: 3337, credential_id: "" as string };
 
 export function Controllers() {
   const { confirm } = useConfirm();
+  const { t } = useTranslation();
   const [items, setItems] = useState<Controller[]>([]);
   const [creds, setCreds] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ export function Controllers() {
   }
 
   async function remove(id: number) {
-    if (!(await confirm({ title: "Excluir controladora", message: "Excluir esta controladora?" }))) return;
+    if (!(await confirm({ title: t("fiberhome:controllers.delete.title"), message: t("fiberhome:controllers.delete.message") }))) return;
     await api.del(`/controllers/${id}`);
     if (editingId === id) reset();
     load();
@@ -67,7 +69,7 @@ export function Controllers() {
     setTesting(id);
     try {
       await api.post(`/controllers/${id}/test`);
-      setResult((r) => ({ ...r, [id]: { ok: true, msg: "conectou" } }));
+      setResult((r) => ({ ...r, [id]: { ok: true, msg: t("fiberhome:controllers.connected") } }));
     } catch (e) {
       setResult((r) => ({ ...r, [id]: { ok: false, msg: e instanceof ApiError ? e.message : String(e) } }));
     } finally {
@@ -77,15 +79,15 @@ export function Controllers() {
 
   return (
     <div>
-      <PageHeader title="Controladoras" subtitle="EMS/controladoras (ex.: UNM2000 Fiberhome)" />
+      <PageHeader title={t("fiberhome:controllers.title")} subtitle={t("fiberhome:controllers.subtitle")} />
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         <div>
           {loading ? (
             <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>
           ) : items.length === 0 ? (
-            <EmptyState title="Nenhuma controladora" hint="Cadastre um EMS ao lado." />
+            <EmptyState title={t("fiberhome:controllers.empty")} hint={t("fiberhome:controllers.emptyHint")} />
           ) : (
-            <Table head={<><Th>Nome</Th><Th>Host</Th><Th>Porta</Th><Th /></>}>
+            <Table head={<><Th>{t("common:labels.name")}</Th><Th>{t("common:labels.host")}</Th><Th>{t("common:labels.port")}</Th><Th /></>}>
               {items.map((c) => (
                 <tr key={c.id} className="hover:bg-surface-2 transition-colors duration-200">
                   <Td className="font-medium">{c.name}</Td>
@@ -97,13 +99,13 @@ export function Controllers() {
                         <span className={result[c.id].ok ? "text-xs text-ok" : "text-xs text-danger"}>{result[c.id].msg}</span>
                       )}
                       <Button variant="ghost" onClick={() => test(c.id)} disabled={testing !== null}>
-                        {testing === c.id ? <Spinner /> : "Testar TL1"}
+                        {testing === c.id ? <Spinner /> : t("fiberhome:controllers.testTl1")}
                       </Button>
                       <Link to={`/controllers/${c.id}/olts`}>
-                        <Button variant="accent">OLTs</Button>
+                        <Button variant="accent">{t("fiberhome:controllers.olts")}</Button>
                       </Link>
-                      <Button variant="ghost" onClick={() => startEdit(c)}>Editar</Button>
-                      <Button variant="danger" onClick={() => remove(c.id)}>Excluir</Button>
+                      <Button variant="ghost" onClick={() => startEdit(c)}>{t("common:actions.edit")}</Button>
+                      <Button variant="danger" onClick={() => remove(c.id)}>{t("common:actions.delete")}</Button>
                     </div>
                   </Td>
                 </tr>
@@ -112,30 +114,30 @@ export function Controllers() {
           )}
         </div>
         <Card>
-          <h2 className="mb-3 text-sm font-semibold">{editingId ? "Editar controladora" : "Nova controladora (UNM2000)"}</h2>
+          <h2 className="mb-3 text-sm font-semibold">{editingId ? t("fiberhome:controllers.form.editTitle") : t("fiberhome:controllers.form.newTitle")}</h2>
           <form onSubmit={submit} className="space-y-3">
             <div className="space-y-1">
-              <label htmlFor="cnm" className="text-xs text-muted">Nome</label>
+              <label htmlFor="cnm" className="text-xs text-muted">{t("common:labels.name")}</label>
               <Input id="cnm" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
             <div className="space-y-1">
-              <label htmlFor="chost" className="text-xs text-muted">Host</label>
+              <label htmlFor="chost" className="text-xs text-muted">{t("common:labels.host")}</label>
               <Input id="chost" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} className="font-mono" required />
             </div>
             <div className="space-y-1">
-              <label htmlFor="cport" className="text-xs text-muted">Porta TL1</label>
+              <label htmlFor="cport" className="text-xs text-muted">{t("fiberhome:controllers.form.portTl1")}</label>
               <Input id="cport" type="number" value={form.port} onChange={(e) => setForm({ ...form, port: Number(e.target.value) })} className="font-mono" />
             </div>
             <div className="space-y-1">
-              <label htmlFor="ccred" className="text-xs text-muted">Credencial TL1</label>
+              <label htmlFor="ccred" className="text-xs text-muted">{t("fiberhome:controllers.form.credentialTl1")}</label>
               <Select id="ccred" value={form.credential_id} onChange={(e) => setForm({ ...form, credential_id: e.target.value })}>
-                <option value="">— nenhuma —</option>
+                <option value="">{t("fiberhome:controllers.form.noCredential")}</option>
                 {creds.filter((c) => c.kind === "tl1").map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Select>
             </div>
             <div className="flex gap-2">
-              <Button type="submit" className="flex-1" disabled={saving}>{saving ? "Salvando…" : editingId ? "Salvar" : "Criar"}</Button>
-              {editingId && <Button type="button" variant="ghost" onClick={reset}>Cancelar</Button>}
+              <Button type="submit" className="flex-1" disabled={saving}>{saving ? t("common:actions.saving") : editingId ? t("common:actions.save") : t("common:actions.create")}</Button>
+              {editingId && <Button type="button" variant="ghost" onClick={reset}>{t("common:actions.cancel")}</Button>}
             </div>
           </form>
         </Card>
