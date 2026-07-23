@@ -42,6 +42,20 @@ fi
 # Raiz do repo/diretório de deploy (o script vive em deploy/).
 cd "$(dirname "$0")/.."
 
+# Guarda de layout: este script mora em <raiz>/deploy/deploy.sh, então o `cd`
+# acima tem de cair na RAIZ do checkout. Se ele cair dentro de um 'deploy/'
+# aninhado (deploy/deploy/…), operaríamos silenciosamente na pasta errada.
+# A causa desse aninhamento é sempre a mesma: copiar a pasta 'deploy' para
+# dentro dela mesma (`cp -r deploy <dir>/deploy` com o destino já existindo).
+# A pasta 'deploy' chega ao servidor pelo próprio checkout git — não se copia.
+# Falhar aqui, alto, transforma esse bug de instalação num erro diagnosticável.
+if [ "$(basename "$PWD")" = "deploy" ] || [ -e deploy/deploy ]; then
+  echo "❌ layout de deploy inválido: pasta 'deploy' aninhada detectada em $PWD." >&2
+  echo "   Os scripts devem ficar em <raiz>/deploy/. NÃO copie a pasta 'deploy'" >&2
+  echo "   para dentro dela mesma — atualize o servidor com 'git pull'." >&2
+  exit 1
+fi
+
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.harbor.yml}"
 REGISTRY="${REGISTRY:-registry.aurora.app.br/aurora-nettools}"
 COMPOSE=(docker compose -f "$COMPOSE_FILE")
