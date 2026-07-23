@@ -60,6 +60,12 @@ sudo systemctl restart aurora-webhook              # só se webhook.py/.service 
 
 **Nunca** copie a pasta `deploy/` para dentro do diretório da app (`cp -r deploy …`): se o destino já existir, ela vira `deploy/deploy/…` e o `deploy.sh` passa a resolver a raiz errada. A pasta `deploy/` chega ao servidor pelo próprio checkout git — não precisa (nem deve) ser copiada. O `deploy.sh` agora **recusa** esse layout aninhado com erro explícito.
 
+Para (re)instalar/atualizar tudo do lado do servidor de uma vez — checkout via git, segredo, unit systemd e serviço — use o instalador idempotente (reexecutar não troca o segredo):
+
+```bash
+sudo deploy/install.sh
+```
+
 ## Variáveis de ambiente críticas (`.env`)
 
 | Var | Papel | Observação |
