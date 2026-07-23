@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Languages, RefreshCw, Save, Server } from "lucide-react";
+import { Check, Languages, RefreshCw, Save, Server } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useToast } from "@/lib/toast";
 import type { Integrations } from "@/lib/types";
+import { useLocale } from "@/i18n/useLocale";
+import { isSupportedLocale, type SupportedLocale } from "@/i18n/config";
 import { PageHeader } from "@/components/PageHeader";
-import { LanguageSelect } from "@/components/LanguageSelect";
-import { Badge, Button, Card, Input, Spinner } from "@/components/ui";
+import { Badge, Button, Card, Input, Select, Spinner } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import i18n from "@/i18n";
 
@@ -51,21 +53,59 @@ export function Settings() {
 
 // === Preferências da interface (idioma) ===
 
+/** Linha de configuração: rótulo + descrição à esquerda, controle à direita. */
+function SettingRow({ label, hint, htmlFor, children }: { label: string; hint?: string; htmlFor?: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-2 border-t border-border py-4 first:border-t-0 first:pt-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-8">
+      <div>
+        <label htmlFor={htmlFor} className="text-sm font-medium">{label}</label>
+        {hint && <p className="mt-0.5 text-xs leading-relaxed text-muted">{hint}</p>}
+      </div>
+      <div className="sm:justify-self-end">{children}</div>
+    </div>
+  );
+}
+
 function PreferencesTab() {
   const { t } = useTranslation();
+  const toast = useToast();
+  const { locale, setLocale, locales } = useLocale();
+  // Seleção "pendente": só aplica quando confirma no OK (não troca ao digitar).
+  const [pending, setPending] = useState<SupportedLocale>(locale);
+  const dirty = pending !== locale;
+
+  function apply() {
+    setLocale(pending);
+    // i18n já trocou de forma síncrona — a mensagem sai no idioma novo.
+    toast.success(i18n.t("settings:preferences.changed"));
+  }
+
   return (
-    <Card className="max-w-xl">
-      <div className="mb-4 flex items-center gap-2">
+    <Card className="max-w-2xl">
+      <div className="mb-1 flex items-center gap-2">
         <Languages className="h-4 w-4 text-primary" />
         <h2 className="text-sm font-semibold">{t("settings:preferences.title")}</h2>
       </div>
-      <div className="space-y-1.5">
-        <label htmlFor="language" className="text-[11px] uppercase tracking-wide text-muted">
-          {t("settings:preferences.language")}
-        </label>
-        <LanguageSelect id="language" className="max-w-xs" />
-        <p className="text-xs text-muted">{t("settings:preferences.languageDesc")}</p>
-      </div>
+      <p className="mb-4 text-xs text-muted">{t("settings:preferences.subtitle")}</p>
+
+      <SettingRow label={t("settings:preferences.language")} hint={t("settings:preferences.languageDesc")} htmlFor="language">
+        <div className="flex items-center gap-2">
+          <Select
+            id="language"
+            className="w-44"
+            value={pending}
+            aria-label={t("settings:preferences.languageLabel")}
+            onChange={(e) => isSupportedLocale(e.target.value) && setPending(e.target.value)}
+          >
+            {locales.map((l) => (
+              <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
+            ))}
+          </Select>
+          <Button onClick={apply} disabled={!dirty} aria-label={t("common:actions.ok")}>
+            <Check className="h-4 w-4" /> {t("common:actions.ok")}
+          </Button>
+        </div>
+      </SettingRow>
     </Card>
   );
 }

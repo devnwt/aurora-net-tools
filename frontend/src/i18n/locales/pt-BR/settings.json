@@ -4,9 +4,11 @@
   "tabs": { "home": "Início", "ftp": "FTP", "preferences": "Preferências" },
   "preferences": {
     "title": "Preferências da Interface",
+    "subtitle": "Personalize como a interface é exibida.",
     "language": "Idioma",
     "languageDesc": "Selecione o idioma utilizado na interface do Aurora Prisma NetTools.",
-    "languageLabel": "Idioma da interface"
+    "languageLabel": "Idioma da interface",
+    "changed": "Idioma alterado."
   },
   "system": {
     "pollNow": "Poll agora",
