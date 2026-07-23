@@ -48,6 +48,18 @@ Se uma release publicou no Harbor mas nada aconteceu em produção, olhe o log n
 
 `PROXY_PORT` precisa estar fixado no `.env` do servidor. O smoke test descobre a porta via `docker compose port` (não pelo `.env`) justamente porque já houve caso do proxy ficar `Up`, o Caddy logar `server running` e **nenhuma porta ser publicada** por colisão com outro stack.
 
+### Atualizar os scripts do servidor (deploy.sh / compose / webhook)
+
+O webhook e o `deploy.sh` atualizam **apenas as imagens** (`docker compose pull` da tag SHA). Os arquivos versionados do lado do servidor — `deploy/deploy.sh`, `docker-compose.harbor.yml`, `deploy/webhook.py` — só mudam com um `git pull`:
+
+```bash
+cd /opt/aurora-net-tools
+git fetch origin && git reset --hard origin/main   # traz deploy/ e compose atualizados
+sudo systemctl restart aurora-webhook              # só se webhook.py/.service mudaram
+```
+
+**Nunca** copie a pasta `deploy/` para dentro do diretório da app (`cp -r deploy …`): se o destino já existir, ela vira `deploy/deploy/…` e o `deploy.sh` passa a resolver a raiz errada. A pasta `deploy/` chega ao servidor pelo próprio checkout git — não precisa (nem deve) ser copiada. O `deploy.sh` agora **recusa** esse layout aninhado com erro explícito.
+
 ## Variáveis de ambiente críticas (`.env`)
 
 | Var | Papel | Observação |

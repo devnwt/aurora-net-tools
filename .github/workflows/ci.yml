@@ -7,7 +7,7 @@ on:
     branches: [develop, main]
   push:
     branches: [develop]
-  # Permite que o deploy.yml reuse ESTES mesmos jobs como gate, em vez de
+  # Permite que o build-push.yml reuse ESTES mesmos jobs como gate, em vez de
   # duplicá-los lá (duplicata divergiria com o tempo e o gate viraria ficção).
   workflow_call: {}
 
