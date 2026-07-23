@@ -1,6 +1,12 @@
 # Receptor do webhook do Harbor — dispara o deploy de produção.
 #
-# Instalação no servidor de produção:
+# Instalação no servidor de produção (recomendado — idempotente):
+#
+#   sudo deploy/install.sh
+#
+# O install.sh faz tudo abaixo: atualiza o checkout via git, gera o segredo (sem
+# sobrescrever), instala este unit (reapontando os paths se o checkout não estiver
+# em /opt/aurora-net-tools) e sobe o serviço. Passo-a-passo manual equivalente:
 #
 #   sudo install -m 0644 deploy/aurora-webhook.service /etc/systemd/system/
 #   sudo install -d -m 0700 /etc/aurora

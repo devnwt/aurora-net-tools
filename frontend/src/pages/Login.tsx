@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ApiError, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/lib/toast";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, Spinner } from "@/components/ui";
 import { FloatingInput } from "@/components/FloatingInput";
 import { AuthShell } from "@/components/AuthShell";
 
@@ -60,7 +60,7 @@ export function Login() {
   return (
     <AuthShell subtitle={forgot ? t("auth:subtitle.forgot") : t("auth:subtitle.login")}>
       {forgot ? (
-        <form onSubmit={onForgot} className="space-y-4 rounded-2xl border border-white/10 bg-black/30 p-6 backdrop-blur-md">
+        <form onSubmit={onForgot} className="mt-4 space-y-4 rounded-2xl border border-primary/30 bg-black/30 p-6 shadow-lg shadow-primary/10 ring-1 ring-primary/10 backdrop-blur-md">
           <p className="text-xs text-white/60">{t("auth:forgot.hint")}</p>
           <div className="space-y-1">
             <label htmlFor="id" className="text-xs text-white/60">{t("auth:forgot.identLabel")}</label>
@@ -71,10 +71,12 @@ export function Login() {
           <button type="button" onClick={() => { setForgot(false); setNote(""); }} className="w-full text-center text-xs text-white/60 hover:text-white cursor-pointer">{t("auth:forgot.back")}</button>
         </form>
       ) : (
-        <form onSubmit={onSubmit} className="flex aspect-square w-full max-w-sm flex-col justify-center space-y-5 rounded-2xl border border-white/10 bg-black/30 p-8 backdrop-blur-md">
+        <form onSubmit={onSubmit} className="mt-4 flex aspect-square w-full max-w-sm flex-col justify-center space-y-5 rounded-2xl border border-primary/30 border-t-4 border-t-blue-500 bg-black/30 p-8 shadow-lg shadow-primary/10 ring-1 ring-primary/10 backdrop-blur-md">
           <FloatingInput id="u" label={t("auth:login.identifier")} type="text" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
           <FloatingInput id="p" label={t("auth:login.password")} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <Button type="submit" className="w-full justify-center py-2.5" disabled={busy}>{busy ? t("auth:login.submitting") : t("auth:login.submit")}</Button>
+          <Button type="submit" className="w-full justify-center py-2.5" disabled={busy}>
+            {busy ? <Spinner className="border-primary-fg/40 border-t-primary-fg" /> : t("auth:login.submit")}
+          </Button>
           <div className="flex items-center justify-between text-xs">
             <button type="button" onClick={() => setForgot(true)} className="text-white/60 hover:text-white cursor-pointer">{t("auth:login.forgotLink")}</button>
             {regEnabled && <Link to="/register" className="text-primary hover:underline">{t("auth:login.registerLink")}</Link>}
