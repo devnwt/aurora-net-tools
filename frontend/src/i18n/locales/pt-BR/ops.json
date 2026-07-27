@@ -119,6 +119,102 @@
       "time": "Hora",
       "topics": "Tópicos",
       "message": "Mensagem"
+    },
+    "tabs": {
+      "device": "Logs do dispositivo",
+      "observability": "Observabilidade"
+    }
+  },
+  "observability": {
+    "subtitle": "Erros e eventos da aplicação — visível apenas para o Admin Master",
+    "refresh": "Atualizar",
+    "count": "{{count}} evento(s)",
+    "truncated": "Mostrando o trecho mais recente do log — há registros mais antigos não varridos.",
+    "unavailable": "Nenhum arquivo de log ainda",
+    "unavailableHint": "Assim que a aplicação registrar o primeiro aviso ou erro, ele aparece aqui.",
+    "emptyTitle": "Nenhum evento no período",
+    "emptyHint": "Amplie o período ou limpe os filtros.",
+    "summary": {
+      "total": "Eventos no período",
+      "critical": "Erros e críticos",
+      "warnings": "Avisos",
+      "lastEvent": "Último evento",
+      "never": "—",
+      "services": "Serviços afetados"
+    },
+    "topErrors": {
+      "title": "Erros recorrentes",
+      "hint": "Ocorrências do mesmo erro agrupadas — comece por aqui.",
+      "occurrences": "{{count}}×",
+      "empty": "Nenhum erro no período. 🎉"
+    },
+    "filters": {
+      "period": "Período",
+      "level": "Severidade",
+      "service": "Serviço",
+      "search": "Pesquisar mensagem, rota, usuário…",
+      "allLevels": "Todas as severidades",
+      "allServices": "Todos os serviços",
+      "clear": "Limpar filtros"
+    },
+    "periods": {
+      "1h": "Última hora",
+      "6h": "Últimas 6 horas",
+      "24h": "Últimas 24 horas",
+      "168h": "Últimos 7 dias",
+      "720h": "Últimos 30 dias"
+    },
+    "levelFilter": {
+      "errors": "Erros e críticos",
+      "warning": "Avisos",
+      "info": "Informativos"
+    },
+    "levels": {
+      "CRITICAL": "Crítico",
+      "ERROR": "Erro",
+      "WARNING": "Aviso",
+      "INFO": "Info",
+      "DEBUG": "Debug"
+    },
+    "table": {
+      "time": "Quando",
+      "level": "Severidade",
+      "service": "Serviço",
+      "what": "O que aconteceu",
+      "where": "Onde"
+    },
+    "details": {
+      "title": "Detalhes do evento",
+      "summary": "Resumo",
+      "technical": "Detalhes técnicos",
+      "rawMessage": "Mensagem original",
+      "stack": "Stack trace",
+      "noStack": "Sem stack trace para este evento.",
+      "requestId": "ID da requisição",
+      "user": "Usuário",
+      "org": "Organização",
+      "route": "Rota",
+      "status": "Código HTTP",
+      "duration": "Duração",
+      "logger": "Módulo",
+      "errorType": "Tipo do erro",
+      "loadFailed": "Não foi possível carregar os detalhes deste evento.",
+      "open": "Detalhes"
+    },
+    "friendly": {
+      "timeout": "Tempo esgotado aguardando resposta",
+      "connection": "Não foi possível conectar ao destino",
+      "database": "Falha de acesso ao banco de dados",
+      "redis": "Falha no cache (Redis)",
+      "conflict": "Registro duplicado ou em conflito",
+      "auth": "Falha de autenticação ou permissão",
+      "validation": "Dados inválidos na requisição",
+      "notfound": "Recurso não encontrado",
+      "ssh": "Falha na conexão SSH com o equipamento",
+      "snmp": "Falha na consulta SNMP ao equipamento",
+      "external": "Falha ao falar com um serviço externo",
+      "server": "Erro interno do servidor",
+      "unknown": "Falha não classificada"
     }
   },
   "security": {

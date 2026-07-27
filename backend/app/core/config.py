@@ -43,6 +43,18 @@ class Settings(BaseSettings):
     poll_concurrency: int = 4
     sample_retention_days: int = 30
 
+    # Gerador de notificações de trial/expiração (background)
+    notify_enabled: bool = True
+    notify_interval_seconds: int = 3600  # 1x por hora basta para faixas de dias
+
+    # Observabilidade — logs brutos em JSONL (fonte da aba /logs → Observabilidade).
+    # O diretório é montado por volume no compose; se não for gravável, a
+    # aplicação segue normalmente e só o arquivo deixa de existir.
+    log_dir: str = "/app/log"
+    log_file_level: str = "WARNING"  # o que vai pro arquivo (stdout continua INFO)
+    log_max_bytes: int = 10 * 1024 * 1024  # rotação por tamanho
+    log_backup_count: int = 5  # events.jsonl.1 .. .5 (~60MB no pior caso)
+
     # Testes — usa NullPool para evitar conexões presas a um event loop
     testing: bool = False
 

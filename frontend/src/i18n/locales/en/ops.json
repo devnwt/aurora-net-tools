@@ -119,6 +119,102 @@
       "time": "Time",
       "topics": "Topics",
       "message": "Message"
+    },
+    "tabs": {
+      "device": "Device logs",
+      "observability": "Observability"
+    }
+  },
+  "observability": {
+    "subtitle": "Application errors and events — visible to the Master Admin only",
+    "refresh": "Refresh",
+    "count": "{{count}} event(s)",
+    "truncated": "Showing the most recent slice of the log — older entries were not scanned.",
+    "unavailable": "No log file yet",
+    "unavailableHint": "As soon as the application records its first warning or error, it shows up here.",
+    "emptyTitle": "No events in this period",
+    "emptyHint": "Widen the period or clear the filters.",
+    "summary": {
+      "total": "Events in period",
+      "critical": "Errors and criticals",
+      "warnings": "Warnings",
+      "lastEvent": "Last event",
+      "never": "—",
+      "services": "Affected services"
+    },
+    "topErrors": {
+      "title": "Recurring errors",
+      "hint": "Occurrences of the same error, grouped — start here.",
+      "occurrences": "{{count}}×",
+      "empty": "No errors in this period. 🎉"
+    },
+    "filters": {
+      "period": "Period",
+      "level": "Severity",
+      "service": "Service",
+      "search": "Search message, route, user…",
+      "allLevels": "All severities",
+      "allServices": "All services",
+      "clear": "Clear filters"
+    },
+    "periods": {
+      "1h": "Last hour",
+      "6h": "Last 6 hours",
+      "24h": "Last 24 hours",
+      "168h": "Last 7 days",
+      "720h": "Last 30 days"
+    },
+    "levelFilter": {
+      "errors": "Errors and criticals",
+      "warning": "Warnings",
+      "info": "Informational"
+    },
+    "levels": {
+      "CRITICAL": "Critical",
+      "ERROR": "Error",
+      "WARNING": "Warning",
+      "INFO": "Info",
+      "DEBUG": "Debug"
+    },
+    "table": {
+      "time": "When",
+      "level": "Severity",
+      "service": "Service",
+      "what": "What happened",
+      "where": "Where"
+    },
+    "details": {
+      "title": "Event details",
+      "summary": "Summary",
+      "technical": "Technical details",
+      "rawMessage": "Original message",
+      "stack": "Stack trace",
+      "noStack": "No stack trace for this event.",
+      "requestId": "Request ID",
+      "user": "User",
+      "org": "Organization",
+      "route": "Route",
+      "status": "HTTP status",
+      "duration": "Duration",
+      "logger": "Module",
+      "errorType": "Error type",
+      "loadFailed": "Could not load the details for this event.",
+      "open": "Details"
+    },
+    "friendly": {
+      "timeout": "Timed out waiting for a response",
+      "connection": "Could not connect to the target",
+      "database": "Database access failure",
+      "redis": "Cache (Redis) failure",
+      "conflict": "Duplicate or conflicting record",
+      "auth": "Authentication or permission failure",
+      "validation": "Invalid request data",
+      "notfound": "Resource not found",
+      "ssh": "SSH connection to the equipment failed",
+      "snmp": "SNMP query to the equipment failed",
+      "external": "Failure talking to an external service",
+      "server": "Internal server error",
+      "unknown": "Unclassified failure"
     }
   },
   "security": {

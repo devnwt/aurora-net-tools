@@ -119,6 +119,102 @@
       "time": "Hora",
       "topics": "Tópicos",
       "message": "Mensaje"
+    },
+    "tabs": {
+      "device": "Logs del dispositivo",
+      "observability": "Observabilidad"
+    }
+  },
+  "observability": {
+    "subtitle": "Errores y eventos de la aplicación — visible solo para el Admin Master",
+    "refresh": "Actualizar",
+    "count": "{{count}} evento(s)",
+    "truncated": "Mostrando el tramo más reciente del log — hay registros más antiguos sin recorrer.",
+    "unavailable": "Aún no hay archivo de log",
+    "unavailableHint": "En cuanto la aplicación registre el primer aviso o error, aparecerá aquí.",
+    "emptyTitle": "Sin eventos en el período",
+    "emptyHint": "Amplíe el período o limpie los filtros.",
+    "summary": {
+      "total": "Eventos en el período",
+      "critical": "Errores y críticos",
+      "warnings": "Avisos",
+      "lastEvent": "Último evento",
+      "never": "—",
+      "services": "Servicios afectados"
+    },
+    "topErrors": {
+      "title": "Errores recurrentes",
+      "hint": "Ocurrencias del mismo error agrupadas — empiece por aquí.",
+      "occurrences": "{{count}}×",
+      "empty": "Ningún error en el período. 🎉"
+    },
+    "filters": {
+      "period": "Período",
+      "level": "Severidad",
+      "service": "Servicio",
+      "search": "Buscar mensaje, ruta, usuario…",
+      "allLevels": "Todas las severidades",
+      "allServices": "Todos los servicios",
+      "clear": "Limpiar filtros"
+    },
+    "periods": {
+      "1h": "Última hora",
+      "6h": "Últimas 6 horas",
+      "24h": "Últimas 24 horas",
+      "168h": "Últimos 7 días",
+      "720h": "Últimos 30 días"
+    },
+    "levelFilter": {
+      "errors": "Errores y críticos",
+      "warning": "Avisos",
+      "info": "Informativos"
+    },
+    "levels": {
+      "CRITICAL": "Crítico",
+      "ERROR": "Error",
+      "WARNING": "Aviso",
+      "INFO": "Info",
+      "DEBUG": "Debug"
+    },
+    "table": {
+      "time": "Cuándo",
+      "level": "Severidad",
+      "service": "Servicio",
+      "what": "Qué pasó",
+      "where": "Dónde"
+    },
+    "details": {
+      "title": "Detalles del evento",
+      "summary": "Resumen",
+      "technical": "Detalles técnicos",
+      "rawMessage": "Mensaje original",
+      "stack": "Stack trace",
+      "noStack": "Sin stack trace para este evento.",
+      "requestId": "ID de la solicitud",
+      "user": "Usuario",
+      "org": "Organización",
+      "route": "Ruta",
+      "status": "Código HTTP",
+      "duration": "Duración",
+      "logger": "Módulo",
+      "errorType": "Tipo de error",
+      "loadFailed": "No se pudieron cargar los detalles de este evento.",
+      "open": "Detalles"
+    },
+    "friendly": {
+      "timeout": "Tiempo agotado esperando respuesta",
+      "connection": "No fue posible conectar con el destino",
+      "database": "Fallo de acceso a la base de datos",
+      "redis": "Fallo en la caché (Redis)",
+      "conflict": "Registro duplicado o en conflicto",
+      "auth": "Fallo de autenticación o permiso",
+      "validation": "Datos inválidos en la solicitud",
+      "notfound": "Recurso no encontrado",
+      "ssh": "Fallo en la conexión SSH con el equipo",
+      "snmp": "Fallo en la consulta SNMP al equipo",
+      "external": "Fallo al comunicarse con un servicio externo",
+      "server": "Error interno del servidor",
+      "unknown": "Fallo sin clasificar"
     }
   },
   "security": {
