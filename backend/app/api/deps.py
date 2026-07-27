@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
+from app.core.logging import bind_user
 from app.core.security import decode_access_token, hash_api_key
 from app.models import ApiKey, User
 
@@ -30,6 +31,13 @@ async def get_current_user(
         if username:
             user = (await session.execute(select(User).where(User.username == username))).scalar_one_or_none()
             if user is not None:
+                # Conta desativada depois de logar: o token deixa de valer na hora.
+                if not user.is_active:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN, detail="Conta desativada"
+                    )
+                # Identifica os logs desta requisição (username, nunca e-mail/senha).
+                bind_user(user=user.username, user_id=user.id, org_id=user.org_id)
                 return user
 
     # 2) Chave de API (acesso programático) — atua como principal admin de serviço.
@@ -41,7 +49,11 @@ async def get_current_user(
             key.last_used_at = datetime.now(UTC)
             await session.commit()
             role = "master" if key.org_id is None else "admin"
-            return User(id=0, username=f"apikey:{key.name}", password_hash="", is_admin=True, role=role, org_id=key.org_id)
+            bind_user(user=f"apikey:{key.name}", org_id=key.org_id)
+            return User(
+                id=0, username=f"apikey:{key.name}", password_hash="", is_admin=True,
+                is_active=True, role=role, org_id=key.org_id,
+            )
 
     raise _UNAUTH
 

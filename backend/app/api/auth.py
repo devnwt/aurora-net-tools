@@ -4,10 +4,11 @@ from urllib.parse import urlsplit
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.api.tenancy import is_trial_plan, new_plan_expiry, trial_available, trial_deadline
 from app.core.crypto import decrypt
 from app.core.db import get_session
 from app.core.security import (
@@ -18,8 +19,8 @@ from app.core.security import (
     password_error,
     verify_password,
 )
-from app.models import Organization, User
-from app.services import integrations
+from app.models import Organization, Plan, User
+from app.services import integrations, notifications
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -43,11 +44,76 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas"
         )
+    if not user.is_active:
+        # Admin de empresa inativo (ex.: empresa suspensa): em vez de erro seco,
+        # oferece "bem-vindo de volta" com escolha de plano p/ reativar a empresa.
+        if user.role == "admin" and user.org_id is not None:
+            org = (await session.execute(select(Organization).where(Organization.id == user.org_id))).scalar_one_or_none()
+            return {
+                "reactivate": True,
+                "reactivate_token": create_scoped_token(str(user.id), purpose="reactivate", minutes=15),
+                "username": user.username,
+                "plans": await _plan_list(session),
+                "trial_available": trial_available(org),
+            }
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Conta desativada. Fale com o administrador da sua organização.",
+        )
+    return {"access_token": create_access_token(user.username), "token_type": "bearer"}
+
+
+async def _plan_list(session: AsyncSession) -> list[dict]:
+    rows = (await session.execute(select(Plan).order_by(Plan.max_devices, Plan.name))).scalars().all()
+    return [{"id": p.id, "name": p.name, "max_devices": p.max_devices, "max_users": p.max_users} for p in rows]
+
+
+class ReactivateIn(BaseModel):
+    reactivate_token: str
+    plan_id: int
+
+
+@router.post("/reactivate")
+async def reactivate(body: ReactivateIn, session: AsyncSession = Depends(get_session)) -> dict:
+    """Reativa a empresa de um admin inativo com o plano escolhido e loga o admin.
+    O trial ganha 7 dias de vigência; os demais planos ficam sem vencimento."""
+    uid = decode_scoped_token(body.reactivate_token, "reactivate")
+    if uid is None:
+        raise HTTPException(400, "sessão de reativação inválida ou expirada — faça login novamente")
+    user = (await session.execute(select(User).where(User.id == int(uid)))).scalar_one_or_none()
+    if user is None or user.role != "admin" or user.org_id is None:
+        raise HTTPException(400, "conta não elegível para reativação")
+    plan = (await session.execute(select(Plan).where(Plan.id == body.plan_id))).scalar_one_or_none()
+    if plan is None:
+        raise HTTPException(400, "plano inválido")
+    org = (await session.execute(select(Organization).where(Organization.id == user.org_id))).scalar_one_or_none()
+    if org is None:
+        raise HTTPException(404, "organização não encontrada")
+    # Trial só se ainda elegível (o prazo é fixado na criação da conta).
+    if is_trial_plan(plan) and not trial_available(org):
+        raise HTTPException(400, "seu período de teste terminou — escolha um plano pago para reativar")
+
+    org.plan_id = plan.id
+    org.plan_canceled = False
+    org.plan_expires_at = new_plan_expiry(plan)  # trial: 1 semana; pago: 1 mês
+    # Reativa TODA a empresa (o admin voltou e escolheu um plano).
+    await session.execute(update(User).where(User.org_id == org.id).values(is_active=True))
+    await session.commit()
     return {"access_token": create_access_token(user.username), "token_type": "bearer"}
 
 
 @router.get("/me")
-async def me(user: User = Depends(get_current_user)) -> dict:
+async def me(
+    user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
+) -> dict:
+    # Nome do plano da ORG do usuário (para exibir no menu). Master não tem ORG.
+    plan_name = None
+    if user.org_id is not None:
+        plan_name = (
+            await session.execute(
+                select(Plan.name).join(Organization, Organization.plan_id == Plan.id).where(Organization.id == user.org_id)
+            )
+        ).scalar_one_or_none()
     return {
         "id": user.id,
         "username": user.username,
@@ -55,6 +121,7 @@ async def me(user: User = Depends(get_current_user)) -> dict:
         "is_admin": user.is_admin,
         "role": user.role,
         "org_id": user.org_id,
+        "plan": plan_name,
     }
 
 
@@ -129,11 +196,26 @@ async def registration_status(session: AsyncSession = Depends(get_session)) -> d
     return {"enabled": bool(cfg and cfg.registration_enabled)}
 
 
+@router.get("/plans")
+async def public_plans(session: AsyncSession = Depends(get_session)) -> dict:
+    """Catálogo público de planos para a tela de boas-vindas do cadastro.
+    Só exposto quando o cadastro público está habilitado."""
+    cfg = await integrations.get_settings(session, None)
+    if not (cfg and cfg.registration_enabled):
+        return {"plans": [], "default_plan_id": None}
+    rows = (await session.execute(select(Plan).order_by(Plan.max_devices, Plan.name))).scalars().all()
+    return {
+        "plans": [{"id": p.id, "name": p.name, "max_devices": p.max_devices, "max_users": p.max_users} for p in rows],
+        "default_plan_id": cfg.registration_plan_id,
+    }
+
+
 class RegisterIn(BaseModel):
     org_name: str
     username: str
     password: str
     email: str  # obrigatório: será o login (e-mail + senha)
+    plan_id: int | None = None  # plano escolhido no cadastro (default: trial)
 
 
 @router.post("/register")
@@ -157,7 +239,23 @@ async def register(body: RegisterIn, session: AsyncSession = Depends(get_session
     if (await session.execute(select(User.id).where(func.lower(User.email) == email))).first() is not None:
         raise HTTPException(400, "e-mail já cadastrado")
 
-    org = Organization(name=org_name, plan_id=cfg.registration_plan_id)
+    # Plano escolhido no cadastro (fallback: o default do Master). O plano de teste
+    # ganha vencimento automático de 1 semana a partir de agora.
+    plan_id = body.plan_id if body.plan_id is not None else cfg.registration_plan_id
+    plan = None
+    if plan_id is not None:
+        plan = (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
+        if plan is None:
+            raise HTTPException(400, "plano inválido")
+    # trial_expires_at é gravado SEMPRE (independe do plano): fixa a janela de 1
+    # semana em que esta conta ainda pode escolher o trial. O vencimento do plano
+    # depende do tipo: trial 1 semana, pago 1 mês, sem plano nenhum vencimento.
+    org = Organization(
+        name=org_name,
+        plan_id=plan.id if plan else None,
+        plan_expires_at=new_plan_expiry(plan),
+        trial_expires_at=trial_deadline(),
+    )
     session.add(org)
     await session.flush()
     user = User(
@@ -169,5 +267,7 @@ async def register(body: RegisterIn, session: AsyncSession = Depends(get_session
         org_id=org.id,
     )
     session.add(user)
+    await session.flush()  # garante user.id para a notificação de boas-vindas
+    await notifications.ensure_welcome(session, user)
     await session.commit()
     return {"access_token": create_access_token(user.username), "token_type": "bearer"}

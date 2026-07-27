@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { api, tokenStore } from "./api";
+import { api, tokenStore, type LoginResult } from "./api";
 
 interface Me {
   id: number;
@@ -7,12 +7,13 @@ interface Me {
   is_admin: boolean;
   role: string;
   org_id: number | null;
+  plan?: string | null;
 }
 
 interface AuthCtx {
   user: Me | null;
   loading: boolean;
-  login: (u: string, p: string) => Promise<void>;
+  login: (u: string, p: string) => Promise<LoginResult>;
   logout: () => void;
 }
 
@@ -35,8 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function login(u: string, p: string) {
-    await api.login(u, p);
-    setUser(await api.get<Me>("/auth/me"));
+    const res = await api.login(u, p);
+    // Só carrega o usuário quando veio token; reativação é tratada pelo chamador.
+    if (res.access_token) setUser(await api.get<Me>("/auth/me"));
+    return res;
   }
 
   function logout() {
