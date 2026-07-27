@@ -7,6 +7,7 @@ import type { GlobalLlm, GlobalS3, GlobalSmtp } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { CopilotToolsManager } from "@/components/CopilotTools";
 import { Button, Card, Input, Spinner } from "@/components/ui";
+import { MaskedInput } from "@/components/MaskedInput";
 import { cn } from "@/lib/utils";
 import i18n from "@/i18n";
 import { AdminOrgs } from "./AdminOrgs";
@@ -273,7 +274,7 @@ function SmtpGlobalTab() {
       <p className="mb-4 text-xs text-muted">{t("admin:smtp.descPre")}<strong>{t("admin:smtp.descBold1")}</strong>{t("admin:smtp.descMid")}<strong>{t("admin:smtp.descBold2")}</strong>{t("admin:smtp.descPost")}</p>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t("common:labels.host")}><Input value={f.host} onChange={(e) => setF({ ...f, host: e.target.value })} placeholder="smtp.gmail.com" /></Field>
-        <Field label={t("common:labels.port")}><Input value={f.port} onChange={(e) => setF({ ...f, port: e.target.value })} className="font-mono" inputMode="numeric" /></Field>
+        <Field label={t("common:labels.port")}><MaskedInput mask="port" value={f.port} onValueChange={(v) => setF({ ...f, port: v })} className="font-mono" /></Field>
         <Field label={t("common:labels.username")}><Input value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} placeholder="user@dominio.com" /></Field>
         <Field label={t("common:labels.password")} hint={pwSet ? t("admin:secretSet") : undefined}>
           <Input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder={pwSet ? t("admin:secretPlaceholder") : ""} />

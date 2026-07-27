@@ -2,18 +2,20 @@
 
 import re
 import secrets
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_master
+from app.api.tenancy import plan_status
 from app.core.crypto import decrypt, encrypt
 from app.core.db import get_session
 from app.core.security import hash_password, password_error
 from app.models import Device, Organization, Plan, User
-from app.services import integrations
+from app.services import integrations, notifications
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_master)])
 
@@ -259,6 +261,7 @@ class OrgIn(BaseModel):
     name: str
     plan_id: int | None = None
     device_limit: int | None = None
+    plan_expires_at: date | None = None  # vencimento do plano (nulo = sem vencimento)
     admin_username: str
     admin_password: str
     admin_email: str  # obrigatório: será o login (e-mail + senha) do admin da ORG
@@ -269,7 +272,14 @@ class OrgPatch(BaseModel):
     name: str | None = None
     plan_id: int | None = None
     device_limit: int | None = None
+    plan_expires_at: date | None = None
+    plan_canceled: bool | None = None
     admin_email: str | None = None
+
+
+def _expiry_to_dt(d: date | None) -> datetime | None:
+    """Data de vencimento → fim daquele dia em UTC (plano vale o dia inteiro)."""
+    return None if d is None else datetime(d.year, d.month, d.day, 23, 59, 59, tzinfo=UTC)
 
 
 async def _primary_admin(session: AsyncSession, org_id: int) -> User | None:
@@ -281,18 +291,22 @@ async def _primary_admin(session: AsyncSession, org_id: int) -> User | None:
 async def _org_meta(session: AsyncSession, o: Organization) -> dict:
     devices = (await session.execute(select(func.count(Device.id)).where(Device.org_id == o.id))).scalar() or 0
     users = (await session.execute(select(func.count(User.id)).where(User.org_id == o.id))).scalar() or 0
-    plan = None
+    active_users = (
+        await session.execute(select(func.count(User.id)).where(User.org_id == o.id, User.is_active.is_(True)))
+    ).scalar() or 0
+    pl = None
     if o.plan_id is not None:
         pl = (await session.execute(select(Plan).where(Plan.id == o.plan_id))).scalar_one_or_none()
-        plan = pl.name if pl else None
-    limit = o.device_limit
-    if limit is None and o.plan_id is not None:
-        pl = (await session.execute(select(Plan).where(Plan.id == o.plan_id))).scalar_one_or_none()
-        limit = pl.max_devices if pl else None
+    plan = pl.name if pl else None
+    limit = o.device_limit if o.device_limit is not None else (pl.max_devices if pl else None)
+    user_limit = pl.max_users if pl else 0
     admin = await _primary_admin(session, o.id)
     return {
         "id": o.id, "name": o.name, "plan_id": o.plan_id, "plan": plan,
-        "device_limit": limit, "devices": devices, "users": users,
+        "device_limit": limit, "user_limit": user_limit, "devices": devices, "users": users, "active_users": active_users,
+        "plan_expires_at": o.plan_expires_at.date().isoformat() if o.plan_expires_at else None,
+        "plan_canceled": o.plan_canceled,
+        "plan_status": plan_status(o),
         "admin_username": admin.username if admin else None,
         "admin_email": admin.email if admin else None,
     }
@@ -318,19 +332,23 @@ async def create_org(payload: OrgIn, session: AsyncSession = Depends(get_session
         raise HTTPException(400, "nome de usuário do admin já existe")
     if (await session.execute(select(User.id).where(func.lower(User.email) == admin_email))).first() is not None:
         raise HTTPException(400, "e-mail do admin já cadastrado")
-    org = Organization(name=payload.name, plan_id=payload.plan_id, device_limit=payload.device_limit)
+    org = Organization(
+        name=payload.name, plan_id=payload.plan_id, device_limit=payload.device_limit,
+        plan_expires_at=_expiry_to_dt(payload.plan_expires_at),
+    )
     session.add(org)
     await session.flush()
-    session.add(
-        User(
-            username=payload.admin_username,
-            email=admin_email,
-            password_hash=hash_password(payload.admin_password),
-            role="admin",
-            is_admin=True,
-            org_id=org.id,
-        )
+    admin_user = User(
+        username=payload.admin_username,
+        email=admin_email,
+        password_hash=hash_password(payload.admin_password),
+        role="admin",
+        is_admin=True,
+        org_id=org.id,
     )
+    session.add(admin_user)
+    await session.flush()  # garante o id p/ a notificação de boas-vindas
+    await notifications.ensure_welcome(session, admin_user)
     await session.commit()
     await session.refresh(org)
     meta = await _org_meta(session, org)
@@ -359,6 +377,8 @@ async def update_org(org_id: int, payload: OrgPatch, session: AsyncSession = Dep
     if o is None:
         raise HTTPException(404, "ORG não encontrada")
     data = payload.model_dump(exclude_unset=True)
+    if "plan_expires_at" in data:  # date → datetime (fim do dia UTC)
+        o.plan_expires_at = _expiry_to_dt(data.pop("plan_expires_at"))
     if "admin_email" in data:
         admin = await _primary_admin(session, o.id)
         if admin is not None:
@@ -370,6 +390,25 @@ async def update_org(org_id: int, payload: OrgPatch, session: AsyncSession = Dep
     await session.commit()
     await session.refresh(o)
     return await _org_meta(session, o)
+
+
+class SetUsersActiveIn(BaseModel):
+    active: bool = False
+
+
+@router.post("/orgs/{org_id}/users/set-active")
+async def set_org_users_active(
+    org_id: int, payload: SetUsersActiveIn, session: AsyncSession = Depends(get_session)
+):
+    """Ativa/desativa TODOS os usuários da ORG de uma vez (Master).
+    Desativar bloqueia o login de todos daquela empresa; os dados ficam intactos."""
+    if (await session.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none() is None:
+        raise HTTPException(404, "ORG não encontrada")
+    res = await session.execute(
+        update(User).where(User.org_id == org_id, User.is_active != payload.active).values(is_active=payload.active)
+    )
+    await session.commit()
+    return {"updated": res.rowcount or 0, "active": payload.active}
 
 
 @router.post("/orgs/{org_id}/resend-login")

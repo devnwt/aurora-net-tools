@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Mail, Plus, KeyRound, UserPlus } from "lucide-react";
+import { CalendarClock, Mail, Plus, KeyRound, UserPlus } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import type { OrgMeta, Plan } from "@/lib/types";
 import { Table, Td, Th } from "@/components/Table";
 import { Badge, Button, Card, EmptyState, Input, Modal, Select, Spinner } from "@/components/ui";
+import { ConfirmSwitch } from "@/components/ConfirmSwitch";
 import { useConfirm } from "@/lib/confirm";
 import { PASSWORD_HINT_KEY, passwordError } from "@/lib/password";
 import i18n from "@/i18n";
@@ -17,7 +18,7 @@ export function AdminOrgs() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<OrgMeta | null>(null);
-  const [form, setForm] = useState({ name: "", plan_id: "", device_limit: "", admin_username: "", admin_password: "", admin_email: "", send_welcome: true });
+  const [form, setForm] = useState({ name: "", plan_id: "", device_limit: "", plan_expires_at: "", admin_username: "", admin_password: "", admin_email: "", send_welcome: true });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
@@ -40,13 +41,13 @@ export function AdminOrgs() {
 
   function openNew() {
     setEditing(null);
-    setForm({ name: "", plan_id: plans[0] ? String(plans[0].id) : "", device_limit: "", admin_username: "", admin_password: "", admin_email: "", send_welcome: true });
+    setForm({ name: "", plan_id: plans[0] ? String(plans[0].id) : "", device_limit: "", plan_expires_at: "", admin_username: "", admin_password: "", admin_email: "", send_welcome: true });
     setErr("");
     setOpen(true);
   }
   function openEdit(o: OrgMeta) {
     setEditing(o);
-    setForm({ name: o.name, plan_id: o.plan_id ? String(o.plan_id) : "", device_limit: o.device_limit != null ? String(o.device_limit) : "", admin_username: "", admin_password: "", admin_email: o.admin_email ?? "", send_welcome: false });
+    setForm({ name: o.name, plan_id: o.plan_id ? String(o.plan_id) : "", device_limit: o.device_limit != null ? String(o.device_limit) : "", plan_expires_at: o.plan_expires_at ?? "", admin_username: "", admin_password: "", admin_email: o.admin_email ?? "", send_welcome: false });
     setErr("");
     setOpen(true);
   }
@@ -57,11 +58,12 @@ export function AdminOrgs() {
     try {
       const planId = form.plan_id ? Number(form.plan_id) : null;
       const devLimit = form.device_limit ? Number(form.device_limit) : null;
+      const expiresAt = form.plan_expires_at || null;
       if (editing) {
-        await api.patch(`/admin/orgs/${editing.id}`, { name: form.name, plan_id: planId, device_limit: devLimit, admin_email: form.admin_email || null });
+        await api.patch(`/admin/orgs/${editing.id}`, { name: form.name, plan_id: planId, device_limit: devLimit, plan_expires_at: expiresAt, admin_email: form.admin_email || null });
       } else {
         const r = await api.post<OrgMeta & { welcome?: { ok: boolean; detail: string } }>("/admin/orgs", {
-          name: form.name, plan_id: planId, device_limit: devLimit,
+          name: form.name, plan_id: planId, device_limit: devLimit, plan_expires_at: expiresAt,
           admin_username: form.admin_username, admin_password: form.admin_password,
           admin_email: form.admin_email, send_welcome: form.send_welcome,
         });
@@ -76,10 +78,17 @@ export function AdminOrgs() {
     }
   }
 
-  async function remove(o: OrgMeta) {
-    if (!(await confirm({ title: "Excluir organização", message: `Excluir a ORG "${o.name}"? Isso remove seus devices, sites, credenciais e usuários.` }))) return;
-    await api.del(`/admin/orgs/${o.id}`);
-    load();
+  // Ativa/desativa TODOS os usuários da empresa (endpoint em massa existente).
+  async function toggleCompany(o: OrgMeta, next: boolean) {
+    setNote(null);
+    try {
+      const r = await api.post<{ updated: number }>(`/admin/orgs/${o.id}/users/set-active`, { active: next });
+      setNote({ ok: true, text: `${r.updated} usuário(s) de "${o.name}" ${next ? "ativado(s)" : "desativado(s)"}.` });
+      load();
+    } catch (e) {
+      setNote({ ok: false, text: errMsg(e) });
+      throw e; // mantém o switch no estado anterior
+    }
   }
 
   async function resendLogin(o: OrgMeta) {
@@ -132,7 +141,7 @@ export function AdminOrgs() {
       ) : items.length === 0 ? (
         <EmptyState title="Nenhuma ORG" hint="Crie uma organização e seu administrador." />
       ) : (
-        <Table head={<><Th>Nome</Th><Th>Admin</Th><Th>Plano</Th><Th>Dispositivos</Th><Th>Usuários</Th><Th className="text-right">Ações</Th></>}>
+        <Table head={<><Th>Nome</Th><Th>Admin</Th><Th>Plano</Th><Th>Vencimento</Th><Th>Dispositivos</Th><Th>Usuários</Th><Th>Empresa ativa</Th><Th className="text-right">Ações</Th></>}>
           {items.map((o) => (
             <tr key={o.id} className="hover:bg-surface-2 transition-colors duration-200">
               <Td className="font-medium">{o.name}</Td>
@@ -140,14 +149,51 @@ export function AdminOrgs() {
                 <div>{o.admin_username ?? "—"}</div>
                 <div className="text-muted">{o.admin_email ?? <span className="italic">sem e-mail</span>}</div>
               </Td>
-              <Td>{o.plan ? <Badge tone="primary">{o.plan}</Badge> : <Badge tone="muted">sem plano</Badge>}</Td>
+              <Td>
+                <div className="flex flex-col items-start gap-1">
+                  {o.plan ? <Badge tone="primary">{o.plan}</Badge> : <Badge tone="muted">sem plano</Badge>}
+                  {o.plan_status === "expired" && <Badge tone="danger">expirado</Badge>}
+                  {o.plan_status === "canceled" && <Badge tone="accent">cancelado</Badge>}
+                </div>
+              </Td>
+              <Td>
+                {o.plan_expires_at ? (
+                  <span className={`inline-flex items-center gap-1 text-xs ${o.plan_status === "expired" ? "text-danger" : "text-muted"}`}>
+                    <CalendarClock className="h-3.5 w-3.5" /> {new Date(o.plan_expires_at).toLocaleDateString()}
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted">—</span>
+                )}
+              </Td>
               <Td className="font-mono">{o.devices}{o.device_limit != null && <span className="text-muted"> / {o.device_limit}</span>}</Td>
-              <Td className="font-mono">{o.users}</Td>
+              <Td className="font-mono">{o.users}{o.user_limit > 0 && <span className="text-muted"> / {o.user_limit}</span>}</Td>
+              <Td>
+                {(() => {
+                  // Empresa "ativa" = tem usuários e TODOS estão ativos.
+                  const allActive = o.users > 0 && o.active_users === o.users;
+                  return (
+                    <div className="flex items-center gap-2">
+                      <ConfirmSwitch
+                        checked={allActive}
+                        disabled={o.users === 0}
+                        ariaLabel={`Ativar/desativar a empresa ${o.name}`}
+                        confirmTitle={(next) => (next ? "Ativar empresa" : "Desativar empresa")}
+                        confirmMessage={(next) => next
+                          ? `Deseja realmente ativar a empresa "${o.name}"? Todos os ${o.users} usuário(s) poderão fazer login novamente.`
+                          : `Deseja realmente desativar a empresa "${o.name}"? Todos os ${o.users} usuário(s) serão bloqueados (nenhum dado é perdido).`}
+                        onToggle={(next) => toggleCompany(o, next)}
+                      />
+                      {o.users > 0 && !allActive && (
+                        <span className="text-[11px] text-muted">{o.active_users}/{o.users} ativos</span>
+                      )}
+                    </div>
+                  );
+                })()}
+              </Td>
               <Td className="text-right">
                 <div className="flex items-center justify-end gap-2">
                   <Button variant="ghost" onClick={() => resendLogin(o)} title="Redefinir senha e enviar por e-mail"><KeyRound className="h-4 w-4" /> Reenviar login</Button>
                   <Button variant="ghost" onClick={() => openEdit(o)}>Editar</Button>
-                  <Button variant="danger" onClick={() => remove(o)}>Excluir</Button>
                 </div>
               </Td>
             </tr>
@@ -170,6 +216,7 @@ export function AdminOrgs() {
               </Select>
             </Fld>
             <Fld label="LIMITE DE DISPOSITIVOS (override, opcional)"><Input type="number" value={form.device_limit} onChange={(e) => setForm({ ...form, device_limit: e.target.value })} placeholder="usa o do plano se vazio" className="font-mono" /></Fld>
+            <Fld label="VENCIMENTO DO PLANO (opcional)"><Input type="date" value={form.plan_expires_at} onChange={(e) => setForm({ ...form, plan_expires_at: e.target.value })} className="font-mono" /><p className="mt-1 text-[11px] text-muted">Vazio = sem vencimento. Vencido bloqueia novas criações (dados e login intactos).</p></Fld>
             <div className="border-t border-border pt-3 text-xs font-semibold text-muted">ADMINISTRADOR DA ORG</div>
             {!editing && (
               <>
