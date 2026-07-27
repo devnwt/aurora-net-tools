@@ -5,6 +5,7 @@
 
 # === MCP local (contém API keys, ex.: Plane) ===
 .mcp.json
+.cursor/mcp.json
 
 # === Docker Compose local (por-ambiente) ===
 # O compose de dev fica fora do git; use os modelos versionados:
@@ -39,6 +40,10 @@ Thumbs.db
 
 # === Logs / temporários ===
 *.log
+# Logs brutos da observabilidade: gerados em runtime, pasta versionada vazia.
+log/*
+!log/.gitkeep
+!log/README.md
 tmp/
 *.tmp
 

@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
@@ -74,8 +75,8 @@ export function Select({ className, children, ...props }: SelectHTMLAttributes<H
   );
 }
 
-export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn("rounded-lg border border-border bg-surface p-5", className)}>{children}</div>;
+export function Card({ className, children, style }: { className?: string; children: ReactNode; style?: CSSProperties }) {
+  return <div className={cn("rounded-lg border border-border bg-surface p-5", className)} style={style}>{children}</div>;
 }
 
 export function Badge({ children, tone = "muted", title }: { children: ReactNode; tone?: "muted" | "ok" | "danger" | "accent" | "primary"; title?: string }) {
@@ -142,5 +143,41 @@ export function Spinner({ className }: { className?: string }) {
       role="status"
       aria-label={t("common:a11y.loading")}
     />
+  );
+}
+
+/** Switch ON/OFF controlado. `busy` desabilita e sinaliza carregamento. */
+export function Toggle({
+  checked,
+  onChange,
+  label,
+  disabled,
+  busy,
+  ariaLabel,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label?: string;
+  disabled?: boolean;
+  busy?: boolean;
+  ariaLabel?: string;
+}) {
+  const off = disabled || busy;
+  return (
+    <label className={cn("inline-flex items-center gap-2 text-sm", off && "opacity-60")}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={ariaLabel}
+        aria-busy={busy}
+        disabled={off}
+        onClick={() => onChange(!checked)}
+        className={cn("relative h-5 w-9 shrink-0 rounded-full transition-colors", checked ? "bg-primary" : "bg-surface-2", !off && "cursor-pointer")}
+      >
+        <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all", busy && "animate-pulse", checked ? "left-[18px]" : "left-0.5")} />
+      </button>
+      {label && <span>{label}</span>}
+    </label>
   );
 }

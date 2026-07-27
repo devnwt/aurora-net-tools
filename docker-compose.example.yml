@@ -42,6 +42,10 @@ services:
       POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
     # MIBs agora são embutidas na imagem (backend/mibs → /app/mibs), sem volume.
+    # Logs brutos da observabilidade (aba /logs → Observabilidade). Bind mount
+    # para o Master conseguir ler o histórico mesmo depois de recriar o container.
+    volumes:
+      - ./log:/app/log
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
