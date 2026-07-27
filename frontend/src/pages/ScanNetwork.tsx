@@ -7,6 +7,7 @@ import type { Device } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Button, Card, EmptyState, Input, Spinner } from "@/components/ui";
+import { MaskedInput } from "@/components/MaskedInput";
 
 interface Found {
   ip: string;
@@ -77,7 +78,7 @@ export function ScanNetwork() {
 
         <div className="space-y-1">
           <label className="text-[11px] uppercase tracking-wide text-muted">{t("ops:scan.ipRange")}</label>
-          <Input value={form.range} onChange={(e) => set("range", e.target.value)} placeholder="192.168.88.1-254 ou 192.168.88.0/24" className="font-mono" />
+          <MaskedInput mask="network" value={form.range} onValueChange={(v) => set("range", v)} placeholder="192.168.88.1-254 ou 192.168.88.0/24" className="font-mono" />
           <p className="text-xs text-muted">{t("ops:scan.rangeHint")}</p>
         </div>
 
@@ -87,9 +88,9 @@ export function ScanNetwork() {
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <Labeled label={t("ops:scan.sshPort")}><Input value={form.sshPort} onChange={(e) => set("sshPort", e.target.value)} className="font-mono" /></Labeled>
-          <Labeled label={t("ops:scan.apiHttpsPort")}><Input value={form.apiHttps} onChange={(e) => set("apiHttps", e.target.value)} className="font-mono" /></Labeled>
-          <Labeled label={t("ops:scan.apiHttpPort")}><Input value={form.apiHttp} onChange={(e) => set("apiHttp", e.target.value)} className="font-mono" /></Labeled>
+          <Labeled label={t("ops:scan.sshPort")}><MaskedInput mask="port" value={form.sshPort} onValueChange={(v) => set("sshPort", v)} className="font-mono" /></Labeled>
+          <Labeled label={t("ops:scan.apiHttpsPort")}><MaskedInput mask="port" value={form.apiHttps} onValueChange={(v) => set("apiHttps", v)} className="font-mono" /></Labeled>
+          <Labeled label={t("ops:scan.apiHttpPort")}><MaskedInput mask="port" value={form.apiHttp} onValueChange={(v) => set("apiHttp", v)} className="font-mono" /></Labeled>
         </div>
 
         <Button className="mt-4" onClick={startScan} disabled={busy || !form.range}>

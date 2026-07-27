@@ -1,4 +1,5 @@
 import asyncio
+import ipaddress
 import re
 from datetime import UTC, datetime, timedelta
 
@@ -7,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.tenancy import is_master, new_org_id, owned, scope
+from app.api.tenancy import is_master, new_org_id, owned, plan_expired, scope
 from app.core.db import get_session
 from app.drivers.base import DriverError, WriteBlocked
 from app.models import Device, DeviceSample, DeviceStatus, Organization, Plan, User
@@ -24,6 +25,32 @@ router = APIRouter(prefix="/devices", tags=["devices"], dependencies=[Depends(ge
 async def _get(session: AsyncSession, device_id: int, user: User) -> Device:
     d = (await session.execute(select(Device).where(Device.id == device_id))).scalar_one_or_none()
     return owned(d, user)
+
+
+def _normalize_ipv4(raw: str) -> str:
+    """Valida e canoniza o IP como IPv4 (ex.: '192.168.001.1' → '192.168.1.1')."""
+    ip = (raw or "").strip()
+    try:
+        return str(ipaddress.IPv4Address(ip))
+    except ValueError as e:
+        raise HTTPException(422, "IP inválido — informe um IPv4 no formato 192.168.0.1") from e
+
+
+async def _ensure_unique_ip(
+    session: AsyncSession, org_id: int | None, ip: str, exclude_id: int | None = None
+) -> None:
+    """Recusa IP repetido dentro do mesmo tenant.
+
+    A unicidade é POR organização: o IP privado de uma ORG pode coincidir com o
+    de outra. Devices do Master (org_id NULL) formam o seu próprio escopo — daí
+    o `is_(None)` explícito, já que em SQL `NULL = NULL` não casa.
+    """
+    stmt = select(Device.id).where(Device.ip == ip)
+    stmt = stmt.where(Device.org_id.is_(None) if org_id is None else Device.org_id == org_id)
+    if exclude_id is not None:
+        stmt = stmt.where(Device.id != exclude_id)
+    if (await session.execute(stmt.limit(1))).scalar_one_or_none() is not None:
+        raise HTTPException(409, f"já existe um device com o IP {ip} nesta organização")
 
 
 @router.get("/{device_id}/ping")
@@ -57,6 +84,8 @@ async def _device_limit(session: AsyncSession, org_id: int) -> int:
     org = (await session.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
     if org is None:
         return 0
+    if plan_expired(org):
+        return 0  # plano vencido → bloqueia (o override não ressuscita o plano)
     if org.device_limit is not None:
         return org.device_limit
     if org.plan_id is not None:
@@ -136,14 +165,20 @@ async def device_samples(
 @router.post("", response_model=DeviceOut, status_code=201)
 async def create_device(payload: DeviceCreate, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):
     org_id = new_org_id(user)
+    data = payload.model_dump()
+    data["ip"] = _normalize_ipv4(data["ip"])
     if org_id is not None:  # Administrador/Operador: aplica a cota do plano
         from sqlalchemy import func
 
         count = (await session.execute(select(func.count(Device.id)).where(Device.org_id == org_id))).scalar() or 0
         limit = await _device_limit(session, org_id)
         if count >= limit:
+            org = (await session.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
+            if plan_expired(org):
+                raise HTTPException(403, "plano da organização expirado — renove para adicionar novos dispositivos")
             raise HTTPException(403, f"limite de devices do plano atingido ({count}/{limit})")
-    d = Device(org_id=org_id, **payload.model_dump())
+    await _ensure_unique_ip(session, org_id, data["ip"])
+    d = Device(org_id=org_id, **data)
     session.add(d)
     await session.commit()
     await session.refresh(d)
@@ -158,7 +193,13 @@ async def get_device(device_id: int, session: AsyncSession = Depends(get_session
 @router.patch("/{device_id}", response_model=DeviceOut)
 async def update_device(device_id: int, payload: DeviceUpdate, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):
     d = await _get(session, device_id, user)
-    for k, v in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    if "ip" in data:
+        data["ip"] = _normalize_ipv4(data["ip"])
+        # Escopo pelo org do PRÓPRIO device (não o do usuário): um Master editando
+        # um device de outra ORG precisa checar contra aquela ORG, não a dele.
+        await _ensure_unique_ip(session, d.org_id, data["ip"], exclude_id=d.id)
+    for k, v in data.items():
         setattr(d, k, v)
     await session.commit()
     await session.refresh(d)

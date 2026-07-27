@@ -6,7 +6,11 @@
     "add": "Add Device",
     "searchPlaceholder": "Search by name or host…",
     "emptyTitle": "No device",
-    "emptyHint": "Register a device or adjust the filters."
+    "emptyHint": "Register a device or adjust the filters.",
+    "companyFilter": "Company",
+    "allCompanies": "All companies",
+    "systemCompany": "System (Master)",
+    "companyLabel": "Company"
   },
   "labels": {
     "method": "Method",
@@ -35,6 +39,7 @@
     "editTitle": "Edit equipment",
     "newTitle": "New equipment",
     "ipHost": "IP / host",
+    "ipInvalid": "Invalid IP — enter an IPv4 like 192.168.0.1",
     "group": "Group",
     "latitude": "Latitude",
     "longitude": "Longitude",
