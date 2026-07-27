@@ -1,7 +1,13 @@
 {
   "title": "Configuración",
   "subtitle": "Sistema, poller e integraciones",
-  "tabs": { "home": "Inicio", "ftp": "FTP", "preferences": "Preferencias" },
+  "tabs": {
+    "home": "Inicio",
+    "ftp": "FTP",
+    "preferences": "Preferencias",
+    "plans": "Planes",
+    "danger": "Danger Zone"
+  },
   "preferences": {
     "title": "Preferencias de la Interfaz",
     "subtitle": "Personaliza cómo se muestra la interfaz.",
@@ -41,5 +47,63 @@
     "dirPlaceholder": "/backups"
   },
   "saved": "Guardado y confirmado en el servidor a las {{time}}.",
-  "errPrefix": "Error {{status}}: {{message}}"
+  "errPrefix": "Error {{status}}: {{message}}",
+  "plan": {
+    "title": "Plan de la organización",
+    "current": "Plan actual",
+    "noPlan": "Sin plan",
+    "status": {
+      "active": "Activo",
+      "canceled": "Cancelado",
+      "expired": "Expirado",
+      "none": "Sin plan"
+    },
+    "expiresAt": "Expira el",
+    "noExpiry": "Sin fecha de expiración",
+    "expiredOn": "Expiró el",
+    "devices": "Dispositivos",
+    "users": "Usuarios",
+    "of": "de",
+    "canceledNote": "Plan cancelado — el acceso continúa hasta {{date}}. Después, se bloquean nuevas creaciones.",
+    "canceledNoDate": "Plan cancelado. Sin fecha de expiración, el acceso sigue hasta que el Master defina una.",
+    "expiredNote": "Plan expirado. No puedes crear nuevos dispositivos/usuarios hasta renovar. Los datos existentes quedan intactos.",
+    "cancel": "Cancelar plan",
+    "reactivate": "Reactivar plan",
+    "change": "Ver / cambiar planes",
+    "cancelling": "Cancelando…",
+    "reactivating": "Reactivando…",
+    "cancelTitle": "¿Confirmar la cancelación del plan?",
+    "cancelMsg": "Su plan {{name}} permanece activo para todos los usuarios de la organización hasta la fecha de vencimiento. Después, no se podrán agregar nuevos dispositivos ni usuarios — no se pierde ningún dato. ¿Desea continuar con la cancelación?",
+    "canceled": "Plan cancelado.",
+    "reactivated": "Plan reactivado.",
+    "actionFailed": "No se pudo completar la acción",
+    "noOrgAdmin": "Solo los administradores de organización gestionan el plan aquí."
+  },
+  "danger": {
+    "title": "Zona de peligro",
+    "intro": "Acciones críticas e irreversibles sobre tu empresa. Procede con cuidado.",
+    "deleteHeading": "Eliminar empresa permanentemente",
+    "deleteHint": "Elimina {{name}} y TODOS sus datos. Esta acción no se puede deshacer.",
+    "deleteButton": "Eliminar empresa",
+    "deleted": "Empresa eliminada permanentemente.",
+    "failed": "No se pudo eliminar la empresa",
+    "entities": {
+      "devices": "Dispositivos",
+      "sites": "Sitios",
+      "users": "Usuarios",
+      "credentials": "Credenciales",
+      "backups": "Copias de seguridad"
+    },
+    "modal": {
+      "title": "Eliminar empresa permanentemente",
+      "irreversible": "Estás a punto de eliminar permanentemente la empresa {{name}} y todos sus registros. Esta operación es IRREVERSIBLE — los datos no se pueden recuperar después.",
+      "planWarnTitle": "Tu empresa tiene un plan vigente ({{plan}}).",
+      "planWarnBody": "Eliminar los datos NO es lo mismo que cancelar la suscripción. Si solo quieres finalizar el plan, usa la pestaña Planes. Al eliminar la empresa, el vínculo del plan se elimina junto con los demás datos.",
+      "willDelete": "Qué se eliminará",
+      "plusMore": "También: racks, controladores, claves de API, webhooks, plantillas, historial de auditoría y conversaciones de Copilot.",
+      "confirmLabel": "Para confirmar, escribe el nombre de la empresa (\"{{name}}\") o la palabra EXCLUIR:",
+      "confirmButton": "Eliminar permanentemente",
+      "deleting": "Eliminando…"
+    }
+  }
 }
