@@ -1,5 +1,7 @@
 {
-  "brand": { "tagline": "Gerência de NOC" },
+  "brand": {
+    "tagline": "Gerência de NOC"
+  },
   "groups": {
     "overview": "VISÃO GERAL",
     "actions": "AÇÕES",
@@ -28,7 +30,12 @@
     "users": "Usuários",
     "apikeys": "Chaves de API",
     "webhooks": "Webhooks",
-    "settings": "Configurações"
+    "settings": "Configurações",
+    "plans": "Meus Planos",
+    "notifications": "Notificações"
   },
-  "logout": "Sair"
+  "logout": "Sair",
+  "planLabel": "Plano",
+  "upgradePlan": "Atualizar o Plano",
+  "noPlan": "Sem plano"
 }

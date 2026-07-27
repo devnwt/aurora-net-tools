@@ -1,5 +1,7 @@
 {
-  "brand": { "tagline": "Gestión de NOC" },
+  "brand": {
+    "tagline": "Gestión de NOC"
+  },
   "groups": {
     "overview": "VISIÓN GENERAL",
     "actions": "ACCIONES",
@@ -28,7 +30,12 @@
     "users": "Usuarios",
     "apikeys": "Claves de API",
     "webhooks": "Webhooks",
-    "settings": "Configuración"
+    "settings": "Configuración",
+    "plans": "Mis Planes",
+    "notifications": "Notificaciones"
   },
-  "logout": "Salir"
+  "logout": "Salir",
+  "planLabel": "Plan",
+  "upgradePlan": "Actualizar Plan",
+  "noPlan": "Sin plan"
 }

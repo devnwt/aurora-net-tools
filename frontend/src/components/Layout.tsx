@@ -1,13 +1,16 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
   Activity,
   Archive,
   ArrowUpCircle,
+  Bell,
   Bot,
   Boxes,
   Crown,
   FileText,
   Globe,
+  CreditCard,
   KeyRound,
   KeySquare,
   LayoutDashboard,
@@ -18,6 +21,7 @@ import {
   Server,
   Settings,
   ShieldCheck,
+  Sparkles,
   Terminal,
   type LucideIcon,
   Users as UsersIcon,
@@ -26,8 +30,11 @@ import {
 } from "lucide-react";
 // Package/Building2 removidos: a área Admin virou um único item "Super Admin".
 import { useTranslation } from "react-i18next";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { isMaxPlan } from "@/lib/plans";
 import { cn } from "@/lib/utils";
+import { PlanUpgradeDialog } from "@/components/PlanUpgradeDialog";
 import logo from "@/logo.png";
 
 interface NavItem {
@@ -46,6 +53,7 @@ const groups: { key: string; items: NavItem[] }[] = [
     key: "overview",
     items: [
       { to: "/", key: "dashboard", icon: LayoutDashboard, end: true },
+      { to: "/notifications", key: "notifications", icon: Bell },
       { to: "/devices", key: "devices", icon: Monitor },
       { to: "/sites", key: "sites", icon: MapPin },
       { to: "/racks", key: "racks", icon: Boxes },
@@ -92,6 +100,25 @@ export function Layout() {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const initial = (user?.username ?? "?").charAt(0).toUpperCase();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+
+  // Contador de notificações não lidas: carrega no início, atualiza a cada 45s e
+  // ao receber o evento "notifications:changed" (disparado ao ler na central).
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      api.get<{ count: number }>("/notifications/unread-count").then((r) => alive && setUnread(r.count)).catch(() => {});
+    load();
+    const id = window.setInterval(load, 45000);
+    const onChange = () => load();
+    window.addEventListener("notifications:changed", onChange);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+      window.removeEventListener("notifications:changed", onChange);
+    };
+  }, []);
 
   return (
     <div className="flex min-h-screen">
@@ -133,8 +160,13 @@ export function Layout() {
                       )
                     }
                   >
-                    <Icon className="h-4 w-4" aria-hidden />
-                    {t(`nav:items.${key}`)}
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                    <span className="flex-1 truncate">{t(`nav:items.${key}`)}</span>
+                    {key === "notifications" && unread > 0 && (
+                      <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                        {unread > 99 ? "99+" : unread}
+                      </span>
+                    )}
                   </NavLink>
                 ))}
                 </div>
@@ -143,23 +175,48 @@ export function Layout() {
           })}
         </nav>
 
-        <div className="border-t border-border px-3 py-3">
-          <div className="flex items-center gap-3 px-2">
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/15 text-sm font-semibold text-primary">
+        <div className="border-t border-border px-3 py-3.5">
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-sm font-semibold text-primary">
               {initial}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm">{user?.username}</p>
-              <p className="text-xs text-muted">{t(`common:roles.${user?.role === "master" ? "master" : user?.role === "admin" ? "admin" : "operator"}`)}</p>
+              <p className="truncate text-sm font-medium leading-tight">{user?.username}</p>
+              <p className="mt-0.5 truncate text-xs leading-tight text-muted">
+                {t(`common:roles.${user?.role === "master" ? "master" : user?.role === "admin" ? "admin" : "operator"}`)}
+              </p>
             </div>
             <button
               onClick={logout}
               aria-label={t("nav:logout")}
-              className="rounded-lg p-2 text-muted hover:bg-surface-2 hover:text-danger cursor-pointer transition-colors duration-200"
+              className="ml-1 shrink-0 rounded-lg p-2 text-muted hover:bg-surface-2 hover:text-danger cursor-pointer transition-colors duration-200"
             >
               <LogOut className="h-4 w-4" aria-hidden />
             </button>
           </div>
+          {user && user.role !== "master" && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span
+                className={cn(
+                  "inline-flex max-w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium",
+                  user.plan ? "bg-primary/15 text-primary" : "bg-surface-2 text-muted",
+                )}
+                title={t("nav:planLabel")}
+              >
+                <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{user.plan ?? t("nav:noPlan")}</span>
+              </span>
+              {user.is_admin && !(user.plan && isMaxPlan(user.plan)) && (
+                <button
+                  onClick={() => setUpgradeOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-primary to-accent px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-all duration-200 hover:shadow-md hover:brightness-110 cursor-pointer"
+                >
+                  <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                  {t("nav:upgradePlan")}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </aside>
 
@@ -169,6 +226,8 @@ export function Layout() {
           <Outlet />
         </div>
       </main>
+
+      {upgradeOpen && <PlanUpgradeDialog onClose={() => setUpgradeOpen(false)} />}
     </div>
   );
 }

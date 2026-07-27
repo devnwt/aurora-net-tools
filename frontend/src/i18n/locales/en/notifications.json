@@ -1,0 +1,10 @@
+{
+  "title": "Notifications",
+  "subtitle": "Alerts about your account and your company.",
+  "empty": "You have no notifications.",
+  "unread": "Unread",
+  "markRead": "Mark as read",
+  "markAll": "Mark all as read",
+  "allReadDone": "All notifications marked as read.",
+  "actionFailed": "Could not complete the action"
+}

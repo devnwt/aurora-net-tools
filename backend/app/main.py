@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -20,6 +21,10 @@ from app.api import (
     groups,
     health,
     mikrotik,
+    notifications,
+    observability,
+    org,
+    plans,
     racks,
     scan,
     templates,
@@ -31,9 +36,10 @@ from app.api import (
     settings as settings_api,
 )
 from app.core.config import get_settings
-from app.core.logging import configure_logging
+from app.core.logging import bind_request, configure_logging, current_request_id
 from app.mcp.auth import MCPAuthMiddleware
 from app.mcp.server import mcp
+from app.services.notifications import run_notifier
 from app.services.poller import run_poller
 
 settings = get_settings()
@@ -48,14 +54,16 @@ mcp_app = mcp.streamable_http_app()
 async def lifespan(app: FastAPI):
     # Inicia o session manager do MCP (streamable-http) junto com o app.
     async with mcp.session_manager.run():
-        poller_task = None
+        bg_tasks: list[asyncio.Task] = []
         if settings.poll_enabled and not settings.testing:
-            poller_task = asyncio.create_task(run_poller())
+            bg_tasks.append(asyncio.create_task(run_poller()))
+        if settings.notify_enabled and not settings.testing:
+            bg_tasks.append(asyncio.create_task(run_notifier()))
         try:
             yield
         finally:
-            if poller_task:
-                poller_task.cancel()
+            for task in bg_tasks:
+                task.cancel()
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
@@ -72,17 +80,47 @@ app.add_middleware(
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    """Correlaciona a requisição e alimenta a observabilidade.
+
+    Abre o contexto de log (request id + rota) que TODO log emitido durante a
+    requisição herda — inclusive os de `app/services/*`. O usuário entra depois,
+    quando `get_current_user` resolve quem é (ver `bind_user`).
+    """
+    request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:16]
+    ctx = bind_request(request_id, request.method, request.url.path)
+
     start = time.monotonic()
     response = await call_next(request)
     dur = int((time.monotonic() - start) * 1000)
+    ctx["status"] = response.status_code
+
     log.info("%s %s -> %s (%dms)", request.method, request.url.path, response.status_code, dur)
+    # 5xx sem exceção (ex.: HTTPException(500) de um driver) não passa pelo
+    # handler abaixo — sem isto o erro sumiria da aba Observabilidade.
+    if response.status_code >= 500:
+        log.error(
+            "resposta %s em %s %s (%dms)",
+            response.status_code,
+            request.method,
+            request.url.path,
+            dur,
+            extra={"status_code": response.status_code, "duration_ms": dur},
+        )
+
+    response.headers["X-Request-ID"] = request_id
     return response
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     log.exception("erro não tratado em %s %s", request.method, request.url.path)
-    return JSONResponse(status_code=500, content={"detail": "erro interno do servidor"})
+    # O request id volta pro cliente: é por ele que o Master acha o evento (e o
+    # stack trace) na aba Observabilidade, sem expor nada técnico na resposta.
+    request_id = current_request_id()
+    body: dict[str, str] = {"detail": "erro interno do servidor"}
+    if request_id:
+        body["request_id"] = request_id
+    return JSONResponse(status_code=500, content=body)
 
 
 app.include_router(health.router)
@@ -104,6 +142,10 @@ app.include_router(apikeys.router)
 app.include_router(webhooks.router)
 app.include_router(admin.router)
 app.include_router(audit.router)
+app.include_router(observability.router)
+app.include_router(plans.router)
+app.include_router(org.router)
+app.include_router(notifications.router)
 
 # MCP built-in montado em settings.mcp_path (decisão §5), atrás do auth por X-API-Key
 # que fixa o principal (ORG) para as tools escoparem por tenant.
