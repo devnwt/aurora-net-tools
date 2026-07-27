@@ -7,7 +7,9 @@
     "empty": "No users",
     "columns": {
       "email": "Email",
-      "role": "Role"
+      "role": "Role",
+      "status": "Status",
+      "phone": "Phone"
     },
     "you": "you",
     "noEmail": "— no email —",
@@ -27,6 +29,23 @@
       "operator": "uses the system.",
       "admin": "manages their own organization.",
       "master": "system superadmin."
+    },
+    "phoneLabel": "Phone",
+    "phonePlaceholder": "(11) 91234-5678",
+    "activeLabel": "Active account",
+    "activeHint": "Inactive accounts cannot log in.",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "systemCompany": "System (Master)",
+    "companyFilter": "Company",
+    "allCompanies": "All companies",
+    "limitCount": "{{used}}/{{limit}} users",
+    "toggle": {
+      "activateTitle": "Activate user",
+      "deactivateTitle": "Deactivate user",
+      "activateMsg": "Do you really want to activate the user \"{{name}}\"? They will be able to log in again.",
+      "deactivateMsg": "Do you really want to deactivate the user \"{{name}}\"? They will no longer be able to log in (no data is lost).",
+      "aria": "Toggle user active"
     }
   },
   "apikeys": {

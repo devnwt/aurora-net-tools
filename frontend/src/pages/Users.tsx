@@ -1,46 +1,97 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus } from "lucide-react";
+import { Building2, Plus, Users as UsersIcon } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { AppUser } from "@/lib/types";
+import type { AppUser, CurrentPlan, OrgMeta } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Badge, Button, EmptyState, Input, Modal, Select, Spinner } from "@/components/ui";
+import { MaskedInput } from "@/components/MaskedInput";
+import { ConfirmSwitch } from "@/components/ConfirmSwitch";
 import { useConfirm } from "@/lib/confirm";
 import { PASSWORD_HINT_KEY, passwordError } from "@/lib/password";
+import { cn } from "@/lib/utils";
 
 type Role = "operator" | "admin" | "master";
 const roleOf = (u: AppUser): Role => (u.role as Role) ?? (u.is_admin ? "admin" : "operator");
 
+// Empresa dona do usuário. Usuários do Master (org_id null) formam o balde "Sistema".
+type CompanyKey = number | "system";
+const companyKey = (u: AppUser): CompanyKey => u.org_id ?? "system";
+
+type UserForm = { username: string; email: string; phone: string; password: string; role: Role; is_active: boolean };
+const EMPTY_FORM: UserForm = { username: "", email: "", phone: "", password: "", role: "operator", is_active: true };
+
 export function Users() {
   const { t } = useTranslation();
-  const { confirm, alert } = useConfirm();
+  const { alert } = useConfirm();
   const { user: me } = useAuth();
   const isMaster = me?.role === "master";
   const [items, setItems] = useState<AppUser[]>([]);
+  const [orgs, setOrgs] = useState<OrgMeta[]>([]);       // Master: nomes/limites por empresa
+  const [myPlan, setMyPlan] = useState<CurrentPlan | null>(null); // Admin: limite da própria empresa
+  const [company, setCompany] = useState<CompanyKey | "all">("all");
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AppUser | null>(null);
-  const [form, setForm] = useState<{ username: string; email: string; password: string; role: Role }>({ username: "", email: "", password: "", role: "operator" });
+  const [form, setForm] = useState<UserForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
   function load() {
     setLoading(true);
     api.get<AppUser[]>("/users").then(setItems).finally(() => setLoading(false));
+    if (isMaster) api.get<OrgMeta[]>("/admin/orgs").then(setOrgs).catch(() => {});
+    else api.get<CurrentPlan>("/plans/current").then(setMyPlan).catch(() => {});
   }
-  useEffect(load, []);
+  useEffect(load, [isMaster]);
+
+  const orgName = useMemo(() => {
+    const byId = new Map(orgs.map((o) => [o.id, o.name]));
+    return (key: CompanyKey) => (key === "system" ? t("access:users.systemCompany") : byId.get(key) ?? `Org ${key}`);
+  }, [orgs, t]);
+  // Limite de usuários por empresa (do plano). "system" e sem plano → sem limite.
+  const orgLimit = useMemo(() => {
+    const byId = new Map(orgs.map((o) => [o.id, o.user_limit]));
+    return (key: CompanyKey): number | null => (key === "system" ? null : byId.get(key) ?? null);
+  }, [orgs]);
+
+  // Empresas presentes (para o filtro do Master), com contagem, ordenadas por nome.
+  const companyCounts = useMemo(() => {
+    const c = new Map<CompanyKey, number>();
+    for (const u of items) c.set(companyKey(u), (c.get(companyKey(u)) ?? 0) + 1);
+    return [...c.entries()]
+      .map(([key, n]) => ({ key, name: orgName(key), count: n }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [items, orgName]);
+
+  const filtered = useMemo(
+    () => items.filter((u) => company === "all" || companyKey(u) === company),
+    [items, company],
+  );
+
+  // Master: agrupa por empresa. Admin/operator: uma lista só (já escopada pela ORG).
+  const companyGroups = useMemo(() => {
+    const buckets = new Map<CompanyKey, AppUser[]>();
+    for (const u of filtered) {
+      const k = companyKey(u);
+      (buckets.get(k) ?? buckets.set(k, []).get(k)!).push(u);
+    }
+    return [...buckets.entries()]
+      .map(([key, users]) => ({ key, name: orgName(key), users, limit: orgLimit(key) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [filtered, orgName, orgLimit]);
 
   function openNew() {
     setEditing(null);
-    setForm({ username: "", email: "", password: "", role: "operator" });
+    setForm(EMPTY_FORM);
     setErr("");
     setOpen(true);
   }
   function openEdit(u: AppUser) {
     setEditing(u);
-    setForm({ username: u.username, email: u.email ?? "", password: "", role: roleOf(u) });
+    setForm({ username: u.username, email: u.email ?? "", phone: u.phone ?? "", password: "", role: roleOf(u), is_active: u.is_active ?? true });
     setErr("");
     setOpen(true);
   }
@@ -59,9 +110,11 @@ export function Users() {
         if (form.password) body.password = form.password;
         // Só envia e-mail se preenchido e alterado (evita rejeitar contas legadas sem e-mail).
         if (form.email && form.email !== (editing.email ?? "")) body.email = form.email;
+        if (form.phone !== (editing.phone ?? "")) body.phone = form.phone;
+        if (form.is_active !== (editing.is_active ?? true)) body.is_active = form.is_active;
         await api.patch(`/users/${editing.id}`, body);
       } else {
-        await api.post("/users", { username: form.username, email: form.email, password: form.password, role: form.role });
+        await api.post("/users", { username: form.username, email: form.email, phone: form.phone, password: form.password, role: form.role, is_active: form.is_active });
       }
       setOpen(false);
       load();
@@ -72,20 +125,56 @@ export function Users() {
     }
   }
 
-  async function remove(u: AppUser) {
-    const label = t(`common:roles.${roleOf(u)}`);
-    const who = `${label} "${u.username}"${u.email ? ` (${u.email})` : ""}`;
-    if (!(await confirm({ title: t("access:users.delete.title"), message: t("access:users.delete.message", { who }) }))) return;
+  // Ativa/desativa via a API existente (PATCH is_active); atualiza a lista no lugar.
+  async function toggleActive(u: AppUser, next: boolean) {
     try {
-      await api.del(`/users/${u.id}`);
-      load();
+      await api.patch(`/users/${u.id}`, { is_active: next });
+      setItems((list) => list.map((x) => (x.id === u.id ? { ...x, is_active: next } : x)));
     } catch (e) {
-      await alert({ title: t("access:errorTitle"), message: t("access:users.deleteFailed", { error: e instanceof ApiError ? e.message : String(e) }), tone: "danger" });
+      await alert({ title: t("access:errorTitle"), message: e instanceof ApiError ? e.message : String(e), tone: "danger" });
+      throw e; // sinaliza o erro ao ConfirmSwitch (mantém o estado anterior)
     }
   }
 
   // Papéis que o ator pode atribuir (Master só por Master).
   const roleOptions: Role[] = isMaster ? ["operator", "admin", "master"] : ["operator", "admin"];
+
+  const renderTable = (users: AppUser[]) => (
+    <Table head={<><Th>{t("common:labels.username")}</Th><Th>{t("access:users.columns.email")}</Th><Th>{t("access:users.columns.phone")}</Th><Th>{t("access:users.columns.role")}</Th><Th>{t("access:users.columns.status")}</Th><Th className="text-right">{t("common:labels.actions")}</Th></>}>
+      {users.map((u) => {
+        const r = roleOf(u);
+        const active = u.is_active ?? true;
+        return (
+          <tr key={u.id} className="hover:bg-surface-2 transition-colors duration-200">
+            <Td className="font-medium">
+              {u.username} {u.id === me?.id && <Badge tone="muted">{t("access:users.you")}</Badge>}
+            </Td>
+            <Td className="text-muted">{u.email || <span className="text-danger/70">{t("access:users.noEmail")}</span>}</Td>
+            <Td className="font-mono text-muted">{u.phone || "—"}</Td>
+            <Td><Badge tone={r === "master" ? "accent" : r === "admin" ? "primary" : "muted"}>{t(`common:roles.${r}`)}</Badge></Td>
+            <Td>
+              <div className="flex items-center gap-2">
+                <ConfirmSwitch
+                  checked={active}
+                  disabled={u.id === me?.id}
+                  ariaLabel={t("access:users.toggle.aria")}
+                  confirmTitle={(next) => t(next ? "access:users.toggle.activateTitle" : "access:users.toggle.deactivateTitle")}
+                  confirmMessage={(next) => t(next ? "access:users.toggle.activateMsg" : "access:users.toggle.deactivateMsg", { name: u.username })}
+                  onToggle={(next) => toggleActive(u, next)}
+                />
+                <span className={cn("text-xs", active ? "text-muted" : "text-danger")}>
+                  {t(active ? "access:users.statusActive" : "access:users.statusInactive")}
+                </span>
+              </div>
+            </Td>
+            <Td className="text-right">
+              <Button variant="ghost" onClick={() => openEdit(u)}>{t("common:actions.edit")}</Button>
+            </Td>
+          </tr>
+        );
+      })}
+    </Table>
+  );
 
   return (
     <div>
@@ -95,31 +184,45 @@ export function Users() {
         actions={<Button onClick={openNew}><Plus className="h-4 w-4" /> {t("access:users.add")}</Button>}
       />
 
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {isMaster ? (
+          <Select
+            value={String(company)}
+            onChange={(e) => setCompany(e.target.value === "all" ? "all" : e.target.value === "system" ? "system" : Number(e.target.value))}
+            className="w-56"
+            aria-label={t("access:users.companyFilter")}
+          >
+            <option value="all">{t("access:users.allCompanies")}</option>
+            {companyCounts.map((c) => (
+              <option key={c.key} value={String(c.key)}>{c.name} ({c.count})</option>
+            ))}
+          </Select>
+        ) : (
+          // Admin: limite de usuários da própria empresa.
+          myPlan?.has_org && <UserLimitBadge used={filtered.length} limit={myPlan.max_users} />
+        )}
+      </div>
+
       {loading ? (
         <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>
-      ) : items.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <EmptyState title={t("access:users.empty")} />
+      ) : isMaster ? (
+        // Master: uma seção por empresa, com o limite de usuários de cada uma.
+        <div className="space-y-8">
+          {companyGroups.map((g) => (
+            <section key={g.key}>
+              <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-border pb-2">
+                <Building2 className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold">{g.name}</h2>
+                <UserLimitBadge used={g.users.length} limit={g.limit} />
+              </div>
+              {renderTable(g.users)}
+            </section>
+          ))}
+        </div>
       ) : (
-        <Table head={<><Th>{t("common:labels.username")}</Th><Th>{t("access:users.columns.email")}</Th><Th>{t("access:users.columns.role")}</Th><Th className="text-right">{t("common:labels.actions")}</Th></>}>
-          {items.map((u) => {
-            const r = roleOf(u);
-            return (
-              <tr key={u.id} className="hover:bg-surface-2 transition-colors duration-200">
-                <Td className="font-medium">
-                  {u.username} {u.id === me?.id && <Badge tone="muted">{t("access:users.you")}</Badge>}
-                </Td>
-                <Td className="text-muted">{u.email || <span className="text-danger/70">{t("access:users.noEmail")}</span>}</Td>
-                <Td><Badge tone={r === "master" ? "accent" : r === "admin" ? "primary" : "muted"}>{t(`common:roles.${r}`)}</Badge></Td>
-                <Td className="text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" onClick={() => openEdit(u)}>{t("common:actions.edit")}</Button>
-                    <Button variant="danger" onClick={() => remove(u)} disabled={u.id === me?.id}>{t("common:actions.delete")}</Button>
-                  </div>
-                </Td>
-              </tr>
-            );
-          })}
-        </Table>
+        renderTable(filtered)
       )}
 
       {open && (
@@ -142,6 +245,9 @@ export function Users() {
             <Fld label={t("access:users.emailLabel")}>
               <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder={t("access:users.emailPlaceholder")} />
             </Fld>
+            <Fld label={t("access:users.phoneLabel")}>
+              <MaskedInput mask="phone" value={form.phone} onValueChange={(v) => setForm({ ...form, phone: v })} placeholder={t("access:users.phonePlaceholder")} className="font-mono" />
+            </Fld>
             <Fld label={editing ? t("access:users.newPasswordLabel") : t("access:users.passwordLabel")}>
               <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editing ? t("access:users.passwordKeepPlaceholder") : ""} />
               {form.password
@@ -155,6 +261,20 @@ export function Users() {
                 {editing && !roleOptions.includes(form.role) && <option value={form.role}>{t(`common:roles.${form.role}`)}</option>}
               </Select>
             </Fld>
+            {/* Conta ativa. Bloqueado para a própria conta (evita autolockout, igual ao back-end). */}
+            <label className="flex cursor-pointer items-start gap-2">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 cursor-pointer accent-primary disabled:cursor-not-allowed"
+                checked={form.is_active}
+                disabled={editing?.id === me?.id}
+                onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+              />
+              <span>
+                <span className="text-sm">{t("access:users.activeLabel")}</span>
+                <span className="block text-[11px] text-muted">{t("access:users.activeHint")}</span>
+              </span>
+            </label>
             <p className="text-[11px] text-muted">
               <strong>{t("common:roles.operator")}</strong>: {t("access:users.roleHelp.operator")} <strong>{t("common:roles.admin")}</strong>: {t("access:users.roleHelp.admin")}
               {isMaster && <> <strong>{t("common:roles.master")}</strong>: {t("access:users.roleHelp.master")}</>}
@@ -173,5 +293,29 @@ function Fld({ label, children }: { label: string; children: React.ReactNode }) 
       <label className="text-[11px] uppercase tracking-wide text-muted">{label}</label>
       {children}
     </div>
+  );
+}
+
+/** Badge "X/Y usuários" — âmbar perto do limite, vermelho ao atingir. limit null = sem limite. */
+function UserLimitBadge({ used, limit }: { used: number; limit: number | null }) {
+  const { t } = useTranslation();
+  if (limit == null || limit <= 0) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-surface-2 px-2 py-1 text-xs text-muted">
+        <UsersIcon className="h-3.5 w-3.5" /> {t("access:users.limitCount", { used, limit: "∞" })}
+      </span>
+    );
+  }
+  const atLimit = used >= limit;
+  const near = used / limit >= 0.8 && !atLimit;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium",
+        atLimit ? "bg-danger/15 text-danger" : near ? "bg-accent/15 text-accent" : "bg-primary/15 text-primary",
+      )}
+    >
+      <UsersIcon className="h-3.5 w-3.5" /> {t("access:users.limitCount", { used, limit })}
+    </span>
   );
 }

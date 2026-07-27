@@ -7,7 +7,9 @@
     "empty": "Ningún usuario",
     "columns": {
       "email": "Correo",
-      "role": "Rol"
+      "role": "Rol",
+      "status": "Estado",
+      "phone": "Teléfono"
     },
     "you": "tú",
     "noEmail": "— sin correo —",
@@ -27,6 +29,23 @@
       "operator": "usa el sistema.",
       "admin": "gestiona su propia organización.",
       "master": "superadmin del sistema."
+    },
+    "phoneLabel": "Teléfono",
+    "phonePlaceholder": "(11) 91234-5678",
+    "activeLabel": "Cuenta activa",
+    "activeHint": "Las cuentas inactivas no pueden iniciar sesión.",
+    "statusActive": "Activo",
+    "statusInactive": "Inactivo",
+    "systemCompany": "Sistema (Master)",
+    "companyFilter": "Empresa",
+    "allCompanies": "Todas las empresas",
+    "limitCount": "{{used}}/{{limit}} usuarios",
+    "toggle": {
+      "activateTitle": "Activar usuario",
+      "deactivateTitle": "Desactivar usuario",
+      "activateMsg": "¿Desea realmente activar al usuario \"{{name}}\"? Podrá iniciar sesión de nuevo.",
+      "deactivateMsg": "¿Desea realmente desactivar al usuario \"{{name}}\"? No podrá iniciar sesión (no se pierde ningún dato).",
+      "aria": "Activar/desactivar usuario"
     }
   },
   "apikeys": {
