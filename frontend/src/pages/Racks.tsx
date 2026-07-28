@@ -82,7 +82,7 @@ export function Racks() {
       if (g.parent_id && ugIds.has(g.parent_id)) edges.push({ source: `ug-${g.parent_id}`, target: `ug-${g.id}`, kind: "contains" });
     });
     members.forEach((u) => {
-      nodes.push({ id: `user-${u.id}`, label: u.username, type: "user" });
+      nodes.push({ id: `user-${u.id}`, label: u.email ?? String(u.id), type: "user" });
       if (u.usergroup_id && ugIds.has(u.usergroup_id)) edges.push({ source: `ug-${u.usergroup_id}`, target: `user-${u.id}`, kind: "contains" });
     });
     return { nodes, edges };
@@ -301,7 +301,7 @@ export function Racks() {
               <div className="space-y-1">
                 {members.map((u) => (
                   <div key={u.id} className="flex items-center gap-2 text-sm">
-                    <span className="min-w-0 flex-1 truncate">{u.username} <span className="text-xs text-muted">{u.role}</span></span>
+                    <span className="min-w-0 flex-1 truncate">{u.email} <span className="text-xs text-muted">{u.role}</span></span>
                     <Select value={u.usergroup_id ? String(u.usergroup_id) : ""} onChange={(e) => assignUser(u.id, e.target.value)} className="w-44">
                       <option value="">{t("sites:racks.noGroupOption")}</option>
                       {ugroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}

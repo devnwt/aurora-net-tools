@@ -3,11 +3,15 @@ import { api, tokenStore, type LoginResult } from "./api";
 
 interface Me {
   id: number;
-  username: string;
+  email: string | null;
+  phone?: string | null;
+  photo?: string | null;
   is_admin: boolean;
   role: string;
   org_id: number | null;
   plan?: string | null;
+  /** Convidado que ainda não definiu senha → popup infechável. */
+  must_set_password?: boolean;
 }
 
 interface AuthCtx {
@@ -15,6 +19,8 @@ interface AuthCtx {
   loading: boolean;
   login: (u: string, p: string) => Promise<LoginResult>;
   logout: () => void;
+  /** Recarrega /auth/me (ex.: após definir a senha inicial ou atualizar o perfil). */
+  refresh: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx>(null as unknown as AuthCtx);
@@ -48,7 +54,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.assign("/login");
   }
 
-  return <Ctx.Provider value={{ user, loading, login, logout }}>{children}</Ctx.Provider>;
+  async function refresh() {
+    if (!tokenStore.get()) return;
+    try {
+      setUser(await api.get<Me>("/auth/me"));
+    } catch {
+      /* mantém o estado atual se falhar */
+    }
+  }
+
+  return <Ctx.Provider value={{ user, loading, login, logout, refresh }}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);

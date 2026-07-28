@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, ForeignKey, String, text
+from sqlalchemy import Boolean, ForeignKey, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -17,6 +17,8 @@ class User(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"), nullable=False)
     # Telefone de contato (armazenado como digitado/formatado; opcional).
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Foto de perfil (data URL base64, imagem pequena redimensionada no cliente).
+    photo: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Papel: master (sistema) · admin (dono da ORG) · operator (usuário da ORG).
     role: Mapped[str] = mapped_column(String(20), default="operator")
     org_id: Mapped[int | None] = mapped_column(

@@ -25,6 +25,7 @@ from app.api import (
     observability,
     org,
     plans,
+    profile,
     racks,
     scan,
     templates,
@@ -146,6 +147,7 @@ app.include_router(observability.router)
 app.include_router(plans.router)
 app.include_router(org.router)
 app.include_router(notifications.router)
+app.include_router(profile.router)
 
 # MCP built-in montado em settings.mcp_path (decisão §5), atrás do auth por X-API-Key
 # que fixa o principal (ORG) para as tools escoparem por tenant.

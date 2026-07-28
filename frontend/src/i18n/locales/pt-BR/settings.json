@@ -6,7 +6,8 @@
     "ftp": "FTP",
     "preferences": "Preferências",
     "plans": "Planos",
-    "danger": "Danger Zone"
+    "danger": "Danger Zone",
+    "profile": "Meu Perfil"
   },
   "preferences": {
     "title": "Preferências da Interface",

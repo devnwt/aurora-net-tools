@@ -46,7 +46,10 @@
       "activateMsg": "Do you really want to activate the user \"{{name}}\"? They will be able to log in again.",
       "deactivateMsg": "Do you really want to deactivate the user \"{{name}}\"? They will no longer be able to log in (no data is lost).",
       "aria": "Toggle user active"
-    }
+    },
+    "inviteSent": "Invite sent to {{email}}.",
+    "inviteHint": "The user will receive an email to set their own password.",
+    "sendInvite": "Send invite"
   },
   "apikeys": {
     "title": "API Keys",
