@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     # Testes — usa NullPool para evitar conexões presas a um event loop
     testing: bool = False
 
+    # Hub de cobrança (checkout de planos pagos). Vazio (token) = checkout desligado.
+    hub_aurora_url: str = "https://hub.admin.aurora.api.br/"
+    hub_aurora_token: str = ""
+
     # Seed do controller Fiberhome (UNM2000)
     tl1_host: str = ""
     tl1_port: int = 3337

@@ -33,13 +33,22 @@ export function PlanUpgradeDialog({ onClose }: { onClose: () => void }) {
   const reserveRibbon = list.some((p) => isTrial(p.name));
   const topId = list.filter((p) => !isTrial(p.name)).reduce<PlanOption | null>((m, p) => (!m || p.max_devices > m.max_devices ? p : m), null)?.id;
 
-  // Selecionar o plano = ação direta (o checkout entraria aqui). Já é o plano
-  // atual → só fecha; senão aplica, avisa e recarrega (atualiza o chip do menu).
+  // Selecionar o plano. Já é o atual → só fecha. Plano PAGO → checkout: cria a
+  // cobrança e redireciona para a URL de pagamento. Trial/grátis → aplica direto,
+  // avisa e recarrega (atualiza o chip do menu).
   async function choose(planId: number) {
     if (applying != null) return;
     if (planId === cur?.plan_id) { onClose(); return; }
+    const plan = list.find((p) => p.id === planId);
+    const paid = !!plan && !isTrial(plan.name);
     setApplying(planId);
     try {
+      if (paid) {
+        const r = await api.post<{ payment_url: string }>("/plans/checkout", { plan_id: planId });
+        toast.info(t("plans:checkoutRedirect"));
+        window.location.assign(r.payment_url); // vai para o pagamento no hub
+        return;
+      }
       await api.post<CurrentPlan>("/plans/select", { plan_id: planId });
       toast.success(t("plans:upgradeApplied"));
       window.location.reload();

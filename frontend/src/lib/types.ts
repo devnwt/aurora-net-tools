@@ -26,6 +26,7 @@ export interface Plan {
   name: string;
   max_devices: number;
   max_users: number;
+  code?: string | null; // plan_code no hub de cobrança
 }
 // === Planos (autosserviço do admin da ORG — /plans) ===
 export interface PlanOption {

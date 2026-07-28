@@ -204,16 +204,18 @@ class PlanIn(BaseModel):
     name: str
     max_devices: int = 10
     max_users: int = 5
+    code: str | None = None  # plan_code no hub de cobrança
 
 
 class PlanPatch(BaseModel):
     name: str | None = None
     max_devices: int | None = None
     max_users: int | None = None
+    code: str | None = None
 
 
 def _plan(p: Plan) -> dict:
-    return {"id": p.id, "name": p.name, "max_devices": p.max_devices, "max_users": p.max_users}
+    return {"id": p.id, "name": p.name, "max_devices": p.max_devices, "max_users": p.max_users, "code": p.code}
 
 
 @router.get("/plans")

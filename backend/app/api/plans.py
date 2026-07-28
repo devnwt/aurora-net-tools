@@ -18,8 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_admin
 from app.api.tenancy import is_trial_plan, new_plan_expiry, plan_expired, plan_status, trial_available
 from app.core.db import get_session
+from app.core.documents import format_document
 from app.models import Device, Organization, Plan, User
-from app.services import notifications
+from app.services import billing, notifications
 
 router = APIRouter(prefix="/plans", tags=["plans"], dependencies=[Depends(require_admin)])
 
@@ -139,6 +140,54 @@ async def select_plan(
         await notifications.emit_plan_welcome(session, org, plan)
     await session.commit()
     return await _current(session, user)
+
+
+class CheckoutOut(BaseModel):
+    payment_url: str
+
+
+@router.post("/checkout", response_model=CheckoutOut)
+async def checkout(
+    payload: SelectIn,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(require_admin),
+):
+    """Inicia a contratação de um plano PAGO: cria a cobrança no hub com os dados
+    do cliente logado e devolve a URL de pagamento (o front redireciona pra lá).
+
+    A ativação do plano só acontece após a confirmação do pagamento — aqui não se
+    altera `org.plan_id`."""
+    org = await _own_org(session, user)
+    plan = await _plan(session, payload.plan_id)
+    if plan is None:
+        raise HTTPException(404, "plano não encontrado")
+    if is_trial_plan(plan):
+        raise HTTPException(400, "o plano de teste não requer pagamento")
+    if not plan.code:
+        raise HTTPException(400, "este plano ainda não está disponível para contratação — contate o suporte")
+    # Dados do cliente logado — o documento é obrigatório para a cobrança.
+    if not user.document:
+        raise HTTPException(400, "informe seu CPF/CNPJ em Meu Perfil antes de contratar um plano")
+    if not user.email:
+        raise HTTPException(400, "cadastre um e-mail antes de contratar um plano")
+    customer = {
+        "document": format_document(user.document),
+        "name": user.name or org.name,
+        "email": user.email,
+    }
+    try:
+        data = await billing.create_charge(
+            plan_code=plan.code,
+            external_id=f"cliente-{org.id}",
+            external_reference=f"assinatura-{org.id}-{plan.id}",
+            customer=customer,
+        )
+    except billing.BillingError as exc:
+        raise HTTPException(502, str(exc))
+    url = billing.extract_payment_url(data)
+    if not url:
+        raise HTTPException(502, "não recebemos a URL de pagamento do serviço de cobrança")
+    return CheckoutOut(payment_url=url)
 
 
 async def _own_org(session: AsyncSession, user: User) -> Organization:

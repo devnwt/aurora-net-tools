@@ -47,5 +47,12 @@
   "upgradeSubtitle": "Pick a plan to apply now.",
   "upgradeApplied": "Plan updated successfully.",
   "upgradeApplying": "Applying…",
-  "upgradeFailed": "Could not update the plan."
+  "upgradeFailed": "Could not update the plan.",
+  "checkoutRedirect": "Redirecting to payment…",
+  "trialPromoTitle": "Enjoy your trial",
+  "trialPromoSubtitle": "You're on the trial plan. Pick a paid plan to continue after the deadline — without losing data.",
+  "trialPromoLater": "Not now",
+  "trialExpiredTitle": "Your trial has ended",
+  "trialExpiredSubtitle": "Choose a paid plan to keep creating devices and using all features.",
+  "trialExpiredLogout": "Log out"
 }
