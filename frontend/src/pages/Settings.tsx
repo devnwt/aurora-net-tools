@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Languages, RefreshCw, Save, Server } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { AlertTriangle, CalendarClock, Check, CreditCard, Languages, RefreshCw, RotateCcw, Save, Server, Trash2, XCircle } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/lib/toast";
-import type { Integrations } from "@/lib/types";
+import { useConfirm } from "@/lib/confirm";
+import type { CurrentPlan, Integrations, OrgSummary } from "@/lib/types";
 import { useLocale } from "@/i18n/useLocale";
 import { isSupportedLocale, type SupportedLocale } from "@/i18n/config";
 import { PageHeader } from "@/components/PageHeader";
-import { Badge, Button, Card, Input, Select, Spinner } from "@/components/ui";
+import { Badge, Button, Card, Input, Modal, Select, Spinner, Toggle } from "@/components/ui";
+import { MaskedInput } from "@/components/MaskedInput";
 import { cn } from "@/lib/utils";
 import i18n from "@/i18n";
 
@@ -21,23 +24,40 @@ interface Info {
   counts: { devices: number; statuses: number; samples: number };
 }
 
-type Tab = "preferences" | "home" | "ftp";
-const TABS: Tab[] = ["preferences", "home", "ftp"];
+type Tab = "preferences" | "home" | "ftp" | "plans" | "danger";
+const TABS: Tab[] = ["preferences", "home", "ftp", "plans", "danger"];
 
 export function Settings() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<Tab>("preferences");
+  const { user } = useAuth();
+  // A aba Planos é para admins de organização (admin ou master). A Danger Zone
+  // (exclusão da empresa) é EXCLUSIVA do admin da empresa — o master não tem ORG.
+  const isAdmin = user?.role === "admin" || user?.role === "master";
+  const isCompanyAdmin = user?.role === "admin";
+  const tabs = TABS.filter((k) => (k !== "plans" || isAdmin) && (k !== "danger" || isCompanyAdmin));
+  // Aba controlada pela URL (/settings?tab=plans) — deep-link e persiste no refresh.
+  // Aba inválida ou sem permissão (operator em ?tab=plans) cai em "preferences".
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get("tab") as Tab | null;
+  const tab: Tab = rawTab && tabs.includes(rawTab) ? rawTab : "preferences";
+  const setTab = (next: Tab) => setSearchParams(next === "preferences" ? {} : { tab: next }, { replace: true });
   return (
     <div>
       <PageHeader title={t("settings:title")} subtitle={t("settings:subtitle")} />
       <div className="mb-5 flex flex-wrap items-center gap-1 border-b border-border">
-        {TABS.map((key) => (
+        {tabs.map((key) => (
           <button
             key={key}
             onClick={() => setTab(key)}
             className={cn(
               "cursor-pointer rounded-t-lg px-4 py-2 text-sm transition-colors duration-200",
-              tab === key ? "border-b-2 border-primary font-medium text-primary" : "text-muted hover:text-text",
+              key === "danger"
+                ? tab === key
+                  ? "border-b-2 border-danger font-medium text-danger"
+                  : "text-danger/70 hover:text-danger"
+                : tab === key
+                  ? "border-b-2 border-primary font-medium text-primary"
+                  : "text-muted hover:text-text",
             )}
           >
             {t(`settings:tabs.${key}`)}
@@ -47,6 +67,8 @@ export function Settings() {
       {tab === "preferences" && <PreferencesTab />}
       {tab === "home" && <HomeTab />}
       {tab === "ftp" && <FtpTab />}
+      {tab === "plans" && <PlanTab />}
+      {tab === "danger" && <DangerZoneTab />}
     </div>
   );
 }
@@ -191,24 +213,6 @@ function Stat({ label, value }: { label: string; value: number }) {
 
 // === Integrações — helpers de UI ===
 
-function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
-  return (
-    <label className={cn("inline-flex items-center gap-2 text-sm", disabled && "opacity-60")}>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={cn("relative h-5 w-9 rounded-full transition-colors", checked ? "bg-primary" : "bg-surface-2", !disabled && "cursor-pointer")}
-      >
-        <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all", checked ? "left-[18px]" : "left-0.5")} />
-      </button>
-      {label}
-    </label>
-  );
-}
-
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div className="space-y-1">
@@ -309,7 +313,7 @@ function FtpTab() {
       <p className="mb-4 text-xs text-muted">{t("settings:ftp.desc")}</p>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t("common:labels.host")}><Input value={f.host} onChange={(e) => setF({ ...f, host: e.target.value })} placeholder={t("settings:ftp.hostPlaceholder")} disabled={!isAdmin} /></Field>
-        <Field label={t("common:labels.port")}><Input value={f.port} onChange={(e) => setF({ ...f, port: e.target.value })} className="font-mono" inputMode="numeric" disabled={!isAdmin} /></Field>
+        <Field label={t("common:labels.port")}><MaskedInput mask="port" value={f.port} onValueChange={(v) => setF({ ...f, port: v })} className="font-mono" disabled={!isAdmin} /></Field>
         <Field label={t("common:labels.username")}><Input value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} disabled={!isAdmin} /></Field>
         <Field label={t("common:labels.password")} hint={pwSet ? t("settings:ftp.pwSet") : undefined}>
           <Input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder={pwSet ? t("settings:ftp.pwPlaceholder") : ""} disabled={!isAdmin} />
@@ -326,5 +330,255 @@ function FtpTab() {
       )}
       <ResultNote msg={msg} />
     </Card>
+  );
+}
+
+// === Planos (aba do admin da ORG: status, vencimento e cancelamento) ===
+
+const STATUS_TONE = { active: "ok", canceled: "accent", expired: "danger", none: "muted" } as const;
+
+function PlanTab() {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const { confirm } = useConfirm();
+  const [cur, setCur] = useState<CurrentPlan | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  function load() {
+    setLoading(true);
+    api.get<CurrentPlan>("/plans/current").then(setCur).finally(() => setLoading(false));
+  }
+  useEffect(load, []);
+
+  async function cancel() {
+    const name = cur?.plan_name ?? "";
+    if (!(await confirm({ title: t("settings:plan.cancelTitle"), message: t("settings:plan.cancelMsg", { name }), tone: "danger" }))) return;
+    setBusy(true);
+    try {
+      setCur(await api.post<CurrentPlan>("/plans/cancel"));
+      toast.success(t("settings:plan.canceled"));
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e : t("settings:plan.actionFailed"), { title: t("settings:plan.actionFailed") });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function reactivate() {
+    setBusy(true);
+    try {
+      setCur(await api.post<CurrentPlan>("/plans/reactivate"));
+      toast.success(t("settings:plan.reactivated"));
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e : t("settings:plan.actionFailed"), { title: t("settings:plan.actionFailed") });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) return <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>;
+  if (!cur) return null;
+  if (!cur.has_org) return <Card><p className="text-sm text-muted">{t("settings:plan.noOrgAdmin")}</p></Card>;
+
+  const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString() : null);
+  const expDate = fmtDate(cur.expires_at);
+  const tone = STATUS_TONE[cur.status];
+
+  return (
+    <Card>
+      <div className="mb-4 flex items-center gap-2">
+        <CreditCard className="h-4 w-4 text-primary" />
+        <h2 className="text-sm font-semibold">{t("settings:plan.title")}</h2>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 border-b border-border pb-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-muted">{t("settings:plan.current")}</p>
+          <p className="text-lg font-semibold">{cur.plan_name ?? t("settings:plan.noPlan")}</p>
+        </div>
+        <Badge tone={tone}>{t(`settings:plan.status.${cur.status}`)}</Badge>
+        {expDate && (
+          <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
+            <CalendarClock className="h-3.5 w-3.5" />
+            {cur.expired ? t("settings:plan.expiredOn") : t("settings:plan.expiresAt")} <strong className="text-text">{expDate}</strong>
+          </span>
+        )}
+      </div>
+
+      {/* Uso atual */}
+      <div className="grid gap-4 py-4 sm:grid-cols-2">
+        <UsageLine label={t("settings:plan.devices")} used={cur.usage.devices} max={cur.max_devices} />
+        <UsageLine label={t("settings:plan.users")} used={cur.usage.users} max={cur.max_users} />
+      </div>
+
+      {/* Avisos por estado */}
+      {cur.status === "expired" && (
+        <p className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">{t("settings:plan.expiredNote")}</p>
+      )}
+      {cur.status === "canceled" && (
+        <p className="rounded-lg border border-accent/40 bg-accent/10 p-3 text-sm text-accent">
+          {expDate ? t("settings:plan.canceledNote", { date: expDate }) : t("settings:plan.canceledNoDate")}
+        </p>
+      )}
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {cur.canceled ? (
+          <Button variant="primary" onClick={reactivate} disabled={busy}>
+            <RotateCcw className="h-4 w-4" /> {busy ? t("settings:plan.reactivating") : t("settings:plan.reactivate")}
+          </Button>
+        ) : (
+          <Button variant="danger" onClick={cancel} disabled={busy || !cur.plan_id}>
+            <XCircle className="h-4 w-4" /> {busy ? t("settings:plan.cancelling") : t("settings:plan.cancel")}
+          </Button>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function UsageLine({ label, used, max }: { label: string; used: number; max: number }) {
+  const { t } = useTranslation();
+  const pct = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
+  const over = max > 0 && used > max;
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-xs">
+        <span className="text-muted">{label}</span>
+        <span className="font-mono tabular-nums">{used} {t("settings:plan.of")} {max}</span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
+        <div className={cn("h-full rounded-full transition-all", over ? "bg-danger" : "bg-primary")} style={{ width: `${Math.max(pct, used > 0 ? 4 : 0)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+// === Danger Zone: exclusão permanente da empresa (só admin da empresa) ===
+
+function DangerZoneTab() {
+  const { t } = useTranslation();
+  const [org, setOrg] = useState<OrgSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    api.get<OrgSummary>("/org").then(setOrg).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>;
+  if (!org) return null;
+
+  return (
+    <>
+      <Card className="border-danger/40">
+        <div className="flex items-start gap-3">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-danger/15 text-danger">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-sm font-semibold text-danger">{t("settings:danger.title")}</h2>
+            <p className="mt-1 text-sm text-muted">{t("settings:danger.intro")}</p>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-danger/30 bg-danger/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">{t("settings:danger.deleteHeading")}</p>
+            <p className="text-xs text-muted">{t("settings:danger.deleteHint", { name: org.name })}</p>
+          </div>
+          <Button variant="danger" onClick={() => setOpen(true)} className="shrink-0">
+            <Trash2 className="h-4 w-4" /> {t("settings:danger.deleteButton")}
+          </Button>
+        </div>
+      </Card>
+      {open && <DeleteOrgModal org={org} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+function DeleteOrgModal({ org, onClose }: { org: OrgSummary; onClose: () => void }) {
+  const { t } = useTranslation();
+  const { logout } = useAuth();
+  const toast = useToast();
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // Alerta de plano vigente: "active" (ou "canceled", que ainda vale até o vencimento).
+  const hasActivePlan = org.plan_status === "active" || org.plan_status === "canceled";
+  const canDelete = confirm.trim() === org.name || confirm.trim().toUpperCase() === "EXCLUIR";
+
+  async function remove() {
+    if (!canDelete || busy) return;
+    setBusy(true);
+    try {
+      await api.post("/org/delete", { confirm: confirm.trim() });
+      // O logout recarrega a página, então o toast some antes de aparecer.
+      // Sinaliza p/ a tela de login mostrar o popup de sucesso após o redirect.
+      sessionStorage.setItem("aurora_account_deleted", "1");
+      logout(); // limpa o token e redireciona para /login
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e : t("settings:danger.failed"), { title: t("settings:danger.failed") });
+      setBusy(false);
+    }
+  }
+
+  const entities: { k: string; n: number }[] = [
+    { k: "devices", n: org.counts.devices },
+    { k: "sites", n: org.counts.sites },
+    { k: "users", n: org.counts.users },
+    { k: "credentials", n: org.counts.credentials },
+    { k: "backups", n: org.counts.backups },
+  ];
+
+  return (
+    <Modal
+      title={t("settings:danger.modal.title")}
+      onClose={busy ? () => {} : onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={busy}>{t("common:actions.cancel")}</Button>
+          <Button variant="danger" onClick={remove} disabled={busy || !canDelete}>
+            {busy
+              ? <><Spinner className="h-4 w-4" /> {t("settings:danger.modal.deleting")}</>
+              : <><Trash2 className="h-4 w-4" /> {t("settings:danger.modal.confirmButton")}</>}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>{t("settings:danger.modal.irreversible", { name: org.name })}</p>
+        </div>
+
+        {hasActivePlan && (
+          <div className="flex items-start gap-2 rounded-lg border border-accent/40 bg-accent/10 p-3 text-sm text-accent">
+            <CreditCard className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-medium">{t("settings:danger.modal.planWarnTitle", { plan: org.plan_name ?? "" })}</p>
+              <p className="mt-1 text-xs opacity-90">{t("settings:danger.modal.planWarnBody")}</p>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <p className="mb-2 text-xs uppercase tracking-wide text-muted">{t("settings:danger.modal.willDelete")}</p>
+          <ul className="grid grid-cols-2 gap-1.5 text-sm">
+            {entities.map((it) => (
+              <li key={it.k} className="flex items-center justify-between rounded-md bg-surface-2 px-2.5 py-1.5">
+                <span className="text-muted">{t(`settings:danger.entities.${it.k}`)}</span>
+                <span className="font-mono tabular-nums">{it.n}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-muted">{t("settings:danger.modal.plusMore")}</p>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="del-confirm" className="text-xs text-muted">{t("settings:danger.modal.confirmLabel", { name: org.name })}</label>
+          <Input id="del-confirm" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={org.name} disabled={busy} autoFocus />
+        </div>
+      </div>
+    </Modal>
   );
 }

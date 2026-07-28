@@ -63,3 +63,6 @@ class DeviceUpdate(BaseModel):
 class DeviceOut(DeviceBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    # Tenant dono do device. Para o Master (que enxerga todas as ORGs) o frontend
+    # usa isto para sinalizar/agrupar por empresa; para os demais é sempre a própria.
+    org_id: int | None = None

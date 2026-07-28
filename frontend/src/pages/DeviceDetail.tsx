@@ -8,6 +8,7 @@ import { rosGet, rosPost } from "@/lib/rosClient";
 import { ForceGraph, type GEdge, type GNode } from "@/components/ForceGraph";
 import type { Device, DeviceSample, Group, NetInfoResp, OverviewResp, RosRecord, TrafficResp } from "@/lib/types";
 import { Badge, Button, Card, Input, Modal, Select, Spinner } from "@/components/ui";
+import { MaskedInput } from "@/components/MaskedInput";
 import { useConfirm } from "@/lib/confirm";
 import { Table, Td, Th } from "@/components/Table";
 import { DeviceImage } from "@/components/DeviceImage";
@@ -993,7 +994,7 @@ function IpAddressesTab({ deviceId, ifaces, wan }: { deviceId: number } & IfaceP
           footer={<><Button variant="ghost" onClick={() => setOpen(false)}>{t("common:actions.cancel")}</Button><Button onClick={add} disabled={busy || !form.address || !form.interface}>{busy ? "…" : t("common:actions.add")}</Button></>}
         >
           <div className="space-y-3">
-            <Fld label={t("devices:ip.fieldAddress")}><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="192.168.88.1/24" className="font-mono" autoFocus /></Fld>
+            <Fld label={t("devices:ip.fieldAddress")}><MaskedInput mask="ipv4cidr" value={form.address} onValueChange={(v) => setForm({ ...form, address: v })} placeholder="192.168.88.1/24" className="font-mono" autoFocus /></Fld>
             <Fld label={t("devices:labels.interface")}><IfaceSelect value={form.interface} onChange={(v) => setForm({ ...form, interface: v })} ifaces={ifaces} wan={wan} allowEmpty /></Fld>
             <Fld label={t("devices:labels.comment")}><Input value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} placeholder={t("devices:labels.optional")} /></Fld>
           </div>
@@ -1074,7 +1075,7 @@ function ServicesTab({ deviceId }: { deviceId: number }) {
           footer={<><Button variant="ghost" onClick={() => setEdit(null)}>{t("common:actions.cancel")}</Button><Button onClick={save} disabled={busy}>{busy ? "…" : t("common:actions.save")}</Button></>}
         >
           <div className="space-y-3">
-            <Fld label={t("devices:services.fieldPort")}><Input value={form.port} onChange={(e) => setForm({ ...form, port: e.target.value })} placeholder={t("devices:services.portPlaceholder")} className="font-mono" inputMode="numeric" /></Fld>
+            <Fld label={t("devices:services.fieldPort")}><MaskedInput mask="port" value={form.port} onValueChange={(v) => setForm({ ...form, port: v })} placeholder={t("devices:services.portPlaceholder")} className="font-mono" /></Fld>
             <Fld label={t("devices:services.fieldAvailable")}><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder={t("devices:services.availablePlaceholder")} className="font-mono text-xs" /></Fld>
           </div>
         </Modal>
@@ -1215,8 +1216,8 @@ function DhcpLeasesTab({ deviceId }: { deviceId: number }) {
           footer={<><Button variant="ghost" onClick={() => setOpen(false)}>{t("common:actions.cancel")}</Button><Button onClick={add} disabled={busy || !form.address || !form.mac_address}>{busy ? "…" : t("common:actions.add")}</Button></>}
         >
           <div className="space-y-3">
-            <Fld label={t("devices:dhcpLeases.fieldAddressIp")}><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="192.168.88.10" className="font-mono" autoFocus /></Fld>
-            <Fld label={t("devices:dhcpLeases.fieldMac")}><Input value={form.mac_address} onChange={(e) => setForm({ ...form, mac_address: e.target.value })} placeholder="AA:BB:CC:DD:EE:FF" className="font-mono" /></Fld>
+            <Fld label={t("devices:dhcpLeases.fieldAddressIp")}><MaskedInput mask="ipv4" value={form.address} onValueChange={(v) => setForm({ ...form, address: v })} placeholder="192.168.88.10" className="font-mono" autoFocus /></Fld>
+            <Fld label={t("devices:dhcpLeases.fieldMac")}><MaskedInput mask="mac" value={form.mac_address} onValueChange={(v) => setForm({ ...form, mac_address: v })} placeholder="AA:BB:CC:DD:EE:FF" className="font-mono" /></Fld>
             <Fld label={t("devices:dhcpLeases.fieldServer")}><Input value={form.server} onChange={(e) => setForm({ ...form, server: e.target.value })} placeholder={t("devices:dhcpLeases.serverPlaceholder")} className="font-mono" /></Fld>
           </div>
         </Modal>
@@ -1399,8 +1400,8 @@ function RoutesTab({ deviceId }: { deviceId: number }) {
           footer={<><Button variant="ghost" onClick={() => setOpen(false)}>{t("common:actions.cancel")}</Button><Button onClick={add} disabled={busy || !form.dst_address || !form.gateway}>{busy ? "…" : t("common:actions.add")}</Button></>}
         >
           <div className="space-y-3">
-            <Fld label="DST-ADDRESS (CIDR)"><Input value={form.dst_address} onChange={(e) => setForm({ ...form, dst_address: e.target.value })} placeholder="10.0.0.0/24" className="font-mono" autoFocus /></Fld>
-            <Fld label="GATEWAY"><Input value={form.gateway} onChange={(e) => setForm({ ...form, gateway: e.target.value })} placeholder={t("devices:routes.gatewayPlaceholder")} className="font-mono" /></Fld>
+            <Fld label="DST-ADDRESS (CIDR)"><MaskedInput mask="ipv4cidr" value={form.dst_address} onValueChange={(v) => setForm({ ...form, dst_address: v })} placeholder="10.0.0.0/24" className="font-mono" autoFocus /></Fld>
+            <Fld label="GATEWAY"><MaskedInput mask="ipv4" value={form.gateway} onValueChange={(v) => setForm({ ...form, gateway: v })} placeholder={t("devices:routes.gatewayPlaceholder")} className="font-mono" /></Fld>
             <Fld label={t("devices:routes.fieldDistance")}><Input value={form.distance} onChange={(e) => setForm({ ...form, distance: e.target.value })} placeholder={t("devices:routes.distancePlaceholder")} className="font-mono" /></Fld>
             <Fld label={t("devices:labels.comment")}><Input value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} placeholder={t("devices:routes.commentPlaceholder")} /></Fld>
           </div>

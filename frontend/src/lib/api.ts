@@ -8,6 +8,17 @@ export const tokenStore = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 };
 
+/** Resposta de /auth/login: token normal OU sinal de reativação (admin inativo). */
+export interface LoginResult {
+  access_token?: string;
+  token_type?: string;
+  reactivate?: boolean;
+  reactivate_token?: string;
+  username?: string;
+  plans?: { id: number; name: string; max_devices: number; max_users: number }[];
+  trial_available?: boolean;
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -69,8 +80,8 @@ export const api = {
         res.status === 401 ? "Usuário ou senha incorretos." : `O servidor respondeu ${res.status}.`,
       );
     }
-    const data = (await res.json()) as { access_token: string };
-    tokenStore.set(data.access_token);
+    const data = (await res.json()) as LoginResult;
+    if (data.access_token) tokenStore.set(data.access_token);
     return data;
   },
 };

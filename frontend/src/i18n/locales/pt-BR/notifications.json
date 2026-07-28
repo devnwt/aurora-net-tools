@@ -1,0 +1,10 @@
+{
+  "title": "Notificações",
+  "subtitle": "Avisos da sua conta e da sua empresa.",
+  "empty": "Você não tem notificações.",
+  "unread": "Não lida",
+  "markRead": "Marcar como lida",
+  "markAll": "Marcar todas como lidas",
+  "allReadDone": "Todas as notificações foram marcadas como lidas.",
+  "actionFailed": "Não foi possível concluir a ação"
+}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshCw } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { rosGet } from "@/lib/rosClient";
 import type { Device, LogsResp, RosRecord } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
@@ -9,6 +10,7 @@ import { Table, Td, Th } from "@/components/Table";
 import { Button, Card, EmptyState, Input, Select, Spinner } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import i18n from "@/i18n";
+import { ObservabilityTab } from "@/pages/Observability";
 
 const errMsg = (e: unknown) =>
   e instanceof ApiError ? i18n.t("ops:shared.errorWithStatus", { status: e.status, message: e.message }) : String(e);
@@ -20,7 +22,47 @@ function tone(topics: string): string {
   return "";
 }
 
+type Tab = "device" | "observability";
+
 export function Logs() {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  // A aba de Observabilidade é exclusiva do Admin Master. Isto aqui é só a
+  // interface: o backend recusa /observability/* para qualquer outro papel.
+  const isMaster = user?.role === "master";
+  const [tab, setTab] = useState<Tab>("device");
+  const tabs: Tab[] = isMaster ? ["device", "observability"] : ["device"];
+  const active = tabs.includes(tab) ? tab : "device";
+
+  return (
+    <div>
+      <PageHeader
+        title={t("ops:logs.title")}
+        subtitle={active === "observability" ? t("ops:observability.subtitle") : t("ops:logs.subtitle")}
+      />
+      {isMaster && (
+        <div className="mb-5 flex flex-wrap items-center gap-1 border-b border-border">
+          {tabs.map((key) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={cn(
+                "cursor-pointer rounded-t-lg px-4 py-2 text-sm transition-colors duration-200",
+                active === key ? "border-b-2 border-primary font-medium text-primary" : "text-muted hover:text-text",
+              )}
+            >
+              {t(`ops:logs.tabs.${key}`)}
+            </button>
+          ))}
+        </div>
+      )}
+      {active === "observability" ? <ObservabilityTab /> : <DeviceLogsTab />}
+    </div>
+  );
+}
+
+/** Logs lidos do próprio equipamento RouterOS (/log print) — comportamento original. */
+function DeviceLogsTab() {
   const { t } = useTranslation();
   const [devices, setDevices] = useState<Device[]>([]);
   const [target, setTarget] = useState("");
@@ -57,8 +99,6 @@ export function Logs() {
 
   return (
     <div>
-      <PageHeader title={t("ops:logs.title")} subtitle={t("ops:logs.subtitle")} />
-
       <Card className="mb-4">
         <div className="flex flex-wrap items-center gap-2">
           <Select

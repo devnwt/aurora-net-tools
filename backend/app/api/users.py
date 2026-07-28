@@ -5,11 +5,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_admin
-from app.api.tenancy import is_master, scope
+from app.api.tenancy import is_master, plan_expired, scope
 from app.core.db import get_session
 from app.core.security import hash_password, password_error
 from app.models import Organization, Plan, User, UserGroup
 from app.schemas.user import UserCreate, UserOut, UserUpdate
+from app.services import notifications
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(require_admin)])
 
@@ -61,8 +62,8 @@ async def _admin_count(session: AsyncSession, org_id: int | None) -> int:
 async def _user_limit(session: AsyncSession, org_id: int) -> int:
     """Cota de usuários da ORG (vem do plano). Sem plano → 0 (bloqueia criação)."""
     org = (await session.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
-    if org is None:
-        return 0
+    if org is None or plan_expired(org):
+        return 0  # sem ORG ou plano vencido → bloqueia criação
     if org.plan_id is not None:
         plan = (await session.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
         if plan is not None:
@@ -94,17 +95,24 @@ async def create_user(payload: UserCreate, session: AsyncSession = Depends(get_s
             count = (await session.execute(select(func.count(User.id)).where(User.org_id == org_id))).scalar() or 0
             limit = await _user_limit(session, org_id)
             if count >= limit:
+                org = (await session.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
+                if plan_expired(org):
+                    raise HTTPException(403, "plano da organização expirado — renove para adicionar novos usuários")
                 raise HTTPException(403, f"limite de usuários do plano atingido ({count}/{limit})")
 
     u = User(
         username=payload.username,
         email=email,
+        phone=(payload.phone or "").strip() or None,
         password_hash=hash_password(payload.password),
         role=role,
         org_id=org_id,
         is_admin=role in ("admin", "master"),
+        is_active=payload.is_active,
     )
     session.add(u)
+    await session.flush()  # garante u.id para a notificação de boas-vindas
+    await notifications.ensure_welcome(session, u)
     await session.commit()
     await session.refresh(u)
     return u
@@ -127,7 +135,18 @@ async def update_user(user_id: int, payload: UserUpdate, session: AsyncSession =
     if payload.password:
         _check_password(payload.password)
         u.password_hash = hash_password(payload.password)
+    if payload.is_active is not None and payload.is_active != u.is_active:
+        if not payload.is_active:  # desativando
+            if u.id == me.id:
+                raise HTTPException(400, "não é possível desativar a própria conta")
+            # Não deixar uma ORG sem nenhum admin ativo (mesma regra do rebaixamento).
+            if u.role in ("admin", "master") and await _admin_count(session, u.org_id) <= 1:
+                if u.org_id is None or not is_master(me):
+                    raise HTTPException(400, "não é possível desativar o último administrador da organização")
+        u.is_active = payload.is_active
     data = payload.model_dump(exclude_unset=True)
+    if "phone" in data:
+        u.phone = (data["phone"] or "").strip() or None
     if "usergroup_id" in data:
         ug_id = data["usergroup_id"]
         if ug_id is not None:

@@ -6,6 +6,7 @@ import type { Controller, Credential } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Button, Card, EmptyState, Input, Select, Spinner } from "@/components/ui";
+import { maskPort } from "@/lib/masks";
 import { useConfirm } from "@/lib/confirm";
 
 const BLANK = { name: "", host: "", port: 3337, credential_id: "" as string };
@@ -126,7 +127,7 @@ export function Controllers() {
             </div>
             <div className="space-y-1">
               <label htmlFor="cport" className="text-xs text-muted">{t("fiberhome:controllers.form.portTl1")}</label>
-              <Input id="cport" type="number" value={form.port} onChange={(e) => setForm({ ...form, port: Number(e.target.value) })} className="font-mono" />
+              <Input id="cport" inputMode="numeric" value={form.port === 0 ? "" : String(form.port)} onChange={(e) => setForm({ ...form, port: Number(maskPort(e.target.value) || 0) })} className="font-mono" />
             </div>
             <div className="space-y-1">
               <label htmlFor="ccred" className="text-xs text-muted">{t("fiberhome:controllers.form.credentialTl1")}</label>

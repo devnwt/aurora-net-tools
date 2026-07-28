@@ -34,6 +34,7 @@ import { Controllers } from "@/pages/Controllers";
 import { OltExplorer } from "@/pages/OltExplorer";
 import { Activity } from "@/pages/Activity";
 import { Copilot } from "@/pages/Copilot";
+import { Notifications } from "@/pages/Notifications";
 import "./index.css";
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -76,6 +77,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/plans" element={<Navigate to="/admin" replace />} />
             <Route path="/admin/orgs" element={<Navigate to="/admin" replace />} />
+            <Route path="/notifications" element={<Notifications />} />
             <Route path="/activity" element={<Activity />} />
             <Route path="/commands" element={<Commands />} />
             <Route path="/upgrades" element={<Upgrades />} />

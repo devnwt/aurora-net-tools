@@ -4,12 +4,14 @@ import type { ReactNode } from "react";
 import { ParticleNetwork } from "@/components/ParticleNetwork";
 import logo from "@/logo.png";
 
-export function AuthShell({ subtitle, children }: { subtitle: string; children: ReactNode }) {
+export function AuthShell({ subtitle, children, wide = false }: { subtitle: string; children: ReactNode; wide?: boolean }) {
   return (
     <div className="relative min-h-screen overflow-hidden">
       <ParticleNetwork />
-      <div className="relative z-10 flex min-h-screen items-center px-6 sm:px-10 lg:pl-[12vw] lg:pr-10">
-        <div className="w-full max-w-lg">
+      <div className={wide
+        ? "relative z-10 flex min-h-screen items-center justify-center px-6 py-10 sm:px-10"
+        : "relative z-10 flex min-h-screen items-center px-6 sm:px-10 lg:pl-[12vw] lg:pr-10"}>
+        <div className={wide ? "w-full max-w-5xl" : "w-full max-w-lg"}>
           <div className="mb-9 flex items-center gap-3.5">
             <img src={logo} alt="Aurora Prisma NetTools" className="h-14 w-14 rounded-xl object-contain" />
             <div>

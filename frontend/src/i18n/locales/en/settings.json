@@ -1,7 +1,13 @@
 {
   "title": "Settings",
   "subtitle": "System, poller and integrations",
-  "tabs": { "home": "Home", "ftp": "FTP", "preferences": "Preferences" },
+  "tabs": {
+    "home": "Home",
+    "ftp": "FTP",
+    "preferences": "Preferences",
+    "plans": "Plans",
+    "danger": "Danger Zone"
+  },
   "preferences": {
     "title": "Interface Preferences",
     "subtitle": "Customize how the interface is displayed.",
@@ -41,5 +47,63 @@
     "dirPlaceholder": "/backups"
   },
   "saved": "Saved and confirmed on the server at {{time}}.",
-  "errPrefix": "Error {{status}}: {{message}}"
+  "errPrefix": "Error {{status}}: {{message}}",
+  "plan": {
+    "title": "Organization plan",
+    "current": "Current plan",
+    "noPlan": "No plan",
+    "status": {
+      "active": "Active",
+      "canceled": "Canceled",
+      "expired": "Expired",
+      "none": "No plan"
+    },
+    "expiresAt": "Expires on",
+    "noExpiry": "No expiration date",
+    "expiredOn": "Expired on",
+    "devices": "Devices",
+    "users": "Users",
+    "of": "of",
+    "canceledNote": "Plan canceled — access continues until {{date}}. After that, new items are blocked.",
+    "canceledNoDate": "Plan canceled. With no expiration date, access continues until the Master sets one.",
+    "expiredNote": "Plan expired. You can't create new devices/users until you renew. Existing data stays intact.",
+    "cancel": "Cancel plan",
+    "reactivate": "Reactivate plan",
+    "change": "View / change plans",
+    "cancelling": "Cancelling…",
+    "reactivating": "Reactivating…",
+    "cancelTitle": "Confirm plan cancellation?",
+    "cancelMsg": "Your {{name}} plan stays active for all organization users until the expiration date. After that, no new devices or users can be added — no data is lost. Do you want to proceed with the cancellation?",
+    "canceled": "Plan canceled.",
+    "reactivated": "Plan reactivated.",
+    "actionFailed": "Could not complete the action",
+    "noOrgAdmin": "Only organization admins manage the plan here."
+  },
+  "danger": {
+    "title": "Danger Zone",
+    "intro": "Critical, irreversible actions for your company. Proceed with care.",
+    "deleteHeading": "Delete company permanently",
+    "deleteHint": "Removes {{name}} and ALL of its data. This action cannot be undone.",
+    "deleteButton": "Delete company",
+    "deleted": "Company permanently deleted.",
+    "failed": "Could not delete the company",
+    "entities": {
+      "devices": "Devices",
+      "sites": "Sites",
+      "users": "Users",
+      "credentials": "Credentials",
+      "backups": "Backups"
+    },
+    "modal": {
+      "title": "Delete company permanently",
+      "irreversible": "You are about to permanently delete the company {{name}} and all of its records. This operation is IRREVERSIBLE — the data cannot be recovered afterward.",
+      "planWarnTitle": "Your company has an active plan ({{plan}}).",
+      "planWarnBody": "Deleting the data is NOT the same as canceling the subscription. If you only want to end the plan, use the Plans tab. Deleting the company removes the plan link along with all other data.",
+      "willDelete": "What will be deleted",
+      "plusMore": "Also: racks, controllers, API keys, webhooks, templates, audit history and Copilot conversations.",
+      "confirmLabel": "To confirm, type the company name (\"{{name}}\") or the word EXCLUIR:",
+      "confirmButton": "Delete permanently",
+      "deleting": "Deleting…"
+    }
+  }
 }

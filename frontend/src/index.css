@@ -26,6 +26,88 @@
   }
 }
 
+/* === Meus Planos: cards animados ========================================= */
+/* Entrada com stagger (o delay é setado inline por índice). */
+@keyframes plan-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+.plan-card {
+  animation: plan-in 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+/* Elevação + brilho no hover. */
+.plan-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.plan-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 40px -12px rgba(59, 130, 246, 0.35);
+}
+
+/* Borda de gradiente animada no plano ATUAL (primary → accent → primary). */
+.plan-current {
+  position: relative;
+}
+.plan-current::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(120deg, #3b82f6, #f59e0b, #3b82f6);
+  background-size: 200% 200%;
+  animation: plan-border 4s linear infinite;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+@keyframes plan-border {
+  to { background-position: 200% 200%; }
+}
+
+/* Barra de "característica" que preenche ao aparecer. */
+@keyframes plan-fill {
+  from { width: 0; }
+}
+.plan-fill {
+  animation: plan-fill 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Ícone do plano com leve flutuação contínua. */
+@keyframes plan-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.plan-float {
+  animation: plan-float 3.5s ease-in-out infinite;
+}
+
+/* Linha de característica entrando (delay inline por índice). */
+@keyframes feat-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+.feat-in {
+  animation: feat-in 0.4s ease both;
+}
+
+/* === Popup (dialog): entrada suave do backdrop + pop do painel =========== */
+@keyframes dlg-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes dlg-panel-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+.dlg-backdrop {
+  animation: dlg-backdrop-in 0.25s ease both;
+}
+.dlg-panel {
+  animation: dlg-panel-in 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
 /* === Scrollbar custom (combina com o tema dark OLED) ===================== */
 /* Firefox */
 * {

@@ -94,6 +94,10 @@ jobs:
       REDIS_URL: redis://localhost:6379/0
       APP_SECRET_KEY: test-secret
       JWT_SECRET: test-jwt
+      # Fora do container /app/log não existe. Sem isto o handler de arquivo só
+      # seria descartado (a app tolera), mas o teste ficaria cego ao caminho real.
+      # (caminho literal: o contexto `runner` não é resolvido em env de job)
+      LOG_DIR: /tmp/aurora-ci-log
 
     steps:
       - uses: actions/checkout@v4

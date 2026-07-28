@@ -5,7 +5,9 @@ export interface AppUser {
   id: number;
   username: string;
   email?: string | null;
+  phone?: string | null;
   is_admin: boolean;
+  is_active?: boolean;
   role?: string;
   org_id?: number | null;
   usergroup_id?: number | null;
@@ -23,14 +25,64 @@ export interface Plan {
   max_devices: number;
   max_users: number;
 }
+// === Planos (autosserviço do admin da ORG — /plans) ===
+export interface PlanOption {
+  id: number;
+  name: string;
+  max_devices: number;
+  max_users: number;
+}
+export type PlanStatus = "none" | "active" | "canceled" | "expired";
+export interface CurrentPlan {
+  has_org: boolean;
+  plan_id: number | null;
+  plan_name: string | null;
+  max_devices: number;
+  max_users: number;
+  device_limit_override: boolean;
+  usage: { devices: number; users: number };
+  status: PlanStatus;
+  expires_at: string | null;
+  canceled: boolean;
+  expired: boolean;
+  trial_available: boolean;
+}
+
+/** Notificação da central do usuário (/notifications). */
+export interface AppNotification {
+  id: number;
+  kind: string;
+  title: string;
+  body: string;
+  created_at: string | null;
+  read: boolean;
+  read_at: string | null;
+}
+
+/** Resumo da própria empresa (Danger Zone em Settings — admin da empresa). */
+export interface OrgSummary {
+  id: number;
+  name: string;
+  plan_name: string | null;
+  plan_status: PlanStatus;
+  plan_expires_at: string | null;
+  plan_canceled: boolean;
+  counts: { devices: number; sites: number; users: number; credentials: number; backups: number };
+}
+
 export interface OrgMeta {
   id: number;
   name: string;
   plan_id: number | null;
   plan: string | null;
   device_limit: number | null;
+  user_limit: number;
   devices: number;
   users: number;
+  active_users: number;
+  plan_expires_at: string | null;
+  plan_canceled: boolean;
+  plan_status: PlanStatus;
   admin_username: string | null;
   admin_email: string | null;
 }
@@ -195,6 +247,7 @@ export interface Controller {
 
 export interface Device {
   id: number;
+  org_id: number | null;
   name: string;
   ip: string;
   device_type: DeviceType;
@@ -338,4 +391,49 @@ export interface SecurityResp {
   device: string;
   findings: SecurityFinding[];
   summary: { ok: number; warn: number; fail: number };
+}
+
+// === Observabilidade (aba /logs, só Admin Master) — espelha app/schemas/observability.py ===
+export interface ObsEvent {
+  id: string | null;
+  ts: string | null;
+  level: string;
+  logger: string | null;
+  service: string;
+  message: string;
+  /** Código de causa provável; traduzido em ops:observability.friendly.<code>. */
+  friendly: string;
+  request_id: string | null;
+  method: string | null;
+  path: string | null;
+  status: number | null;
+  user: string | null;
+  org_id: number | null;
+  duration_ms: number | null;
+  error_type: string | null;
+  has_stack: boolean;
+}
+/** Stack trace só existe no detalhe — a listagem nunca o traz. */
+export interface ObsEventDetail extends ObsEvent { stack: string | null; user_id: number | null }
+export interface ObsEventPage { items: ObsEvent[]; total: number; scanned: number; truncated: boolean }
+export interface ObsErrorGroup {
+  fingerprint: string;
+  count: number;
+  level: string;
+  service: string;
+  message: string;
+  friendly: string;
+  last_ts: string | null;
+  last_id: string | null;
+}
+export interface ObsSummary {
+  hours: number | null;
+  total: number;
+  critical: number;
+  warnings: number;
+  by_level: Record<string, number>;
+  by_service: Record<string, number>;
+  top_errors: ObsErrorGroup[];
+  last_event_ts: string | null;
+  available: boolean;
 }

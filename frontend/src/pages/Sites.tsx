@@ -6,6 +6,7 @@ import type { Device, Group } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Button, EmptyState, Input, Modal, Spinner } from "@/components/ui";
+import { MaskedInput } from "@/components/MaskedInput";
 import { useConfirm } from "@/lib/confirm";
 import { DeviceMap } from "@/components/DeviceMap";
 
@@ -128,10 +129,10 @@ export function Sites() {
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("sites:fields.latitude")}>
-                <Input type="number" step="any" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} placeholder={t("sites:placeholders.latitude")} className="font-mono" />
+                <MaskedInput mask="coordinate" value={form.latitude} onValueChange={(v) => setForm({ ...form, latitude: v })} placeholder={t("sites:placeholders.latitude")} className="font-mono" />
               </Field>
               <Field label={t("sites:fields.longitude")}>
-                <Input type="number" step="any" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} placeholder={t("sites:placeholders.longitude")} className="font-mono" />
+                <MaskedInput mask="coordinate" value={form.longitude} onValueChange={(v) => setForm({ ...form, longitude: v })} placeholder={t("sites:placeholders.longitude")} className="font-mono" />
               </Field>
             </div>
             <div className="overflow-hidden rounded-lg border border-border">

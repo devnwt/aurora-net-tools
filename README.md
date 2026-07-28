@@ -106,6 +106,7 @@ Enums (`models/enums.py`, todos `str`): `DeviceType`, `ConnectionMode`, `Control
 - **Poller** (`services/poller.py`) — a cada `poll_interval_seconds` (60), com `Semaphore(poll_concurrency=4)`, varre todos os devices `routeros`, roda board+health numa sessão SSH (preferido; senão Telnet; senão `disabled`), faz upsert de `device_status` e append de `device_sample`. **Não audita** (automático), **cede o lock** ao usuário (pula em `TargetBusy`), e em transição de estado dispara webhooks `device.online`/`device.offline`. Falhas nunca quebram o loop.
 - **Scan de rede** (`services/scan.py`, `POST /scan`) — descobre RouterOS num range (CIDR/faixa/IP, cap `MAX_HOSTS=512`). Duas fases com `Semaphore(48)`: TCP-connect na porta SSH (timeout 1.5s) → netmiko em portas abertas lendo identity/resource. Recebe credencial no corpo; **só exige estar logado** (não é restrito por papel).
 - **Webhooks de saída** (`services/webhooks.py`) — `dispatch(event, payload, org_id)` seleciona webhooks da org **OU globais (NULL)**, filtra por `events`, faz fan-out `asyncio.gather` (timeout 8s, best-effort). Assina `X-Aurora-Signature: sha256=HMAC(secret, body)` quando há segredo; sempre manda `X-Aurora-Event`. Rotas `require_admin`.
+- **Observabilidade** (`core/logging.py` → `services/observability.py` → `api/observability.py`) — os logs da aplicação são gravados em **JSONL** (`log/events.jsonl`, bind mount de `/app/log`, rotação 10 MB × 5) além do stdout. O middleware de `main.py` abre um contexto (`request_id`, método, rota) que todo log da requisição herda; `get_current_user` completa com usuário/ORG. **Nada disso pode afetar a aplicação:** a escrita fica atrás de um `QueueHandler` de fila limitada (descarta sob pressão, nunca bloqueia), `logging.raiseExceptions = False`, e sem disco gravável o app sobe igual — só a aba fica vazia. Senhas, tokens, JWTs, `Authorization`, credenciais em DSN e a parte local de e-mails são **redigidos nos dois canais** (arquivo e stdout). A leitura (`/observability/*`, `require_master`) é feita em thread separada, do fim do arquivo para trás e com teto de varredura. Aparece na aba **Observabilidade** de `/logs`, **só para o Master**.
 - **Settings global × org** (`api/settings.py`) — **só FTP é por-org** hoje. **SMTP, LLM, MinIO/S3 e Copilot Tools são globais** (Super Admin → `/admin`, linha `org_settings` com `org_id IS NULL`). Segredos cifrados na escrita, `""` limpa, nunca retornam (só `*_set`). `POST /settings/poll` dispara um `poll_once()` imediato.
 
 ---
@@ -267,6 +268,7 @@ backend/app/
   catalog/             catálogo curado de diagnósticos
   seed.py              admin master + controller UNM2000 do .env (idempotente)
   mibs/                MIBs (fora do git; vêm da imagem-base)
+log/                   logs brutos JSONL da observabilidade (runtime; fora do git)
 frontend/src/
   pages/               telas (ver §9)
   components/          Layout (nav+gating), DataTable, PageHeader, ui, mapas/gráficos

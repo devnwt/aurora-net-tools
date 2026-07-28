@@ -6,7 +6,11 @@
     "add": "Adicionar Dispositivo",
     "searchPlaceholder": "Buscar por nome ou host…",
     "emptyTitle": "Nenhum device",
-    "emptyHint": "Cadastre um device ou ajuste os filtros."
+    "emptyHint": "Cadastre um device ou ajuste os filtros.",
+    "companyFilter": "Empresa",
+    "allCompanies": "Todas as empresas",
+    "systemCompany": "Sistema (Master)",
+    "companyLabel": "Empresa"
   },
   "labels": {
     "method": "Método",
@@ -35,6 +39,7 @@
     "editTitle": "Editar equipamento",
     "newTitle": "Novo equipamento",
     "ipHost": "IP / host",
+    "ipInvalid": "IP inválido — informe um IPv4 no formato 192.168.0.1",
     "group": "Grupo",
     "latitude": "Latitude",
     "longitude": "Longitude",

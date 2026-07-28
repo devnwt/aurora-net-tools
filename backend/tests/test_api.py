@@ -108,6 +108,87 @@ async def test_write_blocked_and_audited(auth_client):
     assert audit[0]["ok"] is False
 
 
+# === Cadastro de device: IPv4 válido + IP único por ORG ===
+
+
+async def test_device_rejects_invalid_ipv4(auth_client):
+    # Inclui zeros à esquerda: o Python os recusa (ambiguidade com octal), o que
+    # é justamente o comportamento seguro que queremos.
+    for bad in ["não-é-ip", "10.0.0.999", "1.2.3", "192.168.0.1/24", "10.0.0.01", ""]:
+        r = await auth_client.post("/devices", json={"name": "x", "ip": bad, "device_type": "routeros"})
+        assert r.status_code == 422, f"{bad!r} deveria ser recusado"
+
+
+async def test_device_trims_whitespace_ipv4(auth_client):
+    r = await auth_client.post("/devices", json={"name": "trim", "ip": "  10.0.1.5  ", "device_type": "routeros"})
+    assert r.status_code == 201
+    assert r.json()["ip"] == "10.0.1.5"
+
+
+async def test_device_duplicate_ip_blocked(auth_client):
+    first = await auth_client.post("/devices", json={"name": "a", "ip": "172.16.5.5", "device_type": "routeros"})
+    assert first.status_code == 201
+
+    dup = await auth_client.post("/devices", json={"name": "b", "ip": "172.16.5.5", "device_type": "routeros"})
+    assert dup.status_code == 409
+
+    # Espaços em volta não driblam a checagem (compara já normalizado).
+    dup2 = await auth_client.post("/devices", json={"name": "c", "ip": " 172.16.5.5 ", "device_type": "cisco"})
+    assert dup2.status_code == 409
+
+
+async def test_device_update_ip_conflict_but_self_ok(auth_client):
+    a = (await auth_client.post("/devices", json={"name": "a", "ip": "192.0.2.10", "device_type": "routeros"})).json()
+    b = (await auth_client.post("/devices", json={"name": "b", "ip": "192.0.2.11", "device_type": "routeros"})).json()
+
+    # Mover B para o IP de A é recusado.
+    assert (await auth_client.patch(f"/devices/{b['id']}", json={"ip": "192.0.2.10"})).status_code == 409
+    # Salvar A com o próprio IP (sem trocar) passa — o self é excluído da checagem.
+    assert (await auth_client.patch(f"/devices/{a['id']}", json={"ip": "192.0.2.10"})).status_code == 200
+    # IPv4 inválido no update também é barrado.
+    assert (await auth_client.patch(f"/devices/{a['id']}", json={"ip": "10.0.0.256"})).status_code == 422
+
+
+# === Usuário: telefone + conta ativa (bloqueia login) ===
+
+
+async def test_user_phone_and_active_fields(auth_client):
+    r = await auth_client.post("/users", json={
+        "username": "u_phone", "email": "u_phone@example.test", "password": "Senha12345",
+        "phone": "(11) 91234-5678", "role": "operator",
+    })
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["phone"] == "(11) 91234-5678"
+    assert body["is_active"] is True
+
+
+async def test_inactive_user_cannot_login(auth_client, client):
+    created = (await auth_client.post("/users", json={
+        "username": "u_inactive", "email": "u_inactive@example.test", "password": "Senha12345", "role": "operator",
+    })).json()
+
+    # Ativo: loga normalmente.
+    ok = await client.post("/auth/login", data={"username": "u_inactive", "password": "Senha12345"})
+    assert ok.status_code == 200
+
+    # Desativa e o login passa a ser 403.
+    assert (await auth_client.patch(f"/users/{created['id']}", json={"is_active": False})).status_code == 200
+    denied = await client.post("/auth/login", data={"username": "u_inactive", "password": "Senha12345"})
+    assert denied.status_code == 403
+
+    # Token emitido antes também para de valer.
+    token = ok.json()["access_token"]
+    me = await client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 403
+
+
+async def test_cannot_deactivate_self(auth_client):
+    me = (await auth_client.get("/auth/me")).json()
+    r = await auth_client.patch(f"/users/{me['id']}", json={"is_active": False})
+    assert r.status_code == 400
+
+
 # === Catálogo de diagnósticos (§13) ===
 
 

@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -13,6 +13,10 @@ class User(Base, TimestampMixin):
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)  # p/ e-mails de acesso
     password_hash: Mapped[str] = mapped_column(String(255))
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Conta ativa: inativa (False) não consegue autenticar (login e token bloqueados).
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"), nullable=False)
+    # Telefone de contato (armazenado como digitado/formatado; opcional).
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     # Papel: master (sistema) · admin (dono da ORG) · operator (usuário da ORG).
     role: Mapped[str] = mapped_column(String(20), default="operator")
     org_id: Mapped[int | None] = mapped_column(
