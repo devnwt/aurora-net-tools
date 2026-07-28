@@ -21,9 +21,12 @@ export interface LoginResult {
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** Segundos até poder tentar de novo (header Retry-After), quando 429. */
+  retryAfter?: number;
+  constructor(status: number, message: string, retryAfter?: number) {
     super(message);
     this.status = status;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -75,6 +78,12 @@ export const api = {
       // Só 401 é credencial errada. Tratar 500/502/503 como "credenciais
       // inválidas" manda procurar o problema no lugar errado — foi assim que
       // um backend fora do ar já passou por senha errada.
+      if (res.status === 429) {
+        // Rate limit / lockout: repassa o tempo de espera (Retry-After) para a
+        // UI localizar a mensagem. A causa (IP vs conta) não é revelada.
+        const ra = parseInt(res.headers.get("Retry-After") ?? "", 10);
+        throw new ApiError(429, "rate_limited", Number.isFinite(ra) ? ra : undefined);
+      }
       throw new ApiError(
         res.status,
         res.status === 401 ? "Usuário ou senha incorretos." : `O servidor respondeu ${res.status}.`,

@@ -51,11 +51,23 @@ export function Login() {
       }
       nav("/");
     } catch (err) {
-      // Backend inalcançável faz o fetch rejeitar com TypeError, não ApiError.
-      // Sem separar os dois, uma queda do servidor aparecia como senha errada.
-      toast.error(err instanceof ApiError ? err : t("common:state.serverUnreachable"), {
-        title: t("auth:login.failTitle"),
-      });
+      if (err instanceof ApiError && err.status === 429) {
+        // Muitas tentativas (rate limit/lockout): mensagem amigável com o tempo
+        // de espera, quando informado. Não revela se o bloqueio é por IP ou conta.
+        const secs = err.retryAfter ?? 0;
+        const msg = secs >= 60
+          ? t("auth:login.rateLimitedMin", { minutes: Math.ceil(secs / 60) })
+          : secs > 0
+            ? t("auth:login.rateLimitedSec", { seconds: secs })
+            : t("auth:login.rateLimited");
+        toast.error(msg, { title: t("auth:login.rateLimitedTitle") });
+      } else {
+        // Backend inalcançável faz o fetch rejeitar com TypeError, não ApiError.
+        // Sem separar os dois, uma queda do servidor aparecia como senha errada.
+        toast.error(err instanceof ApiError ? err : t("common:state.serverUnreachable"), {
+          title: t("auth:login.failTitle"),
+        });
+      }
     } finally {
       setBusy(false);
     }
@@ -92,7 +104,7 @@ export function Login() {
         </form>
       ) : (
         <form onSubmit={onSubmit} className="mt-4 flex aspect-square w-full max-w-sm flex-col justify-center space-y-5 rounded-2xl border-t-4 border-t-blue-500 bg-black/30 p-8 shadow-lg shadow-primary/10 backdrop-blur-md">
-          <FloatingInput id="u" label={t("auth:login.identifier")} type="text" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
+          <FloatingInput id="u" label={t("auth:login.identifier")} type="email" autoComplete="email" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
           <FloatingInput id="p" label={t("auth:login.password")} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           <Button type="submit" className="w-full justify-center py-2.5" disabled={busy}>
             {busy ? <Spinner className="border-primary-fg/40 border-t-primary-fg" /> : t("auth:login.submit")}
@@ -138,7 +150,7 @@ function WelcomeBack({ data, onBack }: { data: LoginResult; onBack: () => void }
 
   return (
     <AuthShell subtitle={t("auth:reactivate.shellSubtitle")} wide>
-      <div className="rounded-2xl border border-white/10 bg-black/30 p-6 backdrop-blur-md sm:p-8">
+      <div className="auth-step-in rounded-2xl border border-white/10 bg-black/30 p-6 backdrop-blur-md sm:p-8">
         <div className="mb-6 text-center">
           <h2 className="text-2xl font-semibold text-white">{t("auth:reactivate.title", { name: data.username ?? "" })}</h2>
           <p className="mt-1 text-sm text-white/60">{t("auth:reactivate.subtitle")}</p>

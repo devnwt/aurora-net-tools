@@ -13,7 +13,8 @@ from app.services import notifications as svc
 
 
 async def _login(client, username: str, password: str) -> str:
-    res = await client.post("/auth/login", data={"username": username, "password": password})
+    # Login é por e-mail; os usuários de teste usam {username}@t.test.
+    res = await client.post("/auth/login", data={"username": f"{username}@t.test", "password": password})
     assert res.status_code == 200, res.text
     return res.json()["access_token"]
 
@@ -40,11 +41,11 @@ async def notif_setup(client, _schema):
         a.plan_expires_at = None
         b.plan_id = paid.id
         b.plan_expires_at = None
-        na_admin = await goc(s, User, User.username == "na_admin", username="na_admin", email="na_a@x.test",
+        na_admin = await goc(s, User, User.username == "na_admin", username="na_admin", email="na_admin@t.test",
                              password_hash=hash_password("senha123"), role="admin", is_admin=True, org_id=a.id)
-        na_op = await goc(s, User, User.username == "na_op", username="na_op", email="na_o@x.test",
+        na_op = await goc(s, User, User.username == "na_op", username="na_op", email="na_op@t.test",
                           password_hash=hash_password("senha123"), role="operator", org_id=a.id)
-        nb_admin = await goc(s, User, User.username == "nb_admin", username="nb_admin", email="nb_a@x.test",
+        nb_admin = await goc(s, User, User.username == "nb_admin", username="nb_admin", email="nb_admin@t.test",
                              password_hash=hash_password("senha123"), role="admin", is_admin=True, org_id=b.id)
         await s.execute(delete(Notification))  # slate limpo por teste
         await s.commit()
@@ -60,7 +61,7 @@ async def _get_org(s, org_id):
 async def test_welcome_on_user_creation(client, notif_setup):
     tok = await _login(client, "na_admin", "senha123")
     client.headers["Authorization"] = f"Bearer {tok}"
-    r = await client.post("/users", json={"username": "na_new", "email": "na_new@x.test", "password": "Senha@123", "role": "operator"})
+    r = await client.post("/users", json={"username": "na_new", "email": "na_new@t.test", "password": "Senha@123", "role": "operator"})
     assert r.status_code == 201, r.text
 
     del client.headers["Authorization"]

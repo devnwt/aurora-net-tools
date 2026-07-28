@@ -47,6 +47,23 @@ class Settings(BaseSettings):
     notify_enabled: bool = True
     notify_interval_seconds: int = 3600  # 1x por hora basta para faixas de dias
 
+    # Proteção de login (rate limiting + lockout + backoff, contadores no Redis).
+    # Desligado automaticamente quando testing=True (ver loginguard._enabled).
+    login_protection_enabled: bool = True
+    login_ip_max_attempts: int = 10       # tentativas de login por IP na janela
+    login_ip_window_seconds: int = 300    # janela do limite por IP (5 min)
+    login_account_max_failures: int = 5   # falhas por conta antes do lockout
+    login_account_window_seconds: int = 900  # janela de contagem de falhas (15 min)
+    login_lockout_seconds: int = 900      # duração do bloqueio temporário (15 min)
+    login_backoff_max_seconds: float = 2.0   # atraso progressivo máximo por falha
+    # Limite genérico por IP para endpoints sensíveis (forgot/reset/register/reactivate).
+    auth_ip_max_requests: int = 20
+    auth_ip_window_seconds: int = 300
+
+    # Verificação de e-mail no cadastro (código enviado por SMTP). Requer SMTP global
+    # configurado; sem SMTP (ou em testing) o cadastro cai no fluxo direto.
+    email_verification_enabled: bool = True
+
     # Observabilidade — logs brutos em JSONL (fonte da aba /logs → Observabilidade).
     # O diretório é montado por volume no compose; se não for gravável, a
     # aplicação segue normalmente e só o arquivo deixa de existir.
