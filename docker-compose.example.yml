@@ -78,5 +78,42 @@ services:
       - backend
       - frontend
 
+  # Backup dedicado: pg_dump -> S3 PRÓPRIO (BACKUP_S3_*). Isolado do app, não-root,
+  # sem depender da config de S3 que vive no banco. Ver backup/README.md.
+  backup:
+    build: ./backup
+    image: ${REGISTRY:-registry.aurora.app.br/aurora-nettools}/backup:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      # Fuso do contêiner — o horário fixo (BACKUP_AT) segue este TZ.
+      TZ: ${BACKUP_TZ:-America/Sao_Paulo}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-aurora}
+      POSTGRES_USER: ${POSTGRES_USER:-aurora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aurora}
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-us-east-1}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      BACKUP_S3_ACCESS_KEY: ${BACKUP_S3_ACCESS_KEY:-}
+      BACKUP_S3_SECRET_KEY: ${BACKUP_S3_SECRET_KEY:-}
+      BACKUP_S3_PREFIX: ${BACKUP_S3_PREFIX:-backups/}
+      BACKUP_S3_USE_SSL: ${BACKUP_S3_USE_SSL:-true}
+      # Horário fixo diário de madrugada (HH:MM no fuso TZ acima).
+      BACKUP_AT: ${BACKUP_AT:-03:00}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      BACKUP_RUN_ON_START: ${BACKUP_RUN_ON_START:-true}
+      # Alerta por e-mail em QUALQUER falha (SMTP próprio do backup).
+      BACKUP_ALERT_EMAIL: ${BACKUP_ALERT_EMAIL:-}
+      BACKUP_SMTP_HOST: ${BACKUP_SMTP_HOST:-}
+      BACKUP_SMTP_PORT: ${BACKUP_SMTP_PORT:-587}
+      BACKUP_SMTP_USERNAME: ${BACKUP_SMTP_USERNAME:-}
+      BACKUP_SMTP_PASSWORD: ${BACKUP_SMTP_PASSWORD:-}
+      BACKUP_SMTP_FROM: ${BACKUP_SMTP_FROM:-}
+      BACKUP_SMTP_USE_TLS: ${BACKUP_SMTP_USE_TLS:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
