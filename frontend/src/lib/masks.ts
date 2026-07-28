@@ -91,7 +91,28 @@ export function maskPhone(raw: string): string {
   return `(${ddd}) ${rest.slice(0, cut)}-${rest.slice(cut)}`;
 }
 
-export type MaskName = "ipv4" | "ipv4cidr" | "network" | "mac" | "port" | "coordinate" | "phone";
+/** CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00). Aceita CNPJ ALFANUMÉRICO
+ *  (12 alfanuméricos + 2 dígitos). Enquanto for só dígitos e ≤ 11 caracteres,
+ *  formata como CPF; com alguma letra OU 12+ caracteres, formata como CNPJ (por
+ *  posição). Só apresentação — o back-end normaliza (sem pontuação, maiúsculas). */
+export function maskCpfCnpj(raw: string): string {
+  const v = (raw || "").replace(/[^0-9A-Za-z]/g, "").toUpperCase().slice(0, 14);
+  const hasLetter = /[A-Z]/.test(v);
+  if (!hasLetter && v.length <= 11) {
+    return v
+      .replace(/^(\d{3})(\d)/, "$1.$2")
+      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+  }
+  let out = v.slice(0, 2);
+  if (v.length > 2) out += "." + v.slice(2, 5);
+  if (v.length > 5) out += "." + v.slice(5, 8);
+  if (v.length > 8) out += "/" + v.slice(8, 12);
+  if (v.length > 12) out += "-" + v.slice(12, 14);
+  return out;
+}
+
+export type MaskName = "ipv4" | "ipv4cidr" | "network" | "mac" | "port" | "coordinate" | "phone" | "document";
 
 /** Registro consumido pelo componente MaskedInput. `inputMode` escolhe o teclado
  *  virtual: "decimal" traz o ponto (IP/coordenada); "text" preserva A–F (MAC);
@@ -104,4 +125,5 @@ export const MASKS: Record<MaskName, { apply: (raw: string) => string; inputMode
   port: { apply: maskPort, inputMode: "numeric" },
   coordinate: { apply: maskCoordinate, inputMode: "decimal" },
   phone: { apply: maskPhone, inputMode: "tel" },
+  document: { apply: maskCpfCnpj, inputMode: "text" }, // "text": CNPJ pode ser alfanumérico
 };

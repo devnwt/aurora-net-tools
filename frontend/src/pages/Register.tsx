@@ -9,13 +9,15 @@ import { Button, Input, Spinner } from "@/components/ui";
 import { AuthShell } from "@/components/AuthShell";
 import { PlanShowcaseCard } from "@/components/PlanShowcaseCard";
 import { PASSWORD_HINT_KEY, passwordError } from "@/lib/password";
+import { maskCpfCnpj } from "@/lib/masks";
+import { isValidCpfCnpj } from "@/lib/documents";
 import { cn } from "@/lib/utils";
 
 interface PublicPlans {
   plans: PlanOption[];
   default_plan_id: number | null;
 }
-type Form = { org_name: string; email: string; password: string };
+type Form = { org_name: string; name: string; email: string; document: string; password: string };
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 type FieldState = "" | "ok" | "err";
@@ -115,7 +117,7 @@ function OtpInput({ value, onChange, disabled, error }: { value: string; onChang
 /** Cadastro em 3 passos: dados → verificação do e-mail (código) → escolha do plano. */
 export function Register() {
   const { t } = useTranslation();
-  const [f, setF] = useState<Form>({ org_name: "", email: "", password: "" });
+  const [f, setF] = useState<Form>({ org_name: "", name: "", email: "", document: "", password: "" });
   const [pw2, setPw2] = useState("");
   const [err, setErr] = useState("");
   const [enabled, setEnabled] = useState<boolean | null>(null);
@@ -130,13 +132,16 @@ export function Register() {
 
   // Estado visual por campo (verde OK / vermelho inválido / neutro vazio).
   const pwErr = passwordError(f.password);
+  const docOk = isValidCpfCnpj(f.document);
   const st = {
     org: (!f.org_name ? "" : "ok") as FieldState,
+    name: (!f.name ? "" : "ok") as FieldState,
     email: (!f.email ? "" : EMAIL_RE.test(f.email) ? "ok" : "err") as FieldState,
+    doc: (!f.document ? "" : docOk ? "ok" : "err") as FieldState,
     pw: (!f.password ? "" : pwErr ? "err" : "ok") as FieldState,
     pw2: (!pw2 ? "" : pw2 === f.password && !pwErr ? "ok" : "err") as FieldState,
   };
-  const valid = !!f.org_name && EMAIL_RE.test(f.email) && !pwErr && pw2 === f.password;
+  const valid = !!f.org_name && !!f.name.trim() && EMAIL_RE.test(f.email) && docOk && !pwErr && pw2 === f.password;
 
   // Passo 1: valida os dados e dispara o e-mail com o código (a conta só é criada
   // no passo do plano). Se o servidor não exigir código, pula direto ao plano.
@@ -147,7 +152,7 @@ export function Register() {
     setBusy(true);
     try {
       const r = await api.post<{ verification?: boolean; email?: string; expires_in?: number }>("/auth/register", {
-        org_name: f.org_name, email: f.email, password: f.password,
+        org_name: f.org_name, name: f.name.trim(), email: f.email, document: f.document, password: f.password,
       });
       setUsedCode(!!r.verification);
       setCodeTtl(r.expires_in ?? 120);
@@ -177,8 +182,17 @@ export function Register() {
               <ValidatedInput state={st.org} value={f.org_name} onChange={(e) => setF({ ...f, org_name: e.target.value })} placeholder={t("auth:register.orgPlaceholder")} autoFocus />
             </div>
             <div className="space-y-1">
+              <label className="text-xs text-white/60">{t("auth:register.name")}</label>
+              <ValidatedInput state={st.name} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder={t("auth:register.namePlaceholder")} autoComplete="name" />
+            </div>
+            <div className="space-y-1">
               <label className="text-xs text-white/60">{t("auth:register.email")}</label>
               <ValidatedInput state={st.email} type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder={t("auth:register.emailPlaceholder")} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-white/60">{t("auth:register.document")}</label>
+              <ValidatedInput state={st.doc} inputMode="text" value={f.document} onChange={(e) => setF({ ...f, document: maskCpfCnpj(e.target.value) })} placeholder={t("auth:register.documentPlaceholder")} className="font-mono" />
+              {st.doc === "err" && <p className="text-[11px] text-danger">{t("auth:register.documentInvalid")}</p>}
             </div>
             <div className="space-y-1">
               <label className="text-xs text-white/60">{t("auth:register.password")}</label>

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.db import get_session
+from app.core.documents import document_error, normalize_document
 from app.core.security import hash_password, password_error, verify_password
 from app.models import User
 
@@ -23,7 +24,9 @@ def _out(u: User) -> dict:
     return {
         "id": u.id,
         "email": u.email,
+        "name": u.name,
         "phone": u.phone,
+        "document": u.document,
         "photo": u.photo,
         "role": u.role,
         "is_admin": u.is_admin,
@@ -38,6 +41,9 @@ async def get_profile(me: User = Depends(get_current_user)) -> dict:
 
 class ProfileUpdate(BaseModel):
     phone: str | None = None
+    # CPF/CNPJ do titular; enviado formatado ou não — o back-end guarda só dígitos.
+    # "" ou null limpa o campo.
+    document: str | None = None
     # Foto como data URL (ex.: "data:image/png;base64,..."); "" ou null remove.
     photo: str | None = None
 
@@ -49,6 +55,15 @@ async def update_profile(
     data = payload.model_dump(exclude_unset=True)
     if "phone" in data:
         me.phone = (data["phone"] or "").strip() or None
+    if "document" in data:
+        doc = normalize_document(data["document"])
+        if not doc:
+            me.document = None
+        else:
+            err = document_error(doc)
+            if err:
+                raise HTTPException(400, err)
+            me.document = doc
     if "photo" in data:
         photo = data["photo"]
         if not photo:

@@ -5,7 +5,9 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     email: str | None = None
+    name: str | None = None
     phone: str | None = None
+    document: str | None = None
     photo: str | None = None
     is_admin: bool
     is_active: bool = True

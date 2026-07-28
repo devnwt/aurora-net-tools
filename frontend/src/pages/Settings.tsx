@@ -12,6 +12,8 @@ import { isSupportedLocale, type SupportedLocale } from "@/i18n/config";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge, Button, Card, Input, Modal, Select, Spinner, Toggle } from "@/components/ui";
 import { MaskedInput } from "@/components/MaskedInput";
+import { maskCpfCnpj } from "@/lib/masks";
+import { normalizeDoc, isValidCpfCnpj } from "@/lib/documents";
 import { PASSWORD_HINT_KEY, passwordError } from "@/lib/password";
 import { cn } from "@/lib/utils";
 import i18n from "@/i18n";
@@ -617,6 +619,7 @@ function ProfileTab() {
   const { user, refresh } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [phone, setPhone] = useState(user?.phone ?? "");
+  const [doc, setDoc] = useState(maskCpfCnpj(user?.document ?? ""));
   const [savingInfo, setSavingInfo] = useState(false);
   const [oldPw, setOldPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -624,6 +627,7 @@ function ProfileTab() {
   const [savingPw, setSavingPw] = useState(false);
 
   useEffect(() => { setPhone(user?.phone ?? ""); }, [user]);
+  useEffect(() => { setDoc(maskCpfCnpj(user?.document ?? "")); }, [user]);
 
   async function patchProfile(patch: Record<string, unknown>, okMsg: string) {
     setSavingInfo(true);
@@ -668,6 +672,10 @@ function ProfileTab() {
 
   const initial = (user?.email ?? "?").charAt(0).toUpperCase();
   const phoneChanged = phone !== (user?.phone ?? "");
+  const docNorm = normalizeDoc(doc);
+  const docChanged = docNorm !== (user?.document ?? "");
+  // Vazio é permitido (só será exigido no checkout); senão precisa ser CPF/CNPJ válido.
+  const docValid = docNorm.length === 0 || isValidCpfCnpj(docNorm);
 
   const role = user?.role ?? "operator";
 
@@ -718,6 +726,17 @@ function ProfileTab() {
                 <Save className="h-4 w-4" /> {t("common:actions.save")}
               </Button>
             </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted">{t("profile:document")}</label>
+            <div className="flex gap-2">
+              <MaskedInput mask="document" value={doc} onValueChange={setDoc} placeholder={t("profile:documentPlaceholder")}
+                className={cn("flex-1 font-mono", doc && !docValid && "border-danger")} />
+              <Button variant="ghost" onClick={() => patchProfile({ document: doc }, t("profile:saved"))} disabled={savingInfo || !docChanged || !docValid}>
+                <Save className="h-4 w-4" /> {t("common:actions.save")}
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted">{t("profile:documentHint")}</p>
           </div>
         </div>
       </Card>

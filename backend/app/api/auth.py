@@ -9,10 +9,11 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.tenancy import is_trial_plan, new_plan_expiry, trial_available, trial_deadline
+from app.api.tenancy import is_trial_plan, new_plan_expiry, plan_expired, trial_available, trial_deadline
 from app.core.config import get_settings
 from app.core.crypto import decrypt
 from app.core.db import get_session
+from app.core.documents import document_error, normalize_document
 from app.core.security import (
     create_access_token,
     create_scoped_token,
@@ -119,23 +120,32 @@ async def reactivate(body: ReactivateIn, request: Request, session: AsyncSession
 async def me(
     user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ) -> dict:
-    # Nome do plano da ORG do usuário (para exibir no menu). Master não tem ORG.
+    # Plano da ORG do usuário (menu) + estado de expiração (popup de planos no login).
+    # Master não tem ORG: plan_name=None e nada expira.
     plan_name = None
+    is_expired = False
+    plan_expires_at: str | None = None
     if user.org_id is not None:
-        plan_name = (
-            await session.execute(
-                select(Plan.name).join(Organization, Organization.plan_id == Plan.id).where(Organization.id == user.org_id)
-            )
-        ).scalar_one_or_none()
+        org = (await session.execute(select(Organization).where(Organization.id == user.org_id))).scalar_one_or_none()
+        if org is not None:
+            is_expired = plan_expired(org)
+            plan_expires_at = org.plan_expires_at.isoformat() if org.plan_expires_at else None
+            if org.plan_id is not None:
+                plan_name = (await session.execute(select(Plan.name).where(Plan.id == org.plan_id))).scalar_one_or_none()
     return {
         "id": user.id,
+        "username": user.username,
         "email": user.email,
+        "name": user.name,
         "phone": user.phone,
+        "document": user.document,
         "photo": user.photo,
         "is_admin": user.is_admin,
         "role": user.role,
         "org_id": user.org_id,
         "plan": plan_name,
+        "plan_expired": is_expired,
+        "plan_expires_at": plan_expires_at,
         # Convidado que ainda não definiu senha (password_hash vazio) → popup infechável.
         "must_set_password": not bool(user.password_hash),
     }
@@ -249,11 +259,13 @@ async def public_plans(session: AsyncSession = Depends(get_session)) -> dict:
 
 class RegisterIn(BaseModel):
     org_name: str
+    name: str  # nome do titular da conta
     password: str
     email: str  # o e-mail é o identificador/login. O plano vem depois.
+    document: str  # CPF ou CNPJ do titular (guardado só com dígitos)
 
 
-async def _create_account(session: AsyncSession, *, org_name: str, email: str, password_hash: str, plan_id: int | None) -> User:
+async def _create_account(session: AsyncSession, *, org_name: str, name: str | None, email: str, document: str | None, password_hash: str, plan_id: int | None) -> User:
     """Cria a ORG + admin (ativo) e a notificação de boas-vindas, numa transação.
     Sem username próprio: ele espelha o e-mail (login é por e-mail)."""
     plan = None
@@ -270,7 +282,7 @@ async def _create_account(session: AsyncSession, *, org_name: str, email: str, p
     )
     session.add(org)
     await session.flush()
-    user = User(username=email, email=email, password_hash=password_hash, role="admin", is_admin=True, org_id=org.id)
+    user = User(username=email, email=email, name=name, document=document, password_hash=password_hash, role="admin", is_admin=True, org_id=org.id)
     session.add(user)
     await session.flush()  # garante user.id para a notificação de boas-vindas
     await notifications.ensure_welcome(session, user)
@@ -278,13 +290,18 @@ async def _create_account(session: AsyncSession, *, org_name: str, email: str, p
     return user
 
 
-async def _validate_registration(session: AsyncSession, cfg, org_name: str, email: str, password: str) -> None:
+async def _validate_registration(session: AsyncSession, cfg, org_name: str, name: str, email: str, document: str, password: str) -> None:
     """Valida os dados do cadastro (org e e-mail únicos + formato). O plano é
     escolhido só no final, então não é validado aqui."""
     if not (cfg and cfg.registration_enabled):
         raise HTTPException(403, "cadastro público desabilitado")
     if not org_name:
         raise HTTPException(400, "informe a organização")
+    if not name:
+        raise HTTPException(400, "informe o nome do usuário")
+    doc_err = document_error(document)
+    if doc_err:
+        raise HTTPException(400, doc_err)
     pw_err = password_error(password)
     if pw_err:
         raise HTTPException(400, pw_err)
@@ -314,12 +331,14 @@ async def register(body: RegisterIn, request: Request, session: AsyncSession = D
     await loginguard.guard_auth_endpoint(request)
     cfg = await integrations.get_settings(session, None)
     org_name = body.org_name.strip()
+    name = body.name.strip()
     email = body.email.strip().lower()
-    await _validate_registration(session, cfg, org_name, email, body.password)
+    document = normalize_document(body.document)
+    await _validate_registration(session, cfg, org_name, name, email, document, body.password)
 
     needs_code = settings.email_verification_enabled and bool(cfg and cfg.smtp_host) and not settings.testing
     code = await emailverify.start(email, {
-        "org_name": org_name, "email": email,
+        "org_name": org_name, "name": name, "email": email, "document": document,
         "password_hash": hash_password(body.password),
     }, needs_code=needs_code)
     if needs_code:
@@ -376,8 +395,8 @@ async def complete_registration(body: CompleteRegistrationIn, request: Request, 
     if (await session.execute(select(Organization).where(Organization.name == data["org_name"]))).scalar_one_or_none():
         raise HTTPException(400, "já existe uma organização com esse nome")
     user = await _create_account(
-        session, org_name=data["org_name"], email=email,
-        password_hash=data["password_hash"], plan_id=plan_id,
+        session, org_name=data["org_name"], name=(data.get("name") or None), email=email,
+        document=(data.get("document") or None), password_hash=data["password_hash"], plan_id=plan_id,
     )
     await emailverify.clear(email)
     return {"access_token": create_access_token(user.username), "token_type": "bearer"}

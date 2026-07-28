@@ -4,7 +4,9 @@ export type CredentialKind = "ssh" | "telnet" | "snmp" | "api" | "tl1";
 export interface AppUser {
   id: number;
   email?: string | null;
+  name?: string | null;
   phone?: string | null;
+  document?: string | null;
   photo?: string | null;
   is_admin: boolean;
   is_active?: boolean;

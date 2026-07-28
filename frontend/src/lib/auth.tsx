@@ -4,12 +4,17 @@ import { api, tokenStore, type LoginResult } from "./api";
 interface Me {
   id: number;
   email: string | null;
+  name?: string | null;
   phone?: string | null;
+  document?: string | null;
   photo?: string | null;
   is_admin: boolean;
   role: string;
   org_id: number | null;
   plan?: string | null;
+  /** Plano (trial) vencido → popup de planos infechável no login. */
+  plan_expired?: boolean;
+  plan_expires_at?: string | null;
   /** Convidado que ainda não definiu senha → popup infechável. */
   must_set_password?: boolean;
 }
