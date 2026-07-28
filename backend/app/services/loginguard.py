@@ -131,14 +131,22 @@ async def before_login(request: Request, ident: str) -> None:
         raise _too_many(ra)
 
 
-async def on_login_failure(request: Request, ident: str) -> None:
-    """Após senha incorreta: conta a falha da conta, aplica lockout se estourar o
-    limite e desacelera com backoff progressivo (sem travar o event loop)."""
+async def on_login_failure(request: Request, ident: str) -> int | None:
+    """Após senha incorreta: conta a falha. Se atingir o limite, aplica o lockout e
+    levanta 429. Caso contrário devolve quantas tentativas ainda RESTAM antes do
+    bloqueio (None quando a proteção está desligada) — usado para avisar o usuário."""
     if not _enabled():
-        return
+        return None
     ip = client_ip(request)
     key = _ident_key(ident)
     fails = await _incr(_acct_key(key), settings.login_account_window_seconds)
+    remaining = max(0, settings.login_account_max_failures - fails)
+
+    async def _backoff() -> None:
+        delay = min(fails * 0.4, settings.login_backoff_max_seconds)
+        if delay > 0:
+            await asyncio.sleep(delay)
+
     if fails and fails >= settings.login_account_max_failures:
         try:
             await redis_client.set(_lock_key(key), "1", ex=settings.login_lockout_seconds)
@@ -148,12 +156,12 @@ async def on_login_failure(request: Request, ident: str) -> None:
             "conta bloqueada por %ss após %s falhas ident=%s ip=%s",
             settings.login_lockout_seconds, fails, key, ip,
         )
-    else:
-        log.info("login falhou ident=%s ip=%s falhas=%s", key, ip, fails)
-    # Backoff progressivo: atrasa a resposta proporcional às falhas (assíncrono).
-    delay = min(fails * 0.4, settings.login_backoff_max_seconds)
-    if delay > 0:
-        await asyncio.sleep(delay)
+        await _backoff()
+        raise _too_many(settings.login_lockout_seconds)  # lockout: já responde 429
+
+    log.info("login falhou ident=%s ip=%s falhas=%s (restam %s)", key, ip, fails, remaining)
+    await _backoff()
+    return remaining
 
 
 async def on_login_success(ident: str) -> None:

@@ -74,10 +74,13 @@ async def test_ip_rate_limit_returns_429_with_retry_after(client, guarded):
 async def test_account_lockout_blocks_even_correct_password(client, guarded):
     _reset_pool()
     await redis_client.delete(loginguard._acct_key("lockme@t.test"), loginguard._lock_key("lockme@t.test"))
-    # 3 falhas na conta (IPs distintos para não bater no limite por IP).
-    for i in range(3):
-        r = await _login(client, "lockme@t.test", "errada", f"198.51.100.{i}")
-        assert r.status_code == 401
+    # 2 falhas → 401 informando as tentativas restantes (IPs distintos p/ não bater no limite por IP).
+    r1 = await _login(client, "lockme@t.test", "errada", "198.51.100.0")
+    assert r1.status_code == 401 and int(r1.headers.get("X-Login-Attempts-Left", "-1")) == 2
+    r2 = await _login(client, "lockme@t.test", "errada", "198.51.100.1")
+    assert r2.status_code == 401 and int(r2.headers.get("X-Login-Attempts-Left", "-1")) == 1
+    # A 3ª atinge o limite → bloqueia e já responde 429.
+    assert (await _login(client, "lockme@t.test", "errada", "198.51.100.2")).status_code == 429
     # Conta bloqueada: mesmo com a senha correta vem 429.
     blocked = await _login(client, "lockme@t.test", "Senha@123", "198.51.100.99")
     assert blocked.status_code == 429

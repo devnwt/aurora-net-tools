@@ -52,8 +52,8 @@ export function Login() {
       nav("/");
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
-        // Muitas tentativas (rate limit/lockout): mensagem amigável com o tempo
-        // de espera, quando informado. Não revela se o bloqueio é por IP ou conta.
+        // Bloqueado (rate limit/lockout): mensagem com o tempo de espera, quando
+        // informado. Não revela se o bloqueio é por IP ou conta.
         const secs = err.retryAfter ?? 0;
         const msg = secs >= 60
           ? t("auth:login.rateLimitedMin", { minutes: Math.ceil(secs / 60) })
@@ -61,12 +61,25 @@ export function Login() {
             ? t("auth:login.rateLimitedSec", { seconds: secs })
             : t("auth:login.rateLimited");
         toast.error(msg, { title: t("auth:login.rateLimitedTitle") });
+      } else if (err instanceof ApiError && err.status === 401) {
+        // Credencial inválida. Perto do bloqueio (poucas tentativas), avisa em tom
+        // de alerta com a contagem; caso contrário, mensagem simples.
+        const left = err.attemptsLeft;
+        if (left !== undefined && left > 0 && left <= 2) {
+          const msg = left === 1 ? t("auth:login.wrongLastAttempt") : t("auth:login.wrongNearLock", { count: left });
+          toast.warning(msg, { title: t("auth:login.warnTitle") });
+        } else {
+          toast.error(t("auth:login.wrongCredentials"), { title: t("auth:login.failTitle") });
+        }
+      } else if (err instanceof ApiError && err.status === 403) {
+        // Conta desativada/indisponível — mensagem humanizada, orienta contatar o admin.
+        toast.error(t("auth:login.accountUnavailable"), { title: t("auth:login.failTitle") });
+      } else if (err instanceof ApiError) {
+        // Qualquer outro problema do servidor (5xx etc.) — sem código técnico.
+        toast.error(t("auth:login.generic"), { title: t("auth:login.failTitle") });
       } else {
-        // Backend inalcançável faz o fetch rejeitar com TypeError, não ApiError.
-        // Sem separar os dois, uma queda do servidor aparecia como senha errada.
-        toast.error(err instanceof ApiError ? err : t("common:state.serverUnreachable"), {
-          title: t("auth:login.failTitle"),
-        });
+        // fetch rejeitou (backend inalcançável) — problema de conexão.
+        toast.error(t("auth:login.unreachable"), { title: t("auth:login.failTitle") });
       }
     } finally {
       setBusy(false);

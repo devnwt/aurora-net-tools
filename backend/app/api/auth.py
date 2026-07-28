@@ -47,10 +47,12 @@ async def login(
         await session.execute(select(User).where(func.lower(User.email) == ident))
     ).scalars().first()
     if user is None or not verify_password(form.password, user.password_hash):
-        # Conta a falha (lockout + backoff) e mantém o 401 genérico (sem enumeração).
-        await loginguard.on_login_failure(request, ident)
+        # Conta a falha (lockout+backoff; levanta 429 se bloquear). Senão, informa
+        # quantas tentativas restam no header — para a UI avisar ao chegar perto.
+        remaining = await loginguard.on_login_failure(request, ident)
+        headers = {"X-Login-Attempts-Left": str(remaining)} if remaining is not None else None
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas", headers=headers
         )
     # Senha correta: zera contadores/lockout desta conta.
     await loginguard.on_login_success(ident)

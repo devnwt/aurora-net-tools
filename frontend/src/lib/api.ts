@@ -23,6 +23,8 @@ export class ApiError extends Error {
   status: number;
   /** Segundos até poder tentar de novo (header Retry-After), quando 429. */
   retryAfter?: number;
+  /** Tentativas restantes antes do bloqueio (header X-Login-Attempts-Left), no 401 do login. */
+  attemptsLeft?: number;
   constructor(status: number, message: string, retryAfter?: number) {
     super(message);
     this.status = status;
@@ -84,10 +86,17 @@ export const api = {
         const ra = parseInt(res.headers.get("Retry-After") ?? "", 10);
         throw new ApiError(429, "rate_limited", Number.isFinite(ra) ? ra : undefined);
       }
-      throw new ApiError(
-        res.status,
-        res.status === 401 ? "Usuário ou senha incorretos." : `O servidor respondeu ${res.status}.`,
-      );
+      if (res.status === 401) {
+        // Credencial inválida: repassa quantas tentativas restam (header) para a UI
+        // avisar ao chegar perto do bloqueio. A mensagem é localizada no Login.
+        const left = parseInt(res.headers.get("X-Login-Attempts-Left") ?? "", 10);
+        const e = new ApiError(401, "invalid_credentials");
+        if (Number.isFinite(left)) e.attemptsLeft = left;
+        throw e;
+      }
+      // Demais status: a mensagem (humanizada, sem código técnico) é escolhida na
+      // tela de Login a partir do status; aqui só o preservamos.
+      throw new ApiError(res.status, "login_error");
     }
     const data = (await res.json()) as LoginResult;
     if (data.access_token) tokenStore.set(data.access_token);
