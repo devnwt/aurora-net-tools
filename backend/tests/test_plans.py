@@ -4,7 +4,8 @@ import pytest_asyncio
 
 
 async def _login(client, username: str, password: str) -> str:
-    res = await client.post("/auth/login", data={"username": username, "password": password})
+    # Login é por e-mail; os usuários de teste usam {username}@t.test.
+    res = await client.post("/auth/login", data={"username": f"{username}@t.test", "password": password})
     assert res.status_code == 200, res.text
     return res.json()["access_token"]
 
@@ -38,9 +39,9 @@ async def org_setup(client, _schema):
         acme.plan_canceled = False
         acme.trial_expires_at = None  # reset: elegível ao trial (schema é session-scoped)
         other.plan_id = pro.id
-        await get_or_create(s, User, User.username == "acme_admin", username="acme_admin", email="a@acme.test",
+        await get_or_create(s, User, User.username == "acme_admin", username="acme_admin", email="acme_admin@t.test",
                             password_hash=hash_password("senha123"), role="admin", is_admin=True, org_id=acme.id)
-        await get_or_create(s, User, User.username == "acme_op", username="acme_op", email="o@acme.test",
+        await get_or_create(s, User, User.username == "acme_op", username="acme_op", email="acme_op@t.test",
                             password_hash=hash_password("senha123"), role="operator", org_id=acme.id)
         await s.commit()
         ids = {"free": free.id, "pro": pro.id, "acme": acme.id, "other": other.id}
@@ -220,6 +221,38 @@ async def test_trial_available_while_within_window(client, org_setup):
     cur = (await client.get("/plans/current")).json()
     assert cur["trial_available"] is True
     assert (await client.post("/plans/select", json={"plan_id": org_setup["free"]})).status_code == 200
+
+
+async def test_plan_change_emits_welcome_notification(client, org_setup):
+    """Trocar de plano gera uma notificação de boas-vindas ao novo plano (1x por plano)."""
+    from sqlalchemy import delete, select
+
+    from app.core.db import SessionLocal
+    from app.models import Notification
+
+    # Slate limpo (schema é session-scoped e outros testes também trocam de plano).
+    async with SessionLocal() as s:
+        await s.execute(delete(Notification).where(Notification.org_id == org_setup["acme"]))
+        await s.commit()
+
+    tok = await _login(client, "acme_admin", "senha123")
+    client.headers["Authorization"] = f"Bearer {tok}"
+
+    def welcomes(items):
+        return [n for n in items if n["kind"] == "plan_welcome"]
+
+    # Free → Pro: 1 boas-vindas ao Pro.
+    await client.post("/plans/select", json={"plan_id": org_setup["pro"]})
+    w = welcomes((await client.get("/notifications")).json())
+    assert len(w) == 1 and "PlanPro" in w[0]["body"]
+
+    # Reaplicar o mesmo plano NÃO duplica.
+    await client.post("/plans/select", json={"plan_id": org_setup["pro"]})
+    assert len(welcomes((await client.get("/notifications")).json())) == 1
+
+    # Trocar para outro plano gera novo aviso.
+    await client.post("/plans/select", json={"plan_id": org_setup["free"]})
+    assert len(welcomes((await client.get("/notifications")).json())) == 2
 
 
 async def test_future_expiry_still_active(client, org_setup):

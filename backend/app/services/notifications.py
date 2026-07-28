@@ -75,6 +75,22 @@ async def ensure_welcome(session, user: User) -> bool:
     )
 
 
+async def emit_plan_welcome(session, org, plan) -> int:
+    """Boas-vindas ao (novo) plano para todos os usuários da ORG. Uma vez por plano
+    (dedup por plano), então trocar de plano gera um novo aviso. Não faz commit."""
+    if org is None or plan is None:
+        return 0
+    title = "Plano atualizado"
+    body = f"Bem-vindo(a) ao plano {plan.name}! Aproveite os recursos disponíveis para a sua empresa."
+    dedup_key = f"plan-welcome:{plan.id}"
+    users = (await session.execute(select(User).where(User.org_id == org.id))).scalars().all()
+    created = 0
+    for u in users:
+        if await _emit(session, user_id=u.id, org_id=org.id, kind="plan_welcome", title=title, body=body, dedup_key=dedup_key):
+            created += 1
+    return created
+
+
 def _bucket(expiry: datetime, now: datetime) -> str | None:
     """Faixa de proximidade do vencimento (ou None se ainda faltam >7 dias).
 

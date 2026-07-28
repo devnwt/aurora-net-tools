@@ -19,6 +19,7 @@ from app.api.deps import require_admin
 from app.api.tenancy import is_trial_plan, new_plan_expiry, plan_expired, plan_status, trial_available
 from app.core.db import get_session
 from app.models import Device, Organization, Plan, User
+from app.services import notifications
 
 router = APIRouter(prefix="/plans", tags=["plans"], dependencies=[Depends(require_admin)])
 
@@ -129,9 +130,13 @@ async def select_plan(
     # Só troca o vínculo; devices/usuários existentes não são tocados. Um plano
     # abaixo do uso atual é permitido (fica "acima do limite" e só bloqueia novas
     # criações) — o frontend avisa antes de confirmar.
+    changed = org.plan_id != plan.id
     org.plan_id = plan.id
     org.plan_canceled = False  # escolher um plano reativa
     org.plan_expires_at = new_plan_expiry(plan)  # trial: 1 semana; pago: 1 mês
+    if changed:
+        # Boas-vindas ao novo plano para todos os usuários da empresa (1x por plano).
+        await notifications.emit_plan_welcome(session, org, plan)
     await session.commit()
     return await _current(session, user)
 

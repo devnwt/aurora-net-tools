@@ -57,10 +57,10 @@ export function PlanUpgradeDialog({ onClose }: { onClose: () => void }) {
       aria-modal="true"
     >
       <div
-        className="dlg-panel relative w-full max-w-[95vw] rounded-2xl border border-border bg-surface shadow-2xl lg:max-w-5xl"
+        className="dlg-panel relative flex max-h-[92vh] w-full max-w-[95vw] flex-col rounded-2xl border border-border bg-surface shadow-2xl lg:max-w-5xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between border-b border-border px-6 py-4">
+        <div className="flex shrink-0 items-start justify-between border-b border-border px-5 py-3 sm:px-6">
           <div>
             <h2 className="text-base font-semibold">{t("plans:upgradeTitle")}</h2>
             <p className="mt-0.5 text-xs text-muted">{t("plans:upgradeSubtitle")}</p>
@@ -74,16 +74,19 @@ export function PlanUpgradeDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <div className="max-h-[75vh] overflow-y-auto px-6 py-5">
+        {/* Corpo centralizado que ocupa o espaço restante SEM scroll: os cards são
+            compactos e escondem a lista de recursos em telas baixas para caber. */}
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4 sm:p-5">
           {plans === null ? (
-            <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>
+            <Spinner className="h-6 w-6" />
           ) : (
-            <div className="grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid w-full grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-3">
               {list.map((p, i) => (
                 <PlanShowcaseCard
                   key={p.id}
                   plan={p}
                   index={i}
+                  compact
                   recommended={p.id === topId}
                   yourPlan={p.id === cur?.plan_id}
                   reserveRibbon={reserveRibbon}
