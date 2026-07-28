@@ -34,10 +34,11 @@ import {
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { isMaxPlan } from "@/lib/plans";
+import { isMaxPlan, isTrial } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 import { PlanUpgradeDialog } from "@/components/PlanUpgradeDialog";
 import { SetPasswordDialog } from "@/components/SetPasswordDialog";
+import { TrialPromoDialog } from "@/components/TrialPromoDialog";
 import logo from "@/logo.png";
 
 interface NavItem {
@@ -104,11 +105,28 @@ export function Layout() {
   const { t } = useTranslation();
   const initial = (user?.email ?? "?").charAt(0).toUpperCase();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [trialPromoOpen, setTrialPromoOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   // Drawer da sidebar no mobile (<lg). Fecha ao trocar de rota.
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   useEffect(() => setSidebarOpen(false), [location.pathname]);
+
+  // Promoção de planos para admin em conta trial. Trial VENCIDO → popup INFECHÁVEL
+  // (só escolher um plano pago ou sair). Trial ATIVO → popup dispensável, uma vez
+  // por sessão (sessionStorage evita teimar ao navegar/refresh).
+  const TRIAL_PROMO_KEY = "aurora_trial_promo_seen";
+  const isTrialAdmin = !!user?.is_admin && user.role !== "master" && !!user.plan && isTrial(user.plan);
+  const trialExpired = isTrialAdmin && !!user.plan_expired;
+  useEffect(() => {
+    if (user?.must_set_password) return; // o popup de senha tem prioridade
+    if (trialExpired) { setTrialPromoOpen(true); return; }
+    if (isTrialAdmin && !sessionStorage.getItem(TRIAL_PROMO_KEY)) {
+      sessionStorage.setItem(TRIAL_PROMO_KEY, "1");
+      setTrialPromoOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Contador de notificações não lidas: carrega no início, atualiza a cada 45s e
   // ao receber o evento "notifications:changed" (disparado ao ler na central).
@@ -272,6 +290,10 @@ export function Layout() {
       </main>
 
       {upgradeOpen && <PlanUpgradeDialog onClose={() => setUpgradeOpen(false)} />}
+      {/* Admin em conta trial: vitrine de planos. Infechável se o trial venceu. */}
+      {trialPromoOpen && isTrialAdmin && (
+        <TrialPromoDialog expired={trialExpired} onClose={() => setTrialPromoOpen(false)} />
+      )}
       {/* Convidado sem senha: popup infechável para criar a senha. */}
       {user?.must_set_password && <SetPasswordDialog />}
     </div>
