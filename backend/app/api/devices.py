@@ -8,10 +8,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.tenancy import is_master, new_org_id, owned, plan_expired, scope
+from app.api.tenancy import OrgFk, is_master, new_org_id, owned, plan_expired, require_org_fks, scope
 from app.core.db import get_session
 from app.drivers.base import DriverError, WriteBlocked
-from app.models import Device, DeviceSample, DeviceStatus, Organization, Plan, User
+from app.models import Credential, Device, DeviceGroup, DeviceSample, DeviceStatus, Organization, Plan, Rack, User
 from app.models.enums import DeviceType, Protocol
 from app.schemas.device import DeviceCreate, DeviceOut, DeviceUpdate
 from app.schemas.exec import ExecRequest, ExecResponse, SnmpRequest, SnmpResponse, TestResponse
@@ -21,10 +21,26 @@ from app.services.credentials import CredentialNotFound, resolve_credential
 
 router = APIRouter(prefix="/devices", tags=["devices"], dependencies=[Depends(get_current_user)])
 
+# FKs que devem pertencer à mesma ORG do device (isolamento multi-tenant).
+_DEVICE_ORG_FK_KEYS = (
+    ("group_id", DeviceGroup),
+    ("rack_id", Rack),
+    ("ssh_credential_id", Credential),
+    ("telnet_credential_id", Credential),
+    ("snmp_credential_id", Credential),
+    ("api_credential_id", Credential),
+)
+
 
 async def _get(session: AsyncSession, device_id: int, user: User) -> Device:
     d = (await session.execute(select(Device).where(Device.id == device_id))).scalar_one_or_none()
     return owned(d, user)
+
+
+async def _validate_device_refs(session: AsyncSession, data: dict, org_id: int | None) -> None:
+    """Recusa group/rack/credencial de outra ORG (ou inexistente)."""
+    fks = [OrgFk(model, data[key]) for key, model in _DEVICE_ORG_FK_KEYS if key in data]
+    await require_org_fks(session, org_id, fks)
 
 
 def _normalize_ipv4(raw: str) -> str:
@@ -178,6 +194,7 @@ async def create_device(payload: DeviceCreate, session: AsyncSession = Depends(g
                 raise HTTPException(403, "plano da organização expirado — renove para adicionar novos dispositivos")
             raise HTTPException(403, f"limite de devices do plano atingido ({count}/{limit})")
     await _ensure_unique_ip(session, org_id, data["ip"])
+    await _validate_device_refs(session, data, org_id)
     d = Device(org_id=org_id, **data)
     session.add(d)
     await session.commit()
@@ -199,6 +216,7 @@ async def update_device(device_id: int, payload: DeviceUpdate, session: AsyncSes
         # Escopo pelo org do PRÓPRIO device (não o do usuário): um Master editando
         # um device de outra ORG precisa checar contra aquela ORG, não a dele.
         await _ensure_unique_ip(session, d.org_id, data["ip"], exclude_id=d.id)
+    await _validate_device_refs(session, data, d.org_id)
     for k, v in data.items():
         setattr(d, k, v)
     await session.commit()

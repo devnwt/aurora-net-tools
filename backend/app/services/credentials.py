@@ -22,12 +22,18 @@ class CredentialNotFound(Exception):
     pass
 
 
+def _same_org(a_org_id: int | None, b_org_id: int | None) -> bool:
+    return a_org_id == b_org_id
+
+
 async def resolve_credential(
     session: AsyncSession, device: Device, protocol: Protocol
 ) -> Credential:
     """Retorna a credencial efetiva do device para o protocolo.
 
     Ordem: credencial própria do device → padrão do grupo → erro claro.
+    Só aceita credencial (e grupo) da mesma ORG do device — defesa contra
+    FKs cross-tenant já gravados ou bypass de API.
     """
     cred_id = getattr(device, _DEVICE_FK[protocol], None)
 
@@ -37,7 +43,7 @@ async def resolve_credential(
                 select(DeviceGroup).where(DeviceGroup.id == device.group_id)
             )
         ).scalar_one_or_none()
-        if group is not None:
+        if group is not None and _same_org(group.org_id, device.org_id):
             cred_id = getattr(group, _GROUP_DEFAULT_FK[protocol], None)
 
     if cred_id is None:
@@ -49,6 +55,8 @@ async def resolve_credential(
     cred = (
         await session.execute(select(Credential).where(Credential.id == cred_id))
     ).scalar_one_or_none()
-    if cred is None:
-        raise CredentialNotFound(f"credencial id={cred_id} não existe")
+    if cred is None or not _same_org(cred.org_id, device.org_id):
+        raise CredentialNotFound(
+            f"credencial id={cred_id} indisponível para o device '{device.name}'"
+        )
     return cred

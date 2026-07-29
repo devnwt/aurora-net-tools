@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.tenancy import new_org_id, owned, scope
+from app.api.tenancy import OrgFk, new_org_id, owned, require_org_fk, scope
 from app.core.db import get_session
 from app.drivers import fiberhome
 from app.drivers.base import DriverError
@@ -20,11 +20,15 @@ STRUCT_CACHE_TTL = 600
 
 
 async def _credential(session: AsyncSession, controller: Controller) -> Credential | None:
+    """Credencial do controller — só da mesma ORG (defesa em profundidade)."""
     if controller.credential_id is None:
         return None
-    return (
+    cred = (
         await session.execute(select(Credential).where(Credential.id == controller.credential_id))
     ).scalar_one_or_none()
+    if cred is None or cred.org_id != controller.org_id:
+        return None
+    return cred
 
 
 async def _get(session: AsyncSession, controller_id: int, user: User) -> Controller:
@@ -39,7 +43,10 @@ async def list_controllers(session: AsyncSession = Depends(get_session), user: U
 
 @router.post("", response_model=ControllerOut, status_code=201)
 async def create_controller(payload: ControllerCreate, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):
-    c = Controller(org_id=new_org_id(user), **payload.model_dump())
+    org_id = new_org_id(user)
+    data = payload.model_dump()
+    await require_org_fk(session, org_id, OrgFk(Credential, data.get("credential_id")))
+    c = Controller(org_id=org_id, **data)
     session.add(c)
     await session.commit()
     await session.refresh(c)
@@ -54,7 +61,10 @@ async def get_controller(controller_id: int, session: AsyncSession = Depends(get
 @router.patch("/{controller_id}", response_model=ControllerOut)
 async def update_controller(controller_id: int, payload: ControllerUpdate, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):
     c = await _get(session, controller_id, user)
-    for k, v in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    if "credential_id" in data:
+        await require_org_fk(session, c.org_id, OrgFk(Credential, data["credential_id"]))
+    for k, v in data.items():
         setattr(c, k, v)
     await session.commit()
     await session.refresh(c)

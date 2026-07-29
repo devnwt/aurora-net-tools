@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.api.tenancy import new_org_id, owned, scope
+from app.api.tenancy import OrgFk, new_org_id, owned, require_org_fk, scope
 from app.core.db import get_session
 from app.models import Device, DeviceGroup, Rack, RackLink, User, UserGroup
 
@@ -51,9 +51,9 @@ async def list_racks(
 
 @router.post("/racks", status_code=201)
 async def create_rack(payload: RackIn, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):
-    site = (await session.execute(select(DeviceGroup).where(DeviceGroup.id == payload.site_id))).scalar_one_or_none()
-    owned(site, user)  # o site precisa ser da ORG
-    r = Rack(org_id=new_org_id(user), site_id=payload.site_id, name=payload.name, description=payload.description)
+    org_id = new_org_id(user)
+    await require_org_fk(session, org_id, OrgFk(DeviceGroup, payload.site_id))
+    r = Rack(org_id=org_id, site_id=payload.site_id, name=payload.name, description=payload.description)
     session.add(r)
     await session.commit()
     await session.refresh(r)
@@ -63,7 +63,10 @@ async def create_rack(payload: RackIn, session: AsyncSession = Depends(get_sessi
 @router.patch("/racks/{rack_id}")
 async def update_rack(rack_id: int, payload: RackPatch, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):
     r = await _get_rack(session, rack_id, user)
-    for k, v in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    if "site_id" in data:
+        await require_org_fk(session, r.org_id, OrgFk(DeviceGroup, data["site_id"]))
+    for k, v in data.items():
         setattr(r, k, v)
     await session.commit()
     await session.refresh(r)
