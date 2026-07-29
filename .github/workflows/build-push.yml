@@ -73,8 +73,10 @@ jobs:
         # O script sair 0 não prova que os manifests estão no registry.
         # Consultar o Harbor fecha isso aqui — se falhasse só no servidor, o
         # erro apareceria longe do build, na hora do deploy.
+        # A lista sai do compose de build: foi uma lista fixa aqui que deixou a
+        # imagem 'backup' sem publicação e sem conferência.
         run: |
-          for img in backend frontend proxy; do
+          for img in $(docker compose -f docker-compose.build.yml config --services); do
             docker buildx imagetools inspect "$REGISTRY/$img:${{ steps.tag.outputs.tag }}" >/dev/null
             echo "✅ $img:${{ steps.tag.outputs.tag }}"
           done
@@ -86,7 +88,7 @@ jobs:
             echo "### Imagens publicadas no Harbor"
             echo
             echo '```'
-            for img in backend frontend proxy; do
+            for img in $(docker compose -f docker-compose.build.yml config --services); do
               echo "$REGISTRY/$img:$TAG"
             done
             echo '```'

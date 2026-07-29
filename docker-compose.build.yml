@@ -26,3 +26,7 @@ services:
   proxy:
     build: ./proxy
     image: ${REGISTRY:-registry.aurora.app.br/aurora-nettools}/proxy:${IMAGE_TAG:-latest}
+
+  backup:
+    build: ./backup
+    image: ${REGISTRY:-registry.aurora.app.br/aurora-nettools}/backup:${IMAGE_TAG:-latest}
