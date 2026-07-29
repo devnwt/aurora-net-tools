@@ -9,8 +9,9 @@ na próxima criação de device/usuário (a checagem de limite já existente).
 """
 
 from datetime import datetime
+from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -152,8 +153,16 @@ class CheckoutOut(BaseModel):
     payment_url: str
 
 
+def _origin(request: Request) -> str:
+    """Base pública do app a partir do request (Origin/Referer, cai no base_url)."""
+    raw = request.headers.get("origin") or request.headers.get("referer") or str(request.base_url)
+    p = urlsplit(raw)
+    return f"{p.scheme}://{p.netloc}" if p.scheme and p.netloc else str(request.base_url).rstrip("/")
+
+
 @router.post("/checkout", response_model=CheckoutOut)
 async def checkout(
+    request: Request,
     payload: SelectIn,
     session: AsyncSession = Depends(get_session),
     user: User = Depends(require_admin),
@@ -187,6 +196,7 @@ async def checkout(
             external_id=f"cliente-{org.id}",  # id do cliente no nosso sistema (a ORG)
             external_reference=f"assinatura-{org.id}-{plan.id}",  # referência livre (org+plano) p/ o webhook
             customer=customer,
+            return_url=f"{_origin(request)}/",  # o hub devolve o cliente à base do app após o checkout
         )
     except billing.BillingError as exc:
         raise HTTPException(502, str(exc))

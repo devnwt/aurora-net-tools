@@ -28,12 +28,14 @@ def enabled() -> bool:
 
 
 async def create_charge(
-    *, plan_code: str, external_id: str, external_reference: str, customer: dict
+    *, plan_code: str, external_id: str, external_reference: str, customer: dict,
+    return_url: str | None = None,
 ) -> dict:
     """Cria uma cobrança no hub e retorna o JSON da resposta. Levanta BillingError.
 
     O valor NÃO é enviado: o preço vem do plano cadastrado no painel do hub. A
-    correlação para o webhook vai em external_id/external_reference."""
+    correlação para o webhook vai em external_id/external_reference. `return_url` é
+    para onde o hub redireciona o cliente ao concluir o checkout (a base do app)."""
     if not enabled():
         raise BillingError("integração de cobrança não configurada")
     url = settings.hub_aurora_url.rstrip("/") + "/v1/charges"
@@ -43,6 +45,8 @@ async def create_charge(
         "external_reference": external_reference,
         "customer": customer,
     }
+    if return_url:
+        payload["return_url"] = return_url
     headers = {
         "Authorization": f"Bearer {settings.hub_aurora_token}",
         "Idempotency-Key": str(uuid.uuid4()),
