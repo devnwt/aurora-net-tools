@@ -54,5 +54,11 @@
   "trialPromoLater": "Ahora no",
   "trialExpiredTitle": "Tu periodo de prueba ha terminado",
   "trialExpiredSubtitle": "Elige un plan de pago para seguir creando dispositivos y usando todas las funciones.",
-  "trialExpiredLogout": "Salir"
+  "trialExpiredLogout": "Salir",
+  "perMonth": "/mes",
+  "free": "Gratis",
+  "freePeriod": "por 1 semana",
+  "checkoutRedirectHint": "Serás llevado al entorno de pago seguro.",
+  "paymentWatching": "Confirmando su pago…",
+  "paymentConfirmed": "¡Pago confirmado! Plan activado."
 }

@@ -7,7 +7,7 @@
  */
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { X } from "lucide-react";
+import { CreditCard, Sparkles, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/lib/toast";
 import type { CurrentPlan, PlanOption } from "@/lib/types";
@@ -28,10 +28,22 @@ export function PlanUpgradeDialog({ onClose }: { onClose: () => void }) {
       .catch(() => setPlans([]));
   }, []);
 
+  // Ao ir para o checkout e voltar pelo navegador, a página é restaurada do
+  // bfcache com o loading ainda ativo — limpa o estado nesse retorno (pageshow)
+  // para não ficar preso na tela de carregamento.
+  useEffect(() => {
+    const reset = () => setApplying(null);
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+  }, []);
+
   const trialAvailable = cur?.trial_available !== false;
   const list = plans ?? [];
   const reserveRibbon = list.some((p) => isTrial(p.name));
   const topId = list.filter((p) => !isTrial(p.name)).reduce<PlanOption | null>((m, p) => (!m || p.max_devices > m.max_devices ? p : m), null)?.id;
+  // Plano em aplicação é pago? (define o texto do loading: checkout x aplicar direto)
+  const applyingPlan = applying != null ? list.find((p) => p.id === applying) : null;
+  const applyingPaid = !!applyingPlan && !isTrial(applyingPlan.name);
 
   // Selecionar o plano. Já é o atual → só fecha. Plano PAGO → checkout: cria a
   // cobrança e redireciona para a URL de pagamento. Trial/grátis → aplica direto,
@@ -45,6 +57,7 @@ export function PlanUpgradeDialog({ onClose }: { onClose: () => void }) {
     try {
       if (paid) {
         const r = await api.post<{ payment_url: string }>("/plans/checkout", { plan_id: planId });
+        localStorage.setItem("aurora_pay_pending", String(planId)); // watcher observa até confirmar
         toast.info(t("plans:checkoutRedirect"));
         window.location.assign(r.payment_url); // vai para o pagamento no hub
         return;
@@ -110,9 +123,25 @@ export function PlanUpgradeDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         {applying != null && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-black/40 backdrop-blur-sm">
-            <div className="flex items-center gap-2 text-sm font-medium text-white">
-              <Spinner className="h-5 w-5" /> {t("plans:upgradeApplying")}
+          <div className="dlg-backdrop absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-surface/80 backdrop-blur-md">
+            <div className="checkout-loading flex max-w-xs flex-col items-center gap-4 px-6 text-center">
+              {/* Ícone com anel pulsante */}
+              <div className="relative grid place-items-center">
+                <span className="absolute h-16 w-16 rounded-full bg-primary/25 motion-safe:animate-ping" />
+                <span className="relative grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-primary to-accent text-white shadow-lg shadow-primary/30">
+                  {applyingPaid ? <CreditCard className="h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-text">{applyingPaid ? t("plans:checkoutRedirect") : t("plans:upgradeApplying")}</p>
+                {applyingPaid && <p className="text-xs leading-relaxed text-muted">{t("plans:checkoutRedirectHint")}</p>}
+              </div>
+              {/* Três pontinhos animados */}
+              <div className="flex gap-1.5" aria-hidden="true">
+                <span className="loading-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: "0ms" }} />
+                <span className="loading-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: "160ms" }} />
+                <span className="loading-dot h-1.5 w-1.5 rounded-full bg-primary" style={{ animationDelay: "320ms" }} />
+              </div>
             </div>
           </div>
         )}

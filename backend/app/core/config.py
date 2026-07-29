@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     notify_enabled: bool = True
     notify_interval_seconds: int = 3600  # 1x por hora basta para faixas de dias
 
+    # Reconciliação de pagamentos (consulta o hub p/ confirmar cobranças pendentes).
+    billing_reconcile_enabled: bool = True
+    billing_reconcile_seconds: int = 120
+
     # Proteção de login (rate limiting + lockout + backoff, contadores no Redis).
     # Desligado automaticamente quando testing=True (ver loginguard._enabled).
     login_protection_enabled: bool = True

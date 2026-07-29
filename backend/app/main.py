@@ -40,6 +40,7 @@ from app.core.config import get_settings
 from app.core.logging import bind_request, configure_logging, current_request_id
 from app.mcp.auth import MCPAuthMiddleware
 from app.mcp.server import mcp
+from app.services.billing_reconcile import run_billing_reconciler
 from app.services.notifications import run_notifier
 from app.services.poller import run_poller
 
@@ -60,6 +61,8 @@ async def lifespan(app: FastAPI):
             bg_tasks.append(asyncio.create_task(run_poller()))
         if settings.notify_enabled and not settings.testing:
             bg_tasks.append(asyncio.create_task(run_notifier()))
+        if settings.billing_reconcile_enabled and not settings.testing:
+            bg_tasks.append(asyncio.create_task(run_billing_reconciler()))
         try:
             yield
         finally:

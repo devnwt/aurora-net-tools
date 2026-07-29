@@ -1,6 +1,7 @@
 from app.models.apikey import ApiKey
 from app.models.audit import AuditLog
 from app.models.backup import DeviceBackup
+from app.models.charge import Charge
 from app.models.controller import Controller
 from app.models.copilot import CopilotAction, CopilotConversation, CopilotMessage, CopilotTool
 from app.models.credential import Credential
@@ -21,6 +22,7 @@ from app.models.webhook import Webhook
 __all__ = [
     "ApiKey",
     "AuditLog",
+    "Charge",
     "CommandTemplate",
     "Controller",
     "CopilotAction",

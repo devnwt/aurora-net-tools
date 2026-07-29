@@ -55,13 +55,13 @@ def new_plan_expiry(plan) -> datetime | None:
     return trial_deadline() if is_trial_plan(plan) else plan_deadline()
 
 
-def trial_available(org: Organization | None) -> bool:
-    """True se a ORG ainda pode ESCOLHER o plano de teste. O prazo (trial_expires_at)
-    é gravado uma única vez na criação da conta; passado o prazo, o trial deixa de
-    ser oferecido. None = elegível (contas legadas sem prazo gravado)."""
-    if org is None or org.trial_expires_at is None:
+def trial_available(org: Organization | None, current_plan=None) -> bool:
+    """True se a ORG ainda pode estar no plano de TESTE. O trial é concedido uma
+    ÚNICA vez, na CRIAÇÃO da conta; depois que um plano PAGO é ativado, não há como
+    voltar ao trial. Disponível só enquanto a ORG está sem plano ou ainda no trial."""
+    if org is None:
         return True
-    return org.trial_expires_at > datetime.now(UTC)
+    return current_plan is None or is_trial_plan(current_plan)
 
 
 def plan_expired(org: Organization | None) -> bool:
