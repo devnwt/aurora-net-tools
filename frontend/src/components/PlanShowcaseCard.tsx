@@ -7,7 +7,7 @@
 import { useTranslation } from "react-i18next";
 import { Check, Crown, Feather, Gift, HardDrive, Lock, Rocket, Sparkles, Users as UsersIcon, Zap, type LucideIcon } from "lucide-react";
 import type { PlanOption } from "@/lib/types";
-import { featuresFor, isTrial } from "@/lib/plans";
+import { discountPct, featuresFor, formatBRL, isTrial, pricingFor } from "@/lib/plans";
 import { Badge, Button, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +73,39 @@ export function PlanShowcaseCard({ plan, index, recommended, yourPlan, reserveRi
         </div>
 
         <h3 className={cn("relative font-semibold", compact ? "text-lg" : "text-xl")}>{plan.name}</h3>
+
+        {/* Preço (promo: "de" riscado + desconto, "por" em destaque). Trial = grátis. */}
+        {(() => {
+          const pr = pricingFor(plan.name);
+          const disc = pr ? discountPct(pr) : null;
+          return (
+            <div className={cn("relative", compact ? "mt-2" : "mt-3")}>
+              {pr ? (
+                <>
+                  {pr.original && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted line-through decoration-danger/60">{formatBRL(pr.original)}</span>
+                      {disc && (
+                        <span className="rounded-full bg-ok/15 px-1.5 py-0.5 text-[10px] font-bold text-ok">
+                          -{disc}%
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex items-baseline gap-1">
+                    <span className={cn("font-bold tracking-tight text-text", compact ? "text-2xl" : "text-3xl")}>{formatBRL(pr.price)}</span>
+                    <span className="text-xs font-medium text-muted">{t("plans:perMonth")}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-baseline gap-1.5">
+                  <span className={cn("font-bold tracking-tight text-accent", compact ? "text-2xl" : "text-3xl")}>{t("plans:free")}</span>
+                  <span className="text-xs font-medium text-muted">{t("plans:freePeriod")}</span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <div className={cn(compact ? "mt-3 space-y-2" : "mt-5 space-y-3")}>
           <Stat icon={<HardDrive className="h-4 w-4" />} value={plan.max_devices} unit={t("plans:perDevices")} compact={compact} />
