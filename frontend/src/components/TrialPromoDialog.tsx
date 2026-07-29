@@ -51,6 +51,7 @@ export function TrialPromoDialog({ expired, onClose }: { expired: boolean; onClo
     try {
       if (paid) {
         const r = await api.post<{ payment_url: string }>("/plans/checkout", { plan_id: planId });
+        localStorage.setItem("aurora_pay_pending", String(planId)); // watcher observa até confirmar
         toast.info(t("plans:checkoutRedirect"));
         window.location.assign(r.payment_url);
         return;

@@ -72,6 +72,11 @@ sudo deploy/install.sh
 |-----|-------|------------|
 | `APP_SECRET_KEY` | Chave Fernet que cifra **todos** os segredos | **Nunca rotacione sem re-cifrar** as credenciais — perda = segredos ilegíveis |
 | `JWT_SECRET` | Assinatura dos tokens | Rotacionar desloga todos |
+| `JWT_EXPIRE_MINUTES` | Vida do access token (default 15) | Curto; renovado via `refresh_token` |
+| `JWT_REFRESH_EXPIRE_DAYS` | Vida do refresh no Redis (default 7) | Logout / reset / logout-all invalidam |
+| `COOKIE_SECURE` | Flag Secure nos cookies | `true` com HTTPS no browser |
+| `COOKIE_SAMESITE` | SameSite dos cookies | `lax` (padrão) / `strict` / `none` |
+| `CORS_ORIGINS` | Allowlist CORS com credentials | Vazio = same-origin via proxy |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Seed do admin | Senha só é usada no 1º boot |
 | `TL1_HOST/PORT/USERNAME/PASSWORD` | Seed do controller UNM2000 | Migra p/ credencial cifrada no 1º boot |
 | `POSTGRES_*` | Banco | `pgdata` é um volume nomeado |
@@ -86,8 +91,8 @@ sudo deploy/install.sh
 
 - Segredos cifrados em repouso (Fernet) e **mascarados** (`********`) em toda resposta da API.
 - **Read-only**: a camada de driver recusa escrita por allowlist default-deny. Toda execução (inclusive bloqueios) vai para `audit_log` (tela **Atividade**).
-- JWT obrigatório em todas as rotas exceto `/auth/login` e `/health`.
-- **CORS**: hoje `allow_origins=["*"]`. Em produção, restrinja a `app/main.py` ao host do frontend.
+- JWT em cookies **HttpOnly** + **SameSite** (`aurora_at` / `aurora_rt`); o SPA não guarda token em `localStorage`. Mutações só-cookie exigem `X-Aurora-Client: web` (CSRF). Access curto (`jti` + denylist Redis); `token_version` para logout-all / reset / desativação.
+- **CORS**: same-origin via proxy. Em dev cross-origin (Vite), defina `CORS_ORIGINS`.
 - Em produção: sirva atrás de TLS (reverse proxy), troque as senhas do `.env`, e não exponha a porta 8000 publicamente (o frontend já faz proxy de `/api` e `/mcp`).
 
 ## Banco de dados

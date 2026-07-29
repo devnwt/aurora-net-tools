@@ -16,7 +16,11 @@ settings = get_settings()
 
 
 class BillingError(Exception):
-    """Falha ao criar a cobrança (config ausente, gateway indisponível/erro)."""
+    """Falha ao falar com o hub (config ausente, indisponível, erro HTTP)."""
+
+
+class ChargeNotFound(BillingError):
+    """A cobrança não existe mais no hub (404)."""
 
 
 def enabled() -> bool:
@@ -24,12 +28,14 @@ def enabled() -> bool:
 
 
 async def create_charge(
-    *, plan_code: str, external_id: str, external_reference: str, customer: dict
+    *, plan_code: str, external_id: str, external_reference: str, customer: dict,
+    return_url: str | None = None,
 ) -> dict:
     """Cria uma cobrança no hub e retorna o JSON da resposta. Levanta BillingError.
 
     O valor NÃO é enviado: o preço vem do plano cadastrado no painel do hub. A
-    correlação para o webhook vai em external_id/external_reference."""
+    correlação para o webhook vai em external_id/external_reference. `return_url` é
+    para onde o hub redireciona o cliente ao concluir o checkout (a base do app)."""
     if not enabled():
         raise BillingError("integração de cobrança não configurada")
     url = settings.hub_aurora_url.rstrip("/") + "/v1/charges"
@@ -39,6 +45,8 @@ async def create_charge(
         "external_reference": external_reference,
         "customer": customer,
     }
+    if return_url:
+        payload["return_url"] = return_url
     headers = {
         "Authorization": f"Bearer {settings.hub_aurora_token}",
         "Idempotency-Key": str(uuid.uuid4()),
@@ -53,6 +61,30 @@ async def create_charge(
     if resp.status_code >= 400:
         log.warning("cobrança: hub respondeu %s: %s", resp.status_code, resp.text[:300])
         raise BillingError("o serviço de pagamento recusou a cobrança")
+    try:
+        return resp.json()
+    except ValueError as exc:
+        raise BillingError("resposta inválida do serviço de pagamento") from exc
+
+
+async def get_charge(charge_id: str) -> dict:
+    """Consulta uma cobrança no hub (GET /v1/charges/{id}) — a reconciliação. A
+    resposta é a mesma da criação, com `status`/`paid_at` atualizados. Levanta
+    ChargeNotFound (404) ou BillingError."""
+    if not enabled():
+        raise BillingError("integração de cobrança não configurada")
+    url = settings.hub_aurora_url.rstrip("/") + f"/v1/charges/{charge_id}"
+    headers = {"Authorization": f"Bearer {settings.hub_aurora_token}", "Content-Type": "application/json"}
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(url, headers=headers)
+    except httpx.HTTPError as exc:
+        raise BillingError("não foi possível contatar o serviço de pagamento") from exc
+    if resp.status_code == 404:
+        raise ChargeNotFound(charge_id)
+    if resp.status_code >= 400:
+        log.warning("consulta de cobrança %s: hub respondeu %s", charge_id, resp.status_code)
+        raise BillingError(f"hub respondeu {resp.status_code}")
     try:
         return resp.json()
     except ValueError as exc:

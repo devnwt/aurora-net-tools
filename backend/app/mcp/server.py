@@ -174,6 +174,8 @@ async def _fh_call(controller_id: int, op) -> dict:
             cred = (
                 await session.execute(select(Credential).where(Credential.id == controller.credential_id))
             ).scalar_one_or_none()
+            if cred is not None and cred.org_id != controller.org_id:
+                cred = None
         try:
             return _result(True, await op(controller, cred))
         except DriverError as e:

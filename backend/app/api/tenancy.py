@@ -6,9 +6,12 @@ Recursos criados por não-master herdam o `org_id` do usuário.
 
 import calendar
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Organization, User
 
@@ -52,13 +55,13 @@ def new_plan_expiry(plan) -> datetime | None:
     return trial_deadline() if is_trial_plan(plan) else plan_deadline()
 
 
-def trial_available(org: Organization | None) -> bool:
-    """True se a ORG ainda pode ESCOLHER o plano de teste. O prazo (trial_expires_at)
-    é gravado uma única vez na criação da conta; passado o prazo, o trial deixa de
-    ser oferecido. None = elegível (contas legadas sem prazo gravado)."""
-    if org is None or org.trial_expires_at is None:
+def trial_available(org: Organization | None, current_plan=None) -> bool:
+    """True se a ORG ainda pode estar no plano de TESTE. O trial é concedido uma
+    ÚNICA vez, na CRIAÇÃO da conta; depois que um plano PAGO é ativado, não há como
+    voltar ao trial. Disponível só enquanto a ORG está sem plano ou ainda no trial."""
+    if org is None:
         return True
-    return org.trial_expires_at > datetime.now(UTC)
+    return current_plan is None or is_trial_plan(current_plan)
 
 
 def plan_expired(org: Organization | None) -> bool:
@@ -98,3 +101,30 @@ def owned(obj, user: User):
 def new_org_id(user: User) -> int | None:
     """ORG a atribuir em recursos recém-criados (None para master = recurso de sistema)."""
     return None if is_master(user) else user.org_id
+
+
+@dataclass(frozen=True)
+class OrgFk:
+    """FK a validar contra a ORG do recurso pai (device, grupo, controller, rack…)."""
+
+    model: type
+    fk_id: int | None
+
+
+async def require_org_fk(session: AsyncSession, org_id: int | None, fk: OrgFk) -> None:
+    """Garante que o FK aponta para um registro da mesma ORG (ou ambos sistema).
+
+    `fk_id is None` limpa o vínculo (sempre permitido). ID inexistente ou de outra
+    ORG → 404 genérico (não enumera recursos cross-tenant).
+    """
+    if fk.fk_id is None:
+        return
+    obj = (await session.execute(select(fk.model).where(fk.model.id == fk.fk_id))).scalar_one_or_none()
+    if obj is None or getattr(obj, "org_id", None) != org_id:
+        raise HTTPException(404, "não encontrado")
+
+
+async def require_org_fks(session: AsyncSession, org_id: int | None, fks: list[OrgFk]) -> None:
+    """Valida uma lista de FKs contra a mesma ORG."""
+    for fk in fks:
+        await require_org_fk(session, org_id, fk)

@@ -9,8 +9,9 @@ na próxima criação de device/usuário (a checagem de limite já existente).
 """
 
 from datetime import datetime
+from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,8 +20,8 @@ from app.api.deps import require_admin
 from app.api.tenancy import is_trial_plan, new_plan_expiry, plan_expired, plan_status, trial_available
 from app.core.db import get_session
 from app.core.documents import format_document
-from app.models import Device, Organization, Plan, User
-from app.services import billing, notifications
+from app.models import Charge, Device, Organization, Plan, User
+from app.services import billing, billing_reconcile, notifications
 
 router = APIRouter(prefix="/plans", tags=["plans"], dependencies=[Depends(require_admin)])
 
@@ -91,15 +92,16 @@ async def _current(session: AsyncSession, user: User) -> CurrentPlan:
         expires_at=org.plan_expires_at if org else None,
         canceled=bool(org and org.plan_canceled),
         expired=plan_expired(org),
-        trial_available=trial_available(org),
+        trial_available=trial_available(org, plan),
     )
 
 
 @router.get("", response_model=list[PlanOut])
 async def list_plans(session: AsyncSession = Depends(get_session)):
-    """Planos disponíveis para comparação/simulação."""
+    """Planos disponíveis para escolha/upgrade. O plano de TESTE não entra: ele só
+    é concedido na criação da conta e nunca pode ser (re)selecionado."""
     rows = (await session.execute(select(Plan).order_by(Plan.max_devices, Plan.name))).scalars().all()
-    return rows
+    return [p for p in rows if not is_trial_plan(p)]
 
 
 @router.get("/current", response_model=CurrentPlan)
@@ -107,6 +109,10 @@ async def current_plan(
     session: AsyncSession = Depends(get_session), user: User = Depends(require_admin)
 ):
     """Plano atual da ORG do usuário + limites efetivos + uso atual."""
+    # Ao voltar do pagamento, confirma na hora as cobranças pendentes desta ORG
+    # (só consulta o hub se houver pendente). O poller cobre o resto.
+    if user.org_id is not None:
+        await billing_reconcile.reconcile_org(session, user.org_id)
     return await _current(session, user)
 
 
@@ -125,9 +131,10 @@ async def select_plan(
     org = (await session.execute(select(Organization).where(Organization.id == user.org_id))).scalar_one_or_none()
     if org is None:
         raise HTTPException(404, "organização não encontrada")
-    # Trial só enquanto a janela de elegibilidade (fixada na criação) não venceu.
-    if is_trial_plan(plan) and not trial_available(org):
-        raise HTTPException(400, "seu período de teste terminou — escolha um plano pago")
+    # O trial é concedido só na CRIAÇÃO da conta: nunca é possível (re)selecioná-lo,
+    # nem voltar a ele depois de ativar um plano.
+    if is_trial_plan(plan):
+        raise HTTPException(400, "o plano de teste vale só na criação da conta e não pode ser selecionado novamente")
     # Só troca o vínculo; devices/usuários existentes não são tocados. Um plano
     # abaixo do uso atual é permitido (fica "acima do limite" e só bloqueia novas
     # criações) — o frontend avisa antes de confirmar.
@@ -146,8 +153,16 @@ class CheckoutOut(BaseModel):
     payment_url: str
 
 
+def _origin(request: Request) -> str:
+    """Base pública do app a partir do request (Origin/Referer, cai no base_url)."""
+    raw = request.headers.get("origin") or request.headers.get("referer") or str(request.base_url)
+    p = urlsplit(raw)
+    return f"{p.scheme}://{p.netloc}" if p.scheme and p.netloc else str(request.base_url).rstrip("/")
+
+
 @router.post("/checkout", response_model=CheckoutOut)
 async def checkout(
+    request: Request,
     payload: SelectIn,
     session: AsyncSession = Depends(get_session),
     user: User = Depends(require_admin),
@@ -178,15 +193,27 @@ async def checkout(
     try:
         data = await billing.create_charge(
             plan_code=plan.code,
-            external_id=str(org.id),  # id do cliente no nosso sistema (a ORG)
+            external_id=f"cliente-{org.id}",  # id do cliente no nosso sistema (a ORG)
             external_reference=f"assinatura-{org.id}-{plan.id}",  # referência livre (org+plano) p/ o webhook
             customer=customer,
+            return_url=f"{_origin(request)}/",  # o hub devolve o cliente à base do app após o checkout
         )
     except billing.BillingError as exc:
         raise HTTPException(502, str(exc))
     url = billing.extract_payment_url(data)
     if not url:
         raise HTTPException(502, "não recebemos a URL de pagamento do serviço de cobrança")
+    # Persiste a cobrança para reconciliação: o poller confirma o pagamento depois
+    # (webhook é opcional; esta é a rede de segurança). O plano só é ativado no `paid`.
+    hub_id = str(data.get("id") or "")
+    if hub_id:
+        session.add(Charge(
+            hub_charge_id=hub_id, org_id=org.id, plan_id=plan.id,
+            status=str(data.get("status") or "pending"),
+            amount_cents=data.get("amount_cents"),
+            external_reference=f"assinatura-{org.id}-{plan.id}",
+        ))
+        await session.commit()
     return CheckoutOut(payment_url=url)
 
 

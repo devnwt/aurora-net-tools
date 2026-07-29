@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, ApiError, tokenStore } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { AuthShell } from "@/components/AuthShell";
 import { Spinner } from "@/components/ui";
 
@@ -18,8 +18,8 @@ export function AcceptInvite() {
   useEffect(() => {
     const token = params.get("token");
     if (!token) { setErr(t("auth:invite.missing")); return; }
-    api.post<{ access_token: string }>("/auth/accept-invite", { token })
-      .then((r) => { tokenStore.set(r.access_token); window.location.assign("/"); })
+    api.post("/auth/accept-invite", { token })
+      .then(() => { window.location.assign("/"); })
       .catch((e) => setErr(e instanceof ApiError ? e.message : String(e)));
   }, [params, t]);
 

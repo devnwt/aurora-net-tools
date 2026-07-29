@@ -20,7 +20,7 @@ Em ordem (ver `detection` em `index.ts`):
 
 > O idioma do navegador **não** é usado como padrão (a especificação exige pt-BR no primeiro acesso). Só a escolha explícita no seletor muda o idioma. Detalhe técnico: `nonExplicitSupportedLngs` fica **desligado** — com um código regional (`pt-BR`) misturado a códigos simples (`en`/`es`), ligá-lo faz o i18next procurar um bundle `pt` inexistente e devolver a chave crua.
 
-A troca no seletor (Configurações → Preferências) chama `i18n.changeLanguage()`, que **re-renderiza a interface na hora, sem reload**, e persiste no `localStorage` (sobrevive a refresh, logout/login e ao fechar o navegador — o logout limpa só `aurora_token`, não a preferência de idioma).
+A troca no seletor (Configurações → Preferências) chama `i18n.changeLanguage()`, que **re-renderiza a interface na hora, sem reload**, e persiste no `localStorage` (sobrevive a refresh, logout/login e ao fechar o navegador — o logout limpa só tokens de sessão legados, não a preferência de idioma).
 
 ## Onde ficam os arquivos
 

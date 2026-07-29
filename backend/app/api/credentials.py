@@ -64,7 +64,11 @@ async def update_credential(cred_id: int, payload: CredentialUpdate, session: As
 
 
 @router.delete("/{cred_id}", status_code=204)
-async def delete_credential(cred_id: int, session: AsyncSession = Depends(get_session)):
-    cred = await _get(session, cred_id)
+async def delete_credential(
+    cred_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    cred = await _get(session, cred_id, user)
     await session.delete(cred)
     await session.commit()

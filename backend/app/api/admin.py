@@ -15,7 +15,7 @@ from app.core.crypto import decrypt, encrypt
 from app.core.db import get_session
 from app.core.security import hash_password, password_error
 from app.models import Device, Organization, Plan, User
-from app.services import integrations, notifications
+from app.services import emailtpl, integrations, notifications, sessions
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_master)])
 
@@ -363,7 +363,13 @@ async def create_org(payload: OrgIn, session: AsyncSession = Depends(get_session
                 f"Senha: {payload.admin_password}\n\n"
                 f"Recomendamos alterar a senha no primeiro acesso."
             )
-            ok, detail = await integrations.send_email(g, decrypt(g.smtp_password), payload.admin_email, "Acesso à Aurora Prisma NetTools", body)
+            html = emailtpl.render(
+                heading="Sua conta está pronta",
+                intro=f"Bem-vindo(a) à Aurora Prisma NetTools! Sua organização “{org.name}” foi criada.\n\n"
+                      f"E-mail (login): {admin_email}\nSenha: {payload.admin_password}",
+                note="Recomendamos alterar a senha no primeiro acesso.",
+            )
+            ok, detail = await integrations.send_email(g, decrypt(g.smtp_password), payload.admin_email, "Acesso à Aurora Prisma NetTools", body, html)
             meta["welcome"] = {"ok": ok, "detail": detail}
         else:
             meta["welcome"] = {"ok": False, "detail": "SMTP global não configurado"}
@@ -403,8 +409,17 @@ async def set_org_users_active(
     Desativar bloqueia o login de todos daquela empresa; os dados ficam intactos."""
     if (await session.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none() is None:
         raise HTTPException(404, "ORG não encontrada")
+    values: dict = {"is_active": payload.active}
+    if not payload.active:
+        # Força logout imediato de todos (token_version + limpa refreshes Redis).
+        values["token_version"] = User.token_version + 1
+        user_ids = (
+            await session.execute(select(User.id).where(User.org_id == org_id, User.is_active.is_(True)))
+        ).scalars().all()
+        for uid in user_ids:
+            await sessions.revoke_all_refresh(uid)
     res = await session.execute(
-        update(User).where(User.org_id == org_id, User.is_active != payload.active).values(is_active=payload.active)
+        update(User).where(User.org_id == org_id, User.is_active != payload.active).values(**values)
     )
     await session.commit()
     return {"updated": res.rowcount or 0, "active": payload.active}
@@ -423,6 +438,7 @@ async def resend_login(org_id: int, session: AsyncSession = Depends(get_session)
         raise HTTPException(400, "SMTP global não configurado")
     new_password = secrets.token_urlsafe(9)
     admin.password_hash = hash_password(new_password)
+    await sessions.bump_token_version(admin)
     await session.commit()
     body = (
         f"Sua senha de acesso à Aurora Prisma NetTools foi redefinida.\n\n"
@@ -430,7 +446,13 @@ async def resend_login(org_id: int, session: AsyncSession = Depends(get_session)
         f"Nova senha: {new_password}\n\n"
         f"Recomendamos alterar a senha após entrar."
     )
-    ok, detail = await integrations.send_email(g, decrypt(g.smtp_password), admin.email, "Redefinição de acesso — Aurora Prisma NetTools", body)
+    html = emailtpl.render(
+        heading="Acesso redefinido",
+        intro=f"Sua senha de acesso à Aurora Prisma NetTools foi redefinida.\n\n"
+              f"Usuário: {admin.username}\nNova senha: {new_password}",
+        note="Recomendamos alterar a senha após entrar.",
+    )
+    ok, detail = await integrations.send_email(g, decrypt(g.smtp_password), admin.email, "Redefinição de acesso — Aurora Prisma NetTools", body, html)
     return {"ok": ok, "detail": detail}
 
 

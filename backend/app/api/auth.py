@@ -3,19 +3,25 @@ import re
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, oauth2_scheme
 from app.api.tenancy import is_trial_plan, new_plan_expiry, plan_expired, trial_available, trial_deadline
 from app.core.config import get_settings
+from app.core.cookies import (
+    clear_auth_cookies,
+    read_access_token,
+    read_refresh_token,
+    token_response,
+)
 from app.core.crypto import decrypt
 from app.core.db import get_session
 from app.core.documents import document_error, normalize_document
 from app.core.security import (
-    create_access_token,
     create_scoped_token,
     decode_scoped_token,
     hash_password,
@@ -23,7 +29,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models import Organization, Plan, User
-from app.services import emailverify, integrations, loginguard, notifications
+from app.services import emailtpl, emailverify, integrations, loginguard, notifications, sessions
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
@@ -62,23 +68,104 @@ async def login(
         # oferece "bem-vindo de volta" com escolha de plano p/ reativar a empresa.
         if user.role == "admin" and user.org_id is not None:
             org = (await session.execute(select(Organization).where(Organization.id == user.org_id))).scalar_one_or_none()
+            cur_plan = (await session.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none() if org and org.plan_id else None
             return {
                 "reactivate": True,
                 "reactivate_token": create_scoped_token(str(user.id), purpose="reactivate", minutes=15),
                 "username": user.username,
                 "plans": await _plan_list(session),
-                "trial_available": trial_available(org),
+                "trial_available": trial_available(org, cur_plan),
             }
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Conta desativada. Fale com o administrador da sua organização.",
         )
-    return {"access_token": create_access_token(user.username), "token_type": "bearer"}
+    # Nenhum usuário de ORG fica sem plano: sem plano no login → entra no Trial.
+    # (Só o Master, que não tem ORG, pode ficar sem plano.)
+    if user.org_id is not None:
+        org = (await session.execute(select(Organization).where(Organization.id == user.org_id))).scalar_one_or_none()
+        if org is not None and org.plan_id is None:
+            plans = (await session.execute(select(Plan))).scalars().all()
+            trial = next((p for p in plans if is_trial_plan(p)), None)
+            if trial is not None:
+                org.plan_id = trial.id
+                org.plan_expires_at = new_plan_expiry(trial)
+                if org.trial_expires_at is None:
+                    org.trial_expires_at = trial_deadline()
+                await session.commit()
+    return token_response(request, await sessions.issue_token_pair(user))
+
+
+class RefreshIn(BaseModel):
+    refresh_token: str | None = None
+
+
+@router.post("/refresh")
+async def refresh_tokens(
+    request: Request,
+    body: RefreshIn | None = None,
+    session: AsyncSession = Depends(get_session),
+) -> JSONResponse:
+    """Troca refresh por novo par (rotação). Lê body ou cookie HttpOnly."""
+    rt = read_refresh_token(request, body.refresh_token if body else None)
+    if not rt:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "refresh inválido ou expirado")
+    rec = await sessions.revoke_refresh(rt)
+    if rec is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "refresh inválido ou expirado")
+    await sessions.deny_access(rec.access_jti, rec.access_exp)
+    user = (await session.execute(select(User).where(User.id == rec.user_id))).scalar_one_or_none()
+    if user is None or not user.is_active or int(user.token_version or 0) != rec.ver:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "sessão revogada")
+    return token_response(request, await sessions.issue_token_pair(user))
+
+
+class LogoutIn(BaseModel):
+    refresh_token: str | None = None
+
+
+@router.post("/logout")
+async def logout(
+    request: Request,
+    body: LogoutIn | None = None,
+    token: str | None = Depends(oauth2_scheme),
+    user: User = Depends(get_current_user),
+) -> JSONResponse:
+    """Revoga access/refresh e limpa cookies HttpOnly."""
+    del user
+    raw = read_access_token(request, token)
+    if raw:
+        claims = sessions.decode_access_claims(raw)
+        if claims:
+            await sessions.deny_access(claims.jti, claims.exp)
+    rt = read_refresh_token(request, body.refresh_token if body else None)
+    if rt:
+        await sessions.revoke_refresh(rt)
+    resp = JSONResponse({"ok": True})
+    clear_auth_cookies(resp)
+    return resp
+
+
+@router.post("/logout-all")
+async def logout_all(
+    session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)
+) -> JSONResponse:
+    """Invalida TODAS as sessões do usuário (todos os dispositivos)."""
+    me = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
+    await sessions.bump_token_version(me)
+    await session.commit()
+    resp = JSONResponse({"ok": True})
+    clear_auth_cookies(resp)
+    return resp
 
 
 async def _plan_list(session: AsyncSession) -> list[dict]:
+    # Sem o plano de teste: o trial vale só na criação da conta (não reativa no trial).
     rows = (await session.execute(select(Plan).order_by(Plan.max_devices, Plan.name))).scalars().all()
-    return [{"id": p.id, "name": p.name, "max_devices": p.max_devices, "max_users": p.max_users} for p in rows]
+    return [
+        {"id": p.id, "name": p.name, "max_devices": p.max_devices, "max_users": p.max_users}
+        for p in rows if not is_trial_plan(p)
+    ]
 
 
 class ReactivateIn(BaseModel):
@@ -103,9 +190,10 @@ async def reactivate(body: ReactivateIn, request: Request, session: AsyncSession
     org = (await session.execute(select(Organization).where(Organization.id == user.org_id))).scalar_one_or_none()
     if org is None:
         raise HTTPException(404, "organização não encontrada")
-    # Trial só se ainda elegível (o prazo é fixado na criação da conta).
-    if is_trial_plan(plan) and not trial_available(org):
-        raise HTTPException(400, "seu período de teste terminou — escolha um plano pago para reativar")
+    # O trial é só da criação: se a ORG já ativou um plano pago, não volta ao trial.
+    cur_plan = (await session.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none() if org.plan_id else None
+    if is_trial_plan(plan) and not trial_available(org, cur_plan):
+        raise HTTPException(400, "o plano de teste vale só na criação da conta — escolha um plano pago para reativar")
 
     org.plan_id = plan.id
     org.plan_canceled = False
@@ -113,7 +201,7 @@ async def reactivate(body: ReactivateIn, request: Request, session: AsyncSession
     # Reativa TODA a empresa (o admin voltou e escolheu um plano).
     await session.execute(update(User).where(User.org_id == org.id).values(is_active=True))
     await session.commit()
-    return {"access_token": create_access_token(user.username), "token_type": "bearer"}
+    return token_response(request, await sessions.issue_token_pair(user))
 
 
 @router.get("/me")
@@ -156,7 +244,9 @@ class AcceptInviteIn(BaseModel):
 
 
 @router.post("/accept-invite")
-async def accept_invite(body: AcceptInviteIn, session: AsyncSession = Depends(get_session)) -> dict:
+async def accept_invite(
+    body: AcceptInviteIn, request: Request, session: AsyncSession = Depends(get_session)
+) -> JSONResponse:
     """Entra no sistema a partir do link do convite (usuário sem senha). Devolve o
     token de acesso; o app então exibe o popup infechável para criar a senha."""
     uid = decode_scoped_token(body.token, "invite")
@@ -167,7 +257,7 @@ async def accept_invite(body: AcceptInviteIn, session: AsyncSession = Depends(ge
         raise HTTPException(400, "convite inválido")
     if user.password_hash:
         raise HTTPException(400, "convite já utilizado — faça login com seu e-mail e senha")
-    return {"access_token": create_access_token(user.username), "token_type": "bearer"}
+    return token_response(request, await sessions.issue_token_pair(user))
 
 
 # === Recuperação de senha (self-service via SMTP global) ===
@@ -208,7 +298,14 @@ async def forgot_password(body: ForgotIn, request: Request, session: AsyncSessio
                 f"Abra este link para escolher uma nova senha:\n{link}\n\n"
                 f"O link expira em {_RESET_MINUTES} minutos. Se não foi você, ignore este e-mail."
             )
-            await integrations.send_email(cfg, decrypt(cfg.smtp_password), user.email, "Redefinição de senha — Aurora Prisma NetTools", text)
+            html = emailtpl.render(
+                heading="Redefinir senha",
+                intro="Recebemos um pedido para redefinir a sua senha na Aurora Prisma NetTools. Clique no botão abaixo para escolher uma nova senha.",
+                button_label="Redefinir minha senha",
+                button_url=link,
+                note=f"O link expira em {_RESET_MINUTES} minutos. Se não foi você, ignore este e-mail.",
+            )
+            await integrations.send_email(cfg, decrypt(cfg.smtp_password), user.email, "Redefinição de senha — Aurora Prisma NetTools", text, html)
     return {"ok": True, "detail": "Se houver uma conta com e-mail cadastrado, enviamos um link de redefinição."}
 
 
@@ -230,6 +327,7 @@ async def reset_password(body: ResetIn, request: Request, session: AsyncSession 
     if user is None:
         raise HTTPException(400, "usuário não encontrado")
     user.password_hash = hash_password(body.new_password)
+    await sessions.bump_token_version(user)
     await session.commit()
     return {"ok": True, "detail": "Senha redefinida. Você já pode entrar."}
 
@@ -314,13 +412,20 @@ async def _validate_registration(session: AsyncSession, cfg, org_name: str, name
 
 
 async def _send_verification_email(cfg, email: str, code: str) -> tuple[bool, str]:
+    minutes = emailverify.CODE_TTL // 60
     text = (
         "Bem-vindo(a) à Aurora Prisma NetTools!\n\n"
         f"Seu código de confirmação é: {code}\n\n"
-        f"Digite-o na tela de cadastro para ativar sua conta. O código expira em {emailverify.CODE_TTL // 60} minutos.\n"
+        f"Digite-o na tela de cadastro para ativar sua conta. O código expira em {minutes} minutos.\n"
         "Se não foi você, ignore este e-mail."
     )
-    return await integrations.send_email(cfg, decrypt(cfg.smtp_password), email, "Seu código de confirmação — Aurora Prisma NetTools", text)
+    html = emailtpl.render(
+        heading="Confirme seu e-mail",
+        intro="Bem-vindo(a) à Aurora Prisma NetTools! Use o código abaixo para ativar sua conta:",
+        code=code,
+        note=f"O código expira em {minutes} minutos. Se não foi você, ignore este e-mail.",
+    )
+    return await integrations.send_email(cfg, decrypt(cfg.smtp_password), email, "Seu código de confirmação — Aurora Prisma NetTools", text, html)
 
 
 @router.post("/register")
@@ -399,7 +504,7 @@ async def complete_registration(body: CompleteRegistrationIn, request: Request, 
         document=(data.get("document") or None), password_hash=data["password_hash"], plan_id=plan_id,
     )
     await emailverify.clear(email)
-    return {"access_token": create_access_token(user.username), "token_type": "bearer"}
+    return token_response(request, await sessions.issue_token_pair(user))
 
 
 class ResendCodeIn(BaseModel):

@@ -1,16 +1,18 @@
 from datetime import UTC, datetime
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cookies import read_access_token
 from app.core.db import get_session
 from app.core.logging import bind_user
-from app.core.security import decode_access_token, hash_api_key
+from app.core.security import hash_api_key
 from app.models import ApiKey, User
+from app.services import sessions
 
-# auto_error=False: sem bearer, deixamos a chave de API (X-API-Key) tentar autenticar.
+# auto_error=False: sem bearer, deixamos cookie ou X-API-Key autenticar.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 _UNAUTH = HTTPException(
@@ -21,22 +23,24 @@ _UNAUTH = HTTPException(
 
 
 async def get_current_user(
+    request: Request,
     token: str | None = Depends(oauth2_scheme),
     x_api_key: str | None = Header(default=None),
     session: AsyncSession = Depends(get_session),
 ) -> User:
-    # 1) JWT (login de usuário)
-    if token:
-        username = decode_access_token(token)
-        if username:
-            user = (await session.execute(select(User).where(User.username == username))).scalar_one_or_none()
+    # 1) JWT — Authorization Bearer OU cookie HttpOnly aurora_at.
+    raw = read_access_token(request, token)
+    if raw:
+        claims = sessions.decode_access_claims(raw)
+        if claims and not await sessions.is_access_denied(claims.jti):
+            user = (await session.execute(select(User).where(User.username == claims.sub))).scalar_one_or_none()
             if user is not None:
-                # Conta desativada depois de logar: o token deixa de valer na hora.
                 if not user.is_active:
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN, detail="Conta desativada"
                     )
-                # Identifica os logs desta requisição (username, nunca e-mail/senha).
+                if int(user.token_version or 0) != claims.ver:
+                    raise _UNAUTH
                 bind_user(user=user.username, user_id=user.id, org_id=user.org_id)
                 return user
 
@@ -52,7 +56,7 @@ async def get_current_user(
             bind_user(user=f"apikey:{key.name}", org_id=key.org_id)
             return User(
                 id=0, username=f"apikey:{key.name}", password_hash="", is_admin=True,
-                is_active=True, role=role, org_id=key.org_id,
+                is_active=True, role=role, org_id=key.org_id, token_version=0,
             )
 
     raise _UNAUTH

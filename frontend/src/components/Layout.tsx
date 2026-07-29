@@ -34,8 +34,11 @@ import {
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useToast } from "@/lib/toast";
+import type { CurrentPlan } from "@/lib/types";
 import { isMaxPlan, isTrial } from "@/lib/plans";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui";
 import { PlanUpgradeDialog } from "@/components/PlanUpgradeDialog";
 import { SetPasswordDialog } from "@/components/SetPasswordDialog";
 import { TrialPromoDialog } from "@/components/TrialPromoDialog";
@@ -101,20 +104,56 @@ const groups: { key: string; items: NavItem[] }[] = [
 ];
 
 export function Layout() {
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const { t } = useTranslation();
+  const toast = useToast();
   const initial = (user?.email ?? "?").charAt(0).toUpperCase();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [trialPromoOpen, setTrialPromoOpen] = useState(false);
+  const [payWatching, setPayWatching] = useState(false);
   const [unread, setUnread] = useState(0);
   // Drawer da sidebar no mobile (<lg). Fecha ao trocar de rota.
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   useEffect(() => setSidebarOpen(false), [location.pathname]);
 
-  // Promoção de planos para admin em conta trial. Trial VENCIDO → popup INFECHÁVEL
-  // (só escolher um plano pago ou sair). Trial ATIVO → popup dispensável, uma vez
-  // por sessão (sessionStorage evita teimar ao navegar/refresh).
+  // Payment watcher: ao voltar do checkout, fica OBSERVANDO o pagamento — consulta
+  // /plans/current (que reconcilia ao vivo com o hub) a cada 5s até o plano ativar,
+  // então avisa e atualiza. Cobre o caso do usuário estar com o app aberto; o poller
+  // do backend cobre o resto.
+  useEffect(() => {
+    const pending = localStorage.getItem("aurora_pay_pending");
+    if (!pending || !user?.is_admin) return;
+    const planId = Number(pending);
+    setPayWatching(true);
+    let tries = 0;
+    const iv = window.setInterval(async () => {
+      tries++;
+      try {
+        const cur = await api.get<CurrentPlan>("/plans/current"); // reconcilia ao vivo
+        if (cur.plan_id === planId) {
+          window.clearInterval(iv);
+          localStorage.removeItem("aurora_pay_pending");
+          setPayWatching(false);
+          toast.success(t("plans:paymentConfirmed"));
+          void refresh(); // atualiza o plano no menu
+          return;
+        }
+      } catch { /* ignora — tenta de novo */ }
+      if (tries >= 48) { // ~4 min
+        window.clearInterval(iv);
+        localStorage.removeItem("aurora_pay_pending");
+        setPayWatching(false);
+      }
+    }, 5000);
+    return () => window.clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Conta FREE (trial) do admin: mostra os planos disponíveis AO LOGAR. Trial
+  // VENCIDO → popup INFECHÁVEL (só escolher um plano pago ou sair). Trial ATIVO →
+  // popup dispensável, aberto a cada login (uma vez por sessão; o logout limpa a
+  // marca, então cada novo login reabre — mas navegar no app não reabre).
   const TRIAL_PROMO_KEY = "aurora_trial_promo_seen";
   const isTrialAdmin = !!user?.is_admin && user.role !== "master" && !!user.plan && isTrial(user.plan);
   const trialExpired = isTrialAdmin && !!user.plan_expired;
@@ -296,6 +335,13 @@ export function Layout() {
       )}
       {/* Convidado sem senha: popup infechável para criar a senha. */}
       {user?.must_set_password && <SetPasswordDialog />}
+      {/* Observando o pagamento (após o checkout) até a confirmação do hub. */}
+      {payWatching && (
+        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2.5 rounded-xl border border-border bg-surface px-4 py-3 shadow-lg">
+          <Spinner className="h-4 w-4" />
+          <span className="text-sm font-medium">{t("plans:paymentWatching")}</span>
+        </div>
+      )}
     </div>
   );
 }

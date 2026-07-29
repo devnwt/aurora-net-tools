@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
-import { api, ApiError, tokenStore } from "@/lib/api";
+import { ArrowRight, Check, X } from "lucide-react";
+import { api, ApiError } from "@/lib/api";
 import type { PlanOption } from "@/lib/types";
 import { isTrial } from "@/lib/plans";
 import { Button, Input, Spinner } from "@/components/ui";
 import { AuthShell } from "@/components/AuthShell";
-import { PlanShowcaseCard } from "@/components/PlanShowcaseCard";
 import { PASSWORD_HINT_KEY, passwordError } from "@/lib/password";
 import { maskCpfCnpj } from "@/lib/masks";
 import { isValidCpfCnpj } from "@/lib/documents";
@@ -114,7 +113,8 @@ function OtpInput({ value, onChange, disabled, error }: { value: string; onChang
   );
 }
 
-/** Cadastro em 3 passos: dados → verificação do e-mail (código) → escolha do plano. */
+/** Cadastro em 2 passos: dados → código do e-mail. Ao confirmar o código, a conta
+ *  é criada direto no TRIAL e o usuário vai para a home (o popup de planos sobe lá). */
 export function Register() {
   const { t } = useTranslation();
   const [f, setF] = useState<Form>({ org_name: "", name: "", email: "", document: "", password: "" });
@@ -122,8 +122,7 @@ export function Register() {
   const [err, setErr] = useState("");
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
-  const [step, setStep] = useState<"form" | "verify" | "plan">("form");
-  const [usedCode, setUsedCode] = useState(false);
+  const [step, setStep] = useState<"form" | "verify">("form");
   const [codeTtl, setCodeTtl] = useState(120); // validade do código (seg), vinda do servidor
 
   useEffect(() => {
@@ -143,20 +142,29 @@ export function Register() {
   };
   const valid = !!f.org_name && !!f.name.trim() && EMAIL_RE.test(f.email) && docOk && !pwErr && pw2 === f.password;
 
-  // Passo 1: valida os dados e dispara o e-mail com o código (a conta só é criada
-  // no passo do plano). Se o servidor não exigir código, pula direto ao plano.
+  // Cria a conta no plano TRIAL (grátis por 7 dias) e vai direto para a home — o
+  // popup de planos sobe lá ao logar. Não há passo de escolher plano no cadastro.
+  async function finish() {
+    const pl = await api.get<PublicPlans>("/auth/plans");
+    const trial = pl.plans.find((p) => isTrial(p.name));
+    await api.post("/auth/complete-registration", { email: f.email, plan_id: trial?.id ?? null });
+    window.location.assign("/"); // cookie HttpOnly já autenticado
+  }
+
+  // Passo 1: valida os dados e dispara o código por e-mail. Se o servidor não exigir
+  // código (sem SMTP), já cria a conta no trial e entra.
   async function next(e: React.FormEvent) {
     e.preventDefault();
     if (!valid) return;
     setErr("");
     setBusy(true);
     try {
-      const r = await api.post<{ verification?: boolean; email?: string; expires_in?: number }>("/auth/register", {
+      const r = await api.post<{ verification?: boolean; expires_in?: number }>("/auth/register", {
         org_name: f.org_name, name: f.name.trim(), email: f.email, document: f.document, password: f.password,
       });
-      setUsedCode(!!r.verification);
       setCodeTtl(r.expires_in ?? 120);
-      setStep(r.verification ? "verify" : "plan");
+      if (r.verification) setStep("verify");
+      else await finish();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : String(e));
     } finally {
@@ -165,9 +173,7 @@ export function Register() {
   }
 
   if (step === "verify")
-    return <VerifyCode email={f.email} expiresIn={codeTtl} onBack={() => setStep("form")} onVerified={() => setStep("plan")} />;
-  if (step === "plan")
-    return <ChoosePlan email={f.email} onBack={() => setStep(usedCode ? "verify" : "form")} />;
+    return <VerifyCode email={f.email} expiresIn={codeTtl} onBack={() => setStep("form")} onVerified={finish} />;
 
   return (
     <AuthShell subtitle={t("auth:subtitle.register")}>
@@ -216,9 +222,9 @@ export function Register() {
   );
 }
 
-/** Passo 2: confirma o e-mail com o código de 6 dígitos (OTP) → segue para o plano.
- * O código tem validade (contador regressivo); ao expirar, reenviar gera outro. */
-function VerifyCode({ email, expiresIn, onBack, onVerified }: { email: string; expiresIn: number; onBack: () => void; onVerified: () => void }) {
+/** Passo 2: confirma o e-mail com o código de 6 dígitos (OTP). Ao confirmar, cria a
+ * conta no trial e vai para a home. O código tem validade (contador regressivo). */
+function VerifyCode({ email, expiresIn, onBack, onVerified }: { email: string; expiresIn: number; onBack: () => void; onVerified: () => Promise<void> }) {
   const { t } = useTranslation();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -241,7 +247,7 @@ function VerifyCode({ email, expiresIn, onBack, onVerified }: { email: string; e
     setErr("");
     try {
       await api.post("/auth/verify-email", { email, code });
-      onVerified(); // e-mail verificado → escolha do plano
+      await onVerified(); // e-mail verificado → cria a conta no trial e vai pra home
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : String(e));
       setBusy(false);
@@ -282,92 +288,6 @@ function VerifyCode({ email, expiresIn, onBack, onVerified }: { email: string; e
           <button type="button" onClick={resend} className="text-primary hover:underline cursor-pointer">{t("auth:register.verify.resend")}</button>
         </div>
       </form>
-    </AuthShell>
-  );
-}
-
-/** Passo 3: escolha OBRIGATÓRIA de plano (Trial pré-selecionado) → cria a conta e loga. */
-function ChoosePlan({ email, onBack }: { email: string; onBack: () => void }) {
-  const { t } = useTranslation();
-  const [data, setData] = useState<PublicPlans | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-
-  useEffect(() => {
-    api.get<PublicPlans>("/auth/plans")
-      .then((d) => {
-        setData(d);
-        // Default: o plano de teste; senão o default do Master; senão o primeiro.
-        const trial = d.plans.find((p) => isTrial(p.name));
-        setSelected(trial?.id ?? d.default_plan_id ?? d.plans[0]?.id ?? null);
-      })
-      .catch(() => setData({ plans: [], default_plan_id: null }));
-  }, []);
-
-  const plans = data?.plans ?? [];
-  const reserveRibbon = plans.some((p) => isTrial(p.name));
-  const topId = plans.filter((p) => !isTrial(p.name)).reduce<PlanOption | null>((m, p) => (!m || p.max_devices > m.max_devices ? p : m), null)?.id;
-  const selectedPlan = plans.find((p) => p.id === selected) ?? null;
-  const selectedIsTrial = selectedPlan != null && isTrial(selectedPlan.name);
-
-  // Com o e-mail já verificado, aplica o plano → cria a conta e JÁ LOGA (guarda o token).
-  async function create() {
-    if (selected == null) return; // escolha obrigatória
-    setBusy(true);
-    setErr("");
-    try {
-      const r = await api.post<{ access_token: string }>("/auth/complete-registration", { email, plan_id: selected });
-      tokenStore.set(r.access_token);
-      window.location.assign("/"); // recarrega já autenticado
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : String(e));
-      setBusy(false);
-    }
-  }
-
-  return (
-    <AuthShell subtitle={t("auth:register.choose.shellSubtitle")} wide>
-      <div className="auth-step-in rounded-2xl border border-white/10 bg-black/30 p-6 backdrop-blur-md sm:p-8">
-        <div className="mb-6 text-center">
-          <h2 className="text-2xl font-semibold text-white">{t("auth:register.choose.title")}</h2>
-          <p className="mt-1 text-sm text-white/60">{t("auth:register.choose.subtitle")}</p>
-        </div>
-
-        {data === null ? (
-          <div className="flex justify-center py-10"><Spinner className="h-6 w-6" /></div>
-        ) : (
-          <div className="grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {plans.map((p, i) => (
-              <PlanShowcaseCard
-                key={p.id}
-                plan={p}
-                index={i}
-                recommended={p.id === topId}
-                yourPlan={false}
-                reserveRibbon={reserveRibbon}
-                maxFeatures={5}
-                selected={selected === p.id}
-                onSelect={() => setSelected(p.id)}
-              />
-            ))}
-          </div>
-        )}
-
-        {selectedIsTrial && <p className="mt-4 text-center text-xs text-accent">{t("auth:register.choose.trialNote")}</p>}
-        {err && <p className="mt-4 text-center text-sm text-danger">{err}</p>}
-
-        <div className="mt-6 flex items-center justify-center gap-3">
-          <Button variant="ghost" onClick={onBack} disabled={busy}><ArrowLeft className="h-4 w-4" /> {t("auth:register.choose.back")}</Button>
-          <Button onClick={create} disabled={busy || selected == null} className="px-6">
-            {busy
-              ? t("auth:register.choose.creating")
-              : <>{selectedIsTrial
-                  ? t("auth:register.choose.proceedFree")
-                  : t("auth:register.choose.proceed", { name: selectedPlan?.name ?? "" })} <ArrowRight className="h-4 w-4" /></>}
-          </Button>
-        </div>
-      </div>
     </AuthShell>
   );
 }

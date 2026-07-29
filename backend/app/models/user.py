@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, ForeignKey, String, Text, text
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -18,6 +18,8 @@ class User(Base, TimestampMixin):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     # Conta ativa: inativa (False) não consegue autenticar (login e token bloqueados).
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"), nullable=False)
+    # Incrementado em logout-all / reset / troca de senha / desativação → invalida JWTs.
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"), nullable=False)
     # Telefone de contato (armazenado como digitado/formatado; opcional).
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     # Documento fiscal do titular (CPF ou CNPJ), armazenado só com dígitos.

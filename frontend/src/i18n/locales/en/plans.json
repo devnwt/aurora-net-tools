@@ -54,5 +54,11 @@
   "trialPromoLater": "Not now",
   "trialExpiredTitle": "Your trial has ended",
   "trialExpiredSubtitle": "Choose a paid plan to keep creating devices and using all features.",
-  "trialExpiredLogout": "Log out"
+  "trialExpiredLogout": "Log out",
+  "perMonth": "/mo",
+  "free": "Free",
+  "freePeriod": "for 1 week",
+  "checkoutRedirectHint": "You'll be taken to the secure payment page.",
+  "paymentWatching": "Confirming your payment…",
+  "paymentConfirmed": "Payment confirmed! Plan activated."
 }
