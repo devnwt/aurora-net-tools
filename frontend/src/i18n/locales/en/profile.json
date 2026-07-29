@@ -1,0 +1,36 @@
+{
+  "title": "My Profile",
+  "email": "Email (login)",
+  "emailLocked": "Your email is your login and cannot be changed.",
+  "phone": "Phone",
+  "document": "Tax ID (CPF / CNPJ)",
+  "documentPlaceholder": "CPF or CNPJ",
+  "documentHint": "Account holder's tax ID. Required to complete the plan checkout.",
+  "photoHint": "PNG or JPG. Square recommended.",
+  "changePhoto": "Change photo",
+  "removePhoto": "Remove photo",
+  "photoUpdated": "Photo updated.",
+  "photoRemoved": "Photo removed.",
+  "photoFailed": "Could not process the image.",
+  "saved": "Profile updated.",
+  "saveFailed": "Could not save",
+  "password": {
+    "title": "Change password",
+    "current": "Current password",
+    "new": "New password",
+    "confirm": "Repeat new password",
+    "submit": "Change password",
+    "mismatch": "Passwords do not match.",
+    "changed": "Password changed.",
+    "failed": "Could not change the password"
+  },
+  "setPassword": {
+    "title": "Create your password",
+    "subtitle": "Set a password to access your account.",
+    "new": "New password",
+    "confirm": "Repeat password",
+    "mismatch": "Passwords do not match.",
+    "submit": "Create password and continue",
+    "logout": "Sign out"
+  }
+}

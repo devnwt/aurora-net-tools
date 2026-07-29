@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Building2, Plus, Users as UsersIcon } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useToast } from "@/lib/toast";
 import type { AppUser, CurrentPlan, OrgMeta } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
@@ -10,7 +11,6 @@ import { Badge, Button, EmptyState, Input, Modal, Select, Spinner } from "@/comp
 import { MaskedInput } from "@/components/MaskedInput";
 import { ConfirmSwitch } from "@/components/ConfirmSwitch";
 import { useConfirm } from "@/lib/confirm";
-import { PASSWORD_HINT_KEY, passwordError } from "@/lib/password";
 import { cn } from "@/lib/utils";
 
 type Role = "operator" | "admin" | "master";
@@ -20,12 +20,13 @@ const roleOf = (u: AppUser): Role => (u.role as Role) ?? (u.is_admin ? "admin" :
 type CompanyKey = number | "system";
 const companyKey = (u: AppUser): CompanyKey => u.org_id ?? "system";
 
-type UserForm = { username: string; email: string; phone: string; password: string; role: Role; is_active: boolean };
-const EMPTY_FORM: UserForm = { username: "", email: "", phone: "", password: "", role: "operator", is_active: true };
+type UserForm = { email: string; phone: string; role: Role; is_active: boolean };
+const EMPTY_FORM: UserForm = { email: "", phone: "", role: "operator", is_active: true };
 
 export function Users() {
   const { t } = useTranslation();
   const { alert } = useConfirm();
+  const toast = useToast();
   const { user: me } = useAuth();
   const isMaster = me?.role === "master";
   const [items, setItems] = useState<AppUser[]>([]);
@@ -91,7 +92,7 @@ export function Users() {
   }
   function openEdit(u: AppUser) {
     setEditing(u);
-    setForm({ username: u.username, email: u.email ?? "", phone: u.phone ?? "", password: "", role: roleOf(u), is_active: u.is_active ?? true });
+    setForm({ email: u.email ?? "", phone: u.phone ?? "", role: roleOf(u), is_active: u.is_active ?? true });
     setErr("");
     setOpen(true);
   }
@@ -99,25 +100,23 @@ export function Users() {
   async function save() {
     setSaving(true);
     setErr("");
-    // Valida a política de senha (criar: obrigatória; editar: só se for trocar).
-    if (!editing || form.password) {
-      const pe = passwordError(form.password);
-      if (pe) { setErr(t(pe)); setSaving(false); return; }
-    }
     try {
       if (editing) {
+        // Sem senha aqui: cada usuário gerencia a própria senha. E-mail (login) não muda.
         const body: Record<string, unknown> = { role: form.role };
-        if (form.password) body.password = form.password;
-        // Só envia e-mail se preenchido e alterado (evita rejeitar contas legadas sem e-mail).
-        if (form.email && form.email !== (editing.email ?? "")) body.email = form.email;
         if (form.phone !== (editing.phone ?? "")) body.phone = form.phone;
         if (form.is_active !== (editing.is_active ?? true)) body.is_active = form.is_active;
         await api.patch(`/users/${editing.id}`, body);
+        setOpen(false);
+        load();
       } else {
-        await api.post("/users", { username: form.username, email: form.email, phone: form.phone, password: form.password, role: form.role, is_active: form.is_active });
+        // Criação SEM senha → convite por e-mail para o usuário definir a própria senha.
+        // Telefone fica de fora: o usuário preenche o seu no Meu Perfil (Settings).
+        await api.post("/users", { email: form.email, role: form.role, is_active: form.is_active });
+        setOpen(false);
+        load();
+        toast.success(t("access:users.inviteSent", { email: form.email }));
       }
-      setOpen(false);
-      load();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : String(e));
     } finally {
@@ -140,16 +139,15 @@ export function Users() {
   const roleOptions: Role[] = isMaster ? ["operator", "admin", "master"] : ["operator", "admin"];
 
   const renderTable = (users: AppUser[]) => (
-    <Table head={<><Th>{t("common:labels.username")}</Th><Th>{t("access:users.columns.email")}</Th><Th>{t("access:users.columns.phone")}</Th><Th>{t("access:users.columns.role")}</Th><Th>{t("access:users.columns.status")}</Th><Th className="text-right">{t("common:labels.actions")}</Th></>}>
+    <Table head={<><Th>{t("access:users.columns.email")}</Th><Th>{t("access:users.columns.phone")}</Th><Th>{t("access:users.columns.role")}</Th><Th>{t("access:users.columns.status")}</Th><Th className="text-right">{t("common:labels.actions")}</Th></>}>
       {users.map((u) => {
         const r = roleOf(u);
         const active = u.is_active ?? true;
         return (
           <tr key={u.id} className="hover:bg-surface-2 transition-colors duration-200">
             <Td className="font-medium">
-              {u.username} {u.id === me?.id && <Badge tone="muted">{t("access:users.you")}</Badge>}
+              {u.email || <span className="text-danger/70">{t("access:users.noEmail")}</span>} {u.id === me?.id && <Badge tone="muted">{t("access:users.you")}</Badge>}
             </Td>
-            <Td className="text-muted">{u.email || <span className="text-danger/70">{t("access:users.noEmail")}</span>}</Td>
             <Td className="font-mono text-muted">{u.phone || "—"}</Td>
             <Td><Badge tone={r === "master" ? "accent" : r === "admin" ? "primary" : "muted"}>{t(`common:roles.${r}`)}</Badge></Td>
             <Td>
@@ -159,7 +157,7 @@ export function Users() {
                   disabled={u.id === me?.id}
                   ariaLabel={t("access:users.toggle.aria")}
                   confirmTitle={(next) => t(next ? "access:users.toggle.activateTitle" : "access:users.toggle.deactivateTitle")}
-                  confirmMessage={(next) => t(next ? "access:users.toggle.activateMsg" : "access:users.toggle.deactivateMsg", { name: u.username })}
+                  confirmMessage={(next) => t(next ? "access:users.toggle.activateMsg" : "access:users.toggle.deactivateMsg", { name: u.email ?? "" })}
                   onToggle={(next) => toggleActive(u, next)}
                 />
                 <span className={cn("text-xs", active ? "text-muted" : "text-danger")}>
@@ -227,33 +225,33 @@ export function Users() {
 
       {open && (
         <Modal
-          title={editing ? t("access:users.editTitle", { name: editing.username }) : t("access:users.add")}
+          title={editing ? t("access:users.editTitle", { name: editing.email ?? "" }) : t("access:users.add")}
           onClose={() => setOpen(false)}
           footer={
             <>
               <Button variant="ghost" onClick={() => setOpen(false)}>{t("common:actions.cancel")}</Button>
-              <Button onClick={save} disabled={saving || (!editing && (!form.username || !form.email || !form.password))}>
-                {saving ? t("common:actions.saving") : editing ? t("common:actions.save") : t("common:actions.create")}
+              <Button onClick={save} disabled={saving || (!editing && !form.email)}>
+                {saving ? t("common:actions.saving") : editing ? t("common:actions.save") : t("access:users.sendInvite")}
               </Button>
             </>
           }
         >
           <div className="space-y-3">
-            <Fld label={t("common:labels.username")}>
-              <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} disabled={!!editing} autoFocus={!editing} />
-            </Fld>
             <Fld label={t("access:users.emailLabel")}>
-              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder={t("access:users.emailPlaceholder")} />
+              {/* E-mail é o login: editável só na criação. */}
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder={t("access:users.emailPlaceholder")} disabled={!!editing} autoFocus={!editing} />
             </Fld>
-            <Fld label={t("access:users.phoneLabel")}>
-              <MaskedInput mask="phone" value={form.phone} onValueChange={(v) => setForm({ ...form, phone: v })} placeholder={t("access:users.phonePlaceholder")} className="font-mono" />
-            </Fld>
-            <Fld label={editing ? t("access:users.newPasswordLabel") : t("access:users.passwordLabel")}>
-              <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={editing ? t("access:users.passwordKeepPlaceholder") : ""} />
-              {form.password
-                ? passwordError(form.password) && <p className="mt-1 text-[11px] text-danger">{t(PASSWORD_HINT_KEY)}</p>
-                : !editing && <p className="mt-1 text-[11px] text-muted">{t(PASSWORD_HINT_KEY)}</p>}
-            </Fld>
+            {/* Telefone só na edição: na criação o usuário preenche o seu no Meu Perfil. */}
+            {editing && (
+              <Fld label={t("access:users.phoneLabel")}>
+                <MaskedInput mask="phone" value={form.phone} onValueChange={(v) => setForm({ ...form, phone: v })} placeholder={t("access:users.phonePlaceholder")} className="font-mono" />
+              </Fld>
+            )}
+            {!editing && (
+              <p className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-[11px] text-muted">
+                {t("access:users.inviteHint")}
+              </p>
+            )}
             <Fld label={t("access:users.roleLabel")}>
               <Select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>
                 {roleOptions.map((r) => <option key={r} value={r}>{t(`common:roles.${r}`)}</option>)}

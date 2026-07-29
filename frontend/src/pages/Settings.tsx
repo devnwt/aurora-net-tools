@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
-import { AlertTriangle, CalendarClock, Check, CreditCard, Languages, RefreshCw, RotateCcw, Save, Server, Trash2, XCircle } from "lucide-react";
+import { AlertTriangle, CalendarClock, Camera, Check, CreditCard, KeyRound, Languages, RefreshCw, RotateCcw, Save, Server, Trash2, XCircle } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/lib/toast";
@@ -12,6 +12,9 @@ import { isSupportedLocale, type SupportedLocale } from "@/i18n/config";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge, Button, Card, Input, Modal, Select, Spinner, Toggle } from "@/components/ui";
 import { MaskedInput } from "@/components/MaskedInput";
+import { maskCpfCnpj } from "@/lib/masks";
+import { normalizeDoc, isValidCpfCnpj } from "@/lib/documents";
+import { PASSWORD_HINT_KEY, passwordError } from "@/lib/password";
 import { cn } from "@/lib/utils";
 import i18n from "@/i18n";
 
@@ -24,8 +27,8 @@ interface Info {
   counts: { devices: number; statuses: number; samples: number };
 }
 
-type Tab = "preferences" | "home" | "ftp" | "plans" | "danger";
-const TABS: Tab[] = ["preferences", "home", "ftp", "plans", "danger"];
+type Tab = "profile" | "preferences" | "home" | "ftp" | "plans" | "danger";
+const TABS: Tab[] = ["profile", "preferences", "home", "ftp", "plans", "danger"];
 
 export function Settings() {
   const { t } = useTranslation();
@@ -36,11 +39,11 @@ export function Settings() {
   const isCompanyAdmin = user?.role === "admin";
   const tabs = TABS.filter((k) => (k !== "plans" || isAdmin) && (k !== "danger" || isCompanyAdmin));
   // Aba controlada pela URL (/settings?tab=plans) — deep-link e persiste no refresh.
-  // Aba inválida ou sem permissão (operator em ?tab=plans) cai em "preferences".
+  // Sem param, ou aba inválida/sem permissão (operator em ?tab=plans), cai em "profile" (Meu Perfil).
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get("tab") as Tab | null;
-  const tab: Tab = rawTab && tabs.includes(rawTab) ? rawTab : "preferences";
-  const setTab = (next: Tab) => setSearchParams(next === "preferences" ? {} : { tab: next }, { replace: true });
+  const tab: Tab = rawTab && tabs.includes(rawTab) ? rawTab : "profile";
+  const setTab = (next: Tab) => setSearchParams(next === "profile" ? {} : { tab: next }, { replace: true });
   return (
     <div>
       <PageHeader title={t("settings:title")} subtitle={t("settings:subtitle")} />
@@ -64,6 +67,7 @@ export function Settings() {
           </button>
         ))}
       </div>
+      {tab === "profile" && <ProfileTab />}
       {tab === "preferences" && <PreferencesTab />}
       {tab === "home" && <HomeTab />}
       {tab === "ftp" && <FtpTab />}
@@ -580,5 +584,191 @@ function DeleteOrgModal({ org, onClose }: { org: OrgSummary; onClose: () => void
         </div>
       </div>
     </Modal>
+  );
+}
+
+// === Meu Perfil: e-mail (login, não editável), telefone, foto e troca de senha ===
+
+/** Redimensiona a imagem para um avatar pequeno (data URL JPEG). */
+function resizeImage(file: File, max: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("canvas"));
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = reject;
+      img.src = reader.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function ProfileTab() {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const { user, refresh } = useAuth();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [phone, setPhone] = useState(user?.phone ?? "");
+  const [doc, setDoc] = useState(maskCpfCnpj(user?.document ?? ""));
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [oldPw, setOldPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [newPw2, setNewPw2] = useState("");
+  const [savingPw, setSavingPw] = useState(false);
+
+  useEffect(() => { setPhone(user?.phone ?? ""); }, [user]);
+  useEffect(() => { setDoc(maskCpfCnpj(user?.document ?? "")); }, [user]);
+
+  async function patchProfile(patch: Record<string, unknown>, okMsg: string) {
+    setSavingInfo(true);
+    try {
+      await api.patch("/profile", patch);
+      await refresh();
+      toast.success(okMsg);
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e : t("profile:saveFailed"), { title: t("profile:saveFailed") });
+    } finally {
+      setSavingInfo(false);
+    }
+  }
+
+  async function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const dataUrl = await resizeImage(file, 256);
+      await patchProfile({ photo: dataUrl }, t("profile:photoUpdated"));
+    } catch {
+      toast.error(t("profile:photoFailed"), { title: t("profile:photoFailed") });
+    }
+  }
+
+  async function changePassword() {
+    const pe = passwordError(newPw);
+    if (pe) { toast.error(t(pe)); return; }
+    if (newPw !== newPw2) { toast.error(t("profile:password.mismatch")); return; }
+    setSavingPw(true);
+    try {
+      await api.post("/profile/password", { old_password: oldPw, new_password: newPw });
+      setOldPw(""); setNewPw(""); setNewPw2("");
+      toast.success(t("profile:password.changed"));
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e : t("profile:password.failed"), { title: t("profile:password.failed") });
+    } finally {
+      setSavingPw(false);
+    }
+  }
+
+  const initial = (user?.email ?? "?").charAt(0).toUpperCase();
+  const phoneChanged = phone !== (user?.phone ?? "");
+  const docNorm = normalizeDoc(doc);
+  const docChanged = docNorm !== (user?.document ?? "");
+  // Vazio é permitido (só será exigido no checkout); senão precisa ser CPF/CNPJ válido.
+  const docValid = docNorm.length === 0 || isValidCpfCnpj(docNorm);
+
+  const role = user?.role ?? "operator";
+
+  return (
+    <div className="mx-auto max-w-xl space-y-5">
+      {/* Cartão do perfil — avatar centralizado + identidade */}
+      <Card>
+        <div className="flex flex-col items-center text-center">
+          <div className="relative">
+            {user?.photo ? (
+              <img src={user.photo} alt="" className="h-24 w-24 rounded-full object-cover ring-2 ring-border" />
+            ) : (
+              <div className="grid h-24 w-24 place-items-center rounded-full bg-primary/15 text-3xl font-semibold text-primary ring-2 ring-border">{initial}</div>
+            )}
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={savingInfo}
+              className="absolute bottom-0 right-0 grid h-8 w-8 place-items-center rounded-full border border-border bg-surface-2 text-muted shadow-sm hover:text-primary cursor-pointer"
+              aria-label={t("profile:changePhoto")}
+            >
+              <Camera className="h-4 w-4" />
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickPhoto} />
+          </div>
+          <p className="mt-3 max-w-full truncate text-base font-semibold">{user?.email}</p>
+          <Badge tone={role === "master" ? "accent" : role === "admin" ? "primary" : "muted"}>{t(`common:roles.${role}`)}</Badge>
+          <p className="mt-2 text-[11px] text-muted">{t("profile:photoHint")}</p>
+          {user?.photo && (
+            <button type="button" onClick={() => patchProfile({ photo: "" }, t("profile:photoRemoved"))} className="mt-0.5 text-[11px] text-danger/80 hover:text-danger cursor-pointer">
+              {t("profile:removePhoto")}
+            </button>
+          )}
+        </div>
+
+        {/* E-mail (login, travado) + telefone */}
+        <div className="mt-6 space-y-4 border-t border-border pt-5">
+          <div className="space-y-1">
+            <label className="text-xs text-muted">{t("profile:email")}</label>
+            <Input value={user?.email ?? ""} disabled />
+            <p className="text-[11px] text-muted">{t("profile:emailLocked")}</p>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted">{t("profile:phone")}</label>
+            <div className="flex gap-2">
+              <MaskedInput mask="phone" value={phone} onValueChange={setPhone} className="flex-1 font-mono" />
+              <Button variant="ghost" onClick={() => patchProfile({ phone }, t("profile:saved"))} disabled={savingInfo || !phoneChanged}>
+                <Save className="h-4 w-4" /> {t("common:actions.save")}
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted">{t("profile:document")}</label>
+            <div className="flex gap-2">
+              <MaskedInput mask="document" value={doc} onValueChange={setDoc} placeholder={t("profile:documentPlaceholder")}
+                className={cn("flex-1 font-mono", doc && !docValid && "border-danger")} />
+              <Button variant="ghost" onClick={() => patchProfile({ document: doc }, t("profile:saved"))} disabled={savingInfo || !docChanged || !docValid}>
+                <Save className="h-4 w-4" /> {t("common:actions.save")}
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted">{t("profile:documentHint")}</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Cartão de senha (exige a senha atual) */}
+      <Card>
+        <div className="mb-4 flex items-center gap-2">
+          <KeyRound className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-semibold">{t("profile:password.title")}</h2>
+        </div>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <label className="text-xs text-muted">{t("profile:password.current")}</label>
+            <Input type="password" autoComplete="current-password" value={oldPw} onChange={(e) => setOldPw(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted">{t("profile:password.new")}</label>
+            <Input type="password" autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)}
+              className={cn(newPw && (passwordError(newPw) ? "border-danger" : "border-emerald-500"))} />
+            <p className={cn("text-[11px]", newPw && passwordError(newPw) ? "text-danger" : newPw ? "text-emerald-500" : "text-muted")}>{t(PASSWORD_HINT_KEY)}</p>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted">{t("profile:password.confirm")}</label>
+            <Input type="password" autoComplete="new-password" value={newPw2} onChange={(e) => setNewPw2(e.target.value)}
+              className={cn(newPw2 && (newPw2 === newPw ? "border-emerald-500" : "border-danger"))} />
+            {newPw2 && newPw2 !== newPw && <p className="text-[11px] text-danger">{t("profile:password.mismatch")}</p>}
+          </div>
+          <Button className="w-full justify-center" onClick={changePassword} disabled={savingPw || !oldPw || !newPw || newPw !== newPw2 || !!passwordError(newPw)}>
+            {savingPw ? t("common:actions.saving") : t("profile:password.submit")}
+          </Button>
+        </div>
+      </Card>
+    </div>
   );
 }

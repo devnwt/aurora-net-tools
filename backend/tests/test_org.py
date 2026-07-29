@@ -14,7 +14,8 @@ from app.models.enums import DeviceType
 
 
 async def _login(client, username: str, password: str) -> str:
-    res = await client.post("/auth/login", data={"username": username, "password": password})
+    # Login é por e-mail; os usuários de teste usam {username}@t.test.
+    res = await client.post("/auth/login", data={"username": f"{username}@t.test", "password": password})
     assert res.status_code == 200, res.text
     return res.json()["access_token"]
 
@@ -35,11 +36,11 @@ async def two_orgs(client, _schema):
         plan = await goc(s, Plan, Plan.name == "DZPlan", name="DZPlan", max_devices=10, max_users=5)
         a = await goc(s, Organization, Organization.name == "DZ_Acme", name="DZ_Acme", plan_id=plan.id)
         b = await goc(s, Organization, Organization.name == "DZ_Other", name="DZ_Other", plan_id=plan.id)
-        await goc(s, User, User.username == "dz_admin", username="dz_admin", email="dz_a@x.test",
+        await goc(s, User, User.username == "dz_admin", username="dz_admin", email="dz_admin@t.test",
                   password_hash=hash_password("senha123"), role="admin", is_admin=True, org_id=a.id)
-        await goc(s, User, User.username == "dz_op", username="dz_op", email="dz_o@x.test",
+        await goc(s, User, User.username == "dz_op", username="dz_op", email="dz_op@t.test",
                   password_hash=hash_password("senha123"), role="operator", org_id=a.id)
-        await goc(s, User, User.username == "dz_badmin", username="dz_badmin", email="dz_b@x.test",
+        await goc(s, User, User.username == "dz_badmin", username="dz_badmin", email="dz_badmin@t.test",
                   password_hash=hash_password("senha123"), role="admin", is_admin=True, org_id=b.id)
         await goc(s, Device, Device.name == "dz_dev_a", name="dz_dev_a", ip="10.0.0.1",
                   device_type=DeviceType.routeros, org_id=a.id)

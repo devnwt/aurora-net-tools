@@ -41,7 +41,8 @@ async def test_requires_auth(client):
 async def test_login_and_me(auth_client):
     r = await auth_client.get("/auth/me")
     assert r.status_code == 200
-    assert r.json()["username"] == "admin"
+    # O e-mail é o identificador (sem username exposto).
+    assert r.json()["email"] == "admin@t.test"
 
 
 # === Credenciais: mascaramento + cifragem em repouso (§9/§11) ===
@@ -168,13 +169,13 @@ async def test_inactive_user_cannot_login(auth_client, client):
         "username": "u_inactive", "email": "u_inactive@example.test", "password": "Senha12345", "role": "operator",
     })).json()
 
-    # Ativo: loga normalmente.
-    ok = await client.post("/auth/login", data={"username": "u_inactive", "password": "Senha12345"})
+    # Ativo: loga normalmente (login é por e-mail).
+    ok = await client.post("/auth/login", data={"username": "u_inactive@example.test", "password": "Senha12345"})
     assert ok.status_code == 200
 
     # Desativa e o login passa a ser 403.
     assert (await auth_client.patch(f"/users/{created['id']}", json={"is_active": False})).status_code == 200
-    denied = await client.post("/auth/login", data={"username": "u_inactive", "password": "Senha12345"})
+    denied = await client.post("/auth/login", data={"username": "u_inactive@example.test", "password": "Senha12345"})
     assert denied.status_code == 403
 
     # Token emitido antes também para de valer.

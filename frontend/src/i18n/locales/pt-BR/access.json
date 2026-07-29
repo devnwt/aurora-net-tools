@@ -46,7 +46,10 @@
       "activateMsg": "Deseja realmente ativar o usuário \"{{name}}\"? Ele poderá fazer login novamente.",
       "deactivateMsg": "Deseja realmente desativar o usuário \"{{name}}\"? Ele não conseguirá mais fazer login (nenhum dado é perdido).",
       "aria": "Ativar/desativar usuário"
-    }
+    },
+    "inviteSent": "Convite enviado para {{email}}.",
+    "inviteHint": "O usuário receberá um e-mail para criar a própria senha.",
+    "sendInvite": "Enviar convite"
   },
   "apikeys": {
     "title": "Chaves de API",

@@ -47,5 +47,12 @@
   "upgradeSubtitle": "Elige un plan para aplicar ahora.",
   "upgradeApplied": "Plan actualizado con éxito.",
   "upgradeApplying": "Aplicando…",
-  "upgradeFailed": "No se pudo actualizar el plan."
+  "upgradeFailed": "No se pudo actualizar el plan.",
+  "checkoutRedirect": "Redirigiendo al pago…",
+  "trialPromoTitle": "Aprovecha tu periodo de prueba",
+  "trialPromoSubtitle": "Estás en el plan de prueba. Elige un plan de pago para continuar tras el plazo — sin perder datos.",
+  "trialPromoLater": "Ahora no",
+  "trialExpiredTitle": "Tu periodo de prueba ha terminado",
+  "trialExpiredSubtitle": "Elige un plan de pago para seguir creando dispositivos y usando todas las funciones.",
+  "trialExpiredLogout": "Salir"
 }

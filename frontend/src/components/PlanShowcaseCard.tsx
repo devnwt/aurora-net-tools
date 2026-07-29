@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 
 const TIER_ICONS: LucideIcon[] = [Feather, Zap, Rocket, Crown];
 
-export function PlanShowcaseCard({ plan, index, recommended, yourPlan, reserveRibbon, maxFeatures, selected, onSelect, locked }: {
+export function PlanShowcaseCard({ plan, index, recommended, yourPlan, reserveRibbon, maxFeatures, selected, onSelect, locked, compact }: {
   plan: PlanOption;
   index: number;
   recommended: boolean;
@@ -24,6 +24,8 @@ export function PlanShowcaseCard({ plan, index, recommended, yourPlan, reserveRi
   onSelect?: () => void;
   /** Plano indisponível para escolha (ex.: trial já vencido) — card esmaecido, botão travado. */
   locked?: boolean;
+  /** Layout condensado (para o popup): menos espaçamento e features que somem em telas baixas. */
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
   const trial = isTrial(plan.name);
@@ -43,7 +45,7 @@ export function PlanShowcaseCard({ plan, index, recommended, yourPlan, reserveRi
       style={{ animationDelay: `${index * 90}ms` }}
     >
       {reserveRibbon && (
-        <div className="h-7 shrink-0">
+        <div className={cn("shrink-0", compact ? "h-6" : "h-7")}>
           {trial && (
             <div className="flex h-full items-center justify-center gap-1.5 bg-gradient-to-r from-accent/25 via-accent/15 to-accent/25 text-[11px] font-semibold uppercase tracking-wide text-accent">
               <Sparkles className="h-3 w-3" /> {t("plans:trialRibbon")}
@@ -52,15 +54,16 @@ export function PlanShowcaseCard({ plan, index, recommended, yourPlan, reserveRi
         </div>
       )}
 
-      <div className="relative flex flex-1 flex-col p-6">
+      <div className={cn("relative flex flex-1 flex-col", compact ? "p-4" : "p-6")}>
         <div className={cn("pointer-events-none absolute -top-10 left-6 h-28 w-28 rounded-full blur-3xl", trial ? "bg-accent/20" : "bg-primary/20")} />
 
-        <div className="relative mb-5 flex items-start justify-between">
+        <div className={cn("relative flex items-start justify-between", compact ? "mb-3" : "mb-5")}>
           <div className={cn(
-            "plan-float grid h-12 w-12 place-items-center rounded-xl ring-1",
+            "plan-float grid place-items-center rounded-xl ring-1",
+            compact ? "h-10 w-10" : "h-12 w-12",
             trial ? "bg-gradient-to-br from-accent/30 to-accent/10 ring-accent/40" : "bg-gradient-to-br from-primary/25 to-accent/25 ring-primary/30",
           )}>
-            <Icon className={cn("h-6 w-6", trial ? "text-accent" : "text-primary")} />
+            <Icon className={cn(compact ? "h-5 w-5" : "h-6 w-6", trial ? "text-accent" : "text-primary")} />
           </div>
           <div className="flex flex-col items-end gap-1">
             {yourPlan && <Badge tone="primary">{t("plans:yourPlan")}</Badge>}
@@ -69,16 +72,23 @@ export function PlanShowcaseCard({ plan, index, recommended, yourPlan, reserveRi
           </div>
         </div>
 
-        <h3 className="relative text-xl font-semibold">{plan.name}</h3>
+        <h3 className={cn("relative font-semibold", compact ? "text-lg" : "text-xl")}>{plan.name}</h3>
 
-        <div className="mt-5 space-y-3">
-          <Stat icon={<HardDrive className="h-4 w-4" />} value={plan.max_devices} unit={t("plans:perDevices")} />
-          <Stat icon={<UsersIcon className="h-4 w-4" />} value={plan.max_users} unit={t("plans:perUsers")} />
+        <div className={cn(compact ? "mt-3 space-y-2" : "mt-5 space-y-3")}>
+          <Stat icon={<HardDrive className="h-4 w-4" />} value={plan.max_devices} unit={t("plans:perDevices")} compact={compact} />
+          <Stat icon={<UsersIcon className="h-4 w-4" />} value={plan.max_users} unit={t("plans:perUsers")} compact={compact} />
         </div>
 
-        <div className="mt-6 border-t border-border pt-4">
-          <p className="mb-2.5 text-[11px] uppercase tracking-wide text-muted">{t("plans:includedTitle")}</p>
-          <ul className="space-y-2">
+        {/* Lista de recursos: em modo compacto ela some em telas de baixa altura,
+            para o popup caber sem scroll (o essencial — limites e ação — permanece). */}
+        <div
+          className={cn(
+            "border-t border-border",
+            compact ? "mt-3 pt-3 [@media(max-height:820px)]:hidden" : "mt-6 pt-4",
+          )}
+        >
+          <p className={cn("uppercase tracking-wide text-muted text-[11px]", compact ? "mb-2" : "mb-2.5")}>{t("plans:includedTitle")}</p>
+          <ul className={compact ? "space-y-1.5" : "space-y-2"}>
             {features.map((f, fi) => {
               const highlight = f === "freeWeek";
               return (
@@ -102,13 +112,13 @@ export function PlanShowcaseCard({ plan, index, recommended, yourPlan, reserveRi
         {/* Botão de escolha do plano (no rodapé do card). */}
         {onSelect && (
           locked ? (
-            <Button variant="ghost" className="mt-6 w-full cursor-not-allowed justify-center" disabled>
+            <Button variant="ghost" className={cn("w-full cursor-not-allowed justify-center", compact ? "mt-4" : "mt-6")} disabled>
               <Lock className="h-4 w-4" /> {t("plans:trialUnavailable")}
             </Button>
           ) : (
             <Button
               variant={selected ? (trial ? "accent" : "primary") : "ghost"}
-              className="mt-6 w-full justify-center"
+              className={cn("w-full justify-center", compact ? "mt-4" : "mt-6")}
               aria-pressed={selected}
               onClick={onSelect}
             >
@@ -121,11 +131,11 @@ export function PlanShowcaseCard({ plan, index, recommended, yourPlan, reserveRi
   );
 }
 
-function Stat({ icon, value, unit }: { icon: React.ReactNode; value: number; unit: string }) {
+function Stat({ icon, value, unit, compact }: { icon: React.ReactNode; value: number; unit: string; compact?: boolean }) {
   return (
     <div className="flex items-baseline justify-between">
       <span className="flex items-center gap-1.5 text-xs text-muted">{icon} {unit}</span>
-      <span className="font-mono text-2xl font-semibold tabular-nums">{value.toLocaleString()}</span>
+      <span className={cn("font-mono font-semibold tabular-nums", compact ? "text-xl" : "text-2xl")}>{value.toLocaleString()}</span>
     </div>
   );
 }

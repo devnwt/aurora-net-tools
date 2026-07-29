@@ -37,5 +37,7 @@
   "logout": "Salir",
   "planLabel": "Plan",
   "upgradePlan": "Actualizar Plan",
-  "noPlan": "Sin plan"
+  "noPlan": "Sin plan",
+  "openMenu": "Abrir menú",
+  "closeMenu": "Cerrar menú"
 }

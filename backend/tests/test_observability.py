@@ -42,7 +42,8 @@ async def _user_client(client, username: str, role: str, password: str = "senha1
             )
             await session.commit()
 
-    res = await client.post("/auth/login", data={"username": username, "password": password})
+    # Login é por e-mail; o usuário criado acima usa {username}@example.test.
+    res = await client.post("/auth/login", data={"username": f"{username}@example.test", "password": password})
     assert res.status_code == 200, res.text
     client.headers["Authorization"] = f"Bearer {res.json()['access_token']}"
     return client

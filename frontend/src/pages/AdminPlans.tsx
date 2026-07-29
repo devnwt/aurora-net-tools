@@ -6,7 +6,7 @@ import { Table, Td, Th } from "@/components/Table";
 import { Button, EmptyState, Input, Modal, Spinner } from "@/components/ui";
 import { useConfirm } from "@/lib/confirm";
 
-const BLANK = { name: "", max_devices: 10, max_users: 5 };
+const BLANK = { name: "", max_devices: 10, max_users: 5, code: "" };
 
 export function AdminPlans() {
   const { confirm } = useConfirm();
@@ -32,7 +32,7 @@ export function AdminPlans() {
   }
   function openEdit(p: Plan) {
     setEditing(p);
-    setForm({ name: p.name, max_devices: p.max_devices, max_users: p.max_users });
+    setForm({ name: p.name, max_devices: p.max_devices, max_users: p.max_users, code: p.code ?? "" });
     setErr("");
     setOpen(true);
   }
@@ -70,12 +70,13 @@ export function AdminPlans() {
       ) : items.length === 0 ? (
         <EmptyState title="Nenhum plano" hint="Crie um plano para atribuir às ORGs." />
       ) : (
-        <Table head={<><Th>Nome</Th><Th>Máx. dispositivos</Th><Th>Máx. usuários</Th><Th className="text-right">Ações</Th></>}>
+        <Table head={<><Th>Nome</Th><Th>Máx. dispositivos</Th><Th>Máx. usuários</Th><Th>Cobrança</Th><Th className="text-right">Ações</Th></>}>
           {items.map((p) => (
             <tr key={p.id} className="hover:bg-surface-2 transition-colors duration-200">
               <Td className="font-medium">{p.name}</Td>
               <Td className="font-mono">{p.max_devices}</Td>
               <Td className="font-mono">{p.max_users}</Td>
+              <Td className="font-mono text-xs">{p.code ? p.code : <span className="text-muted">—</span>}</Td>
               <Td className="text-right">
                 <div className="flex items-center justify-end gap-2">
                   <Button variant="ghost" onClick={() => openEdit(p)}>Editar</Button>
@@ -97,6 +98,9 @@ export function AdminPlans() {
             <Fld label="NOME"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus /></Fld>
             <Fld label="MÁX. DISPOSITIVOS"><Input type="number" value={form.max_devices} onChange={(e) => setForm({ ...form, max_devices: Number(e.target.value) })} className="font-mono" /></Fld>
             <Fld label="MÁX. USUÁRIOS"><Input type="number" value={form.max_users} onChange={(e) => setForm({ ...form, max_users: Number(e.target.value) })} className="font-mono" /></Fld>
+            <Fld label="CÓDIGO DE COBRANÇA (plan_code)">
+              <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="ex.: nettools-50-disp" className="font-mono" />
+            </Fld>
             {err && <p className="rounded-lg border border-danger/40 bg-danger/10 p-2 text-sm text-danger">{err}</p>}
           </div>
         </Modal>

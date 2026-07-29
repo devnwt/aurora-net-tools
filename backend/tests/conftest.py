@@ -25,6 +25,24 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def _redis_loop_isolation():
+    """O `redis_client` é um singleton criado no import e prende o event loop; o
+    pytest usa loops distintos por teste, então um pool cacheado por um teste
+    anterior (ex.: o ping do /health) quebra os seguintes com "attached to a
+    different loop". Reatribui um pool novo (sem conexões) antes de cada teste —
+    ele se liga ao loop atual só na 1ª operação."""
+    from redis.asyncio import ConnectionPool
+
+    from app.core import redis as redis_mod
+    from app.core.config import get_settings
+
+    redis_mod.redis_client.connection_pool = ConnectionPool.from_url(
+        get_settings().redis_url, decode_responses=True
+    )
+    yield
+
+
 @pytest_asyncio.fixture(scope="session")
 async def _schema():
     import asyncpg
@@ -65,9 +83,9 @@ async def admin(_schema):
     async with SessionLocal() as session:
         existing = (await session.execute(select(User).where(User.username == "admin"))).scalar_one_or_none()
         if existing is None:
-            session.add(User(username="admin", password_hash=hash_password("admin"), is_admin=True, role="master"))
+            session.add(User(username="admin", email="admin@t.test", password_hash=hash_password("admin"), is_admin=True, role="master"))
             await session.commit()
-    return {"username": "admin", "password": "admin"}
+    return {"username": "admin", "email": "admin@t.test", "password": "admin"}
 
 
 @pytest_asyncio.fixture
@@ -80,7 +98,7 @@ async def client(_schema):
 
 @pytest_asyncio.fixture
 async def auth_client(client, admin):
-    res = await client.post("/auth/login", data={"username": admin["username"], "password": admin["password"]})
+    res = await client.post("/auth/login", data={"username": admin["email"], "password": admin["password"]})
     token = res.json()["access_token"]
     client.headers["Authorization"] = f"Bearer {token}"
     return client

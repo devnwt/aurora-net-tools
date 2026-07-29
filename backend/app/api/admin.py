@@ -204,16 +204,18 @@ class PlanIn(BaseModel):
     name: str
     max_devices: int = 10
     max_users: int = 5
+    code: str | None = None  # plan_code no hub de cobrança
 
 
 class PlanPatch(BaseModel):
     name: str | None = None
     max_devices: int | None = None
     max_users: int | None = None
+    code: str | None = None
 
 
 def _plan(p: Plan) -> dict:
-    return {"id": p.id, "name": p.name, "max_devices": p.max_devices, "max_users": p.max_users}
+    return {"id": p.id, "name": p.name, "max_devices": p.max_devices, "max_users": p.max_users, "code": p.code}
 
 
 @router.get("/plans")
@@ -262,7 +264,6 @@ class OrgIn(BaseModel):
     plan_id: int | None = None
     device_limit: int | None = None
     plan_expires_at: date | None = None  # vencimento do plano (nulo = sem vencimento)
-    admin_username: str
     admin_password: str
     admin_email: str  # obrigatório: será o login (e-mail + senha) do admin da ORG
     send_welcome: bool = False
@@ -328,8 +329,6 @@ async def create_org(payload: OrgIn, session: AsyncSession = Depends(get_session
         raise HTTPException(400, pw_err)
     if (await session.execute(select(Organization).where(Organization.name == payload.name))).scalar_one_or_none():
         raise HTTPException(400, "ORG já existe")
-    if (await session.execute(select(User).where(User.username == payload.admin_username))).scalar_one_or_none():
-        raise HTTPException(400, "nome de usuário do admin já existe")
     if (await session.execute(select(User.id).where(func.lower(User.email) == admin_email))).first() is not None:
         raise HTTPException(400, "e-mail do admin já cadastrado")
     org = Organization(
@@ -339,7 +338,7 @@ async def create_org(payload: OrgIn, session: AsyncSession = Depends(get_session
     session.add(org)
     await session.flush()
     admin_user = User(
-        username=payload.admin_username,
+        username=admin_email,  # sem username próprio: espelha o e-mail (login por e-mail)
         email=admin_email,
         password_hash=hash_password(payload.admin_password),
         role="admin",
@@ -360,7 +359,7 @@ async def create_org(payload: OrgIn, session: AsyncSession = Depends(get_session
             body = (
                 f"Bem-vindo(a) à Aurora Prisma NetTools!\n\n"
                 f"Sua organização '{org.name}' foi criada.\n\n"
-                f"Usuário: {payload.admin_username}\n"
+                f"E-mail (login): {admin_email}\n"
                 f"Senha: {payload.admin_password}\n\n"
                 f"Recomendamos alterar a senha no primeiro acesso."
             )

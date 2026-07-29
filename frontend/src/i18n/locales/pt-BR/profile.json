@@ -1,0 +1,36 @@
+{
+  "title": "Meu Perfil",
+  "email": "E-mail (login)",
+  "emailLocked": "O e-mail é o seu login e não pode ser alterado.",
+  "phone": "Telefone",
+  "document": "CPF / CNPJ",
+  "documentPlaceholder": "CPF ou CNPJ",
+  "documentHint": "Documento do titular. Necessário para finalizar a contratação do plano.",
+  "photoHint": "PNG ou JPG. Recomendado quadrado.",
+  "changePhoto": "Alterar foto",
+  "removePhoto": "Remover foto",
+  "photoUpdated": "Foto atualizada.",
+  "photoRemoved": "Foto removida.",
+  "photoFailed": "Não foi possível processar a imagem.",
+  "saved": "Perfil atualizado.",
+  "saveFailed": "Não foi possível salvar",
+  "password": {
+    "title": "Alterar senha",
+    "current": "Senha atual",
+    "new": "Nova senha",
+    "confirm": "Repetir nova senha",
+    "submit": "Alterar senha",
+    "mismatch": "As senhas não conferem.",
+    "changed": "Senha alterada.",
+    "failed": "Não foi possível alterar a senha"
+  },
+  "setPassword": {
+    "title": "Crie sua senha",
+    "subtitle": "Defina uma senha para acessar sua conta.",
+    "new": "Nova senha",
+    "confirm": "Repetir senha",
+    "mismatch": "As senhas não conferem.",
+    "submit": "Criar senha e continuar",
+    "logout": "Sair"
+  }
+}

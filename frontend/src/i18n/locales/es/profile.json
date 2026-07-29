@@ -1,0 +1,36 @@
+{
+  "title": "Mi Perfil",
+  "email": "Correo (acceso)",
+  "emailLocked": "Tu correo es tu acceso y no se puede cambiar.",
+  "phone": "Teléfono",
+  "document": "CPF / CNPJ",
+  "documentPlaceholder": "CPF o CNPJ",
+  "documentHint": "Documento del titular. Necesario para finalizar la contratación del plan.",
+  "photoHint": "PNG o JPG. Se recomienda cuadrada.",
+  "changePhoto": "Cambiar foto",
+  "removePhoto": "Quitar foto",
+  "photoUpdated": "Foto actualizada.",
+  "photoRemoved": "Foto eliminada.",
+  "photoFailed": "No se pudo procesar la imagen.",
+  "saved": "Perfil actualizado.",
+  "saveFailed": "No se pudo guardar",
+  "password": {
+    "title": "Cambiar contraseña",
+    "current": "Contraseña actual",
+    "new": "Nueva contraseña",
+    "confirm": "Repetir nueva contraseña",
+    "submit": "Cambiar contraseña",
+    "mismatch": "Las contraseñas no coinciden.",
+    "changed": "Contraseña cambiada.",
+    "failed": "No se pudo cambiar la contraseña"
+  },
+  "setPassword": {
+    "title": "Crea tu contraseña",
+    "subtitle": "Define una contraseña para acceder a tu cuenta.",
+    "new": "Nueva contraseña",
+    "confirm": "Repetir contraseña",
+    "mismatch": "Las contraseñas no coinciden.",
+    "submit": "Crear contraseña y continuar",
+    "logout": "Salir"
+  }
+}

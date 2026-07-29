@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   Activity,
   Archive,
@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   LogOut,
   MapPin,
+  Menu,
   Monitor,
   ScrollText,
   Server,
@@ -27,14 +28,17 @@ import {
   Users as UsersIcon,
   Webhook as WebhookIcon,
   Workflow,
+  X,
 } from "lucide-react";
 // Package/Building2 removidos: a área Admin virou um único item "Super Admin".
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { isMaxPlan } from "@/lib/plans";
+import { isMaxPlan, isTrial } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 import { PlanUpgradeDialog } from "@/components/PlanUpgradeDialog";
+import { SetPasswordDialog } from "@/components/SetPasswordDialog";
+import { TrialPromoDialog } from "@/components/TrialPromoDialog";
 import logo from "@/logo.png";
 
 interface NavItem {
@@ -99,9 +103,30 @@ const groups: { key: string; items: NavItem[] }[] = [
 export function Layout() {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
-  const initial = (user?.username ?? "?").charAt(0).toUpperCase();
+  const initial = (user?.email ?? "?").charAt(0).toUpperCase();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [trialPromoOpen, setTrialPromoOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  // Drawer da sidebar no mobile (<lg). Fecha ao trocar de rota.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+  useEffect(() => setSidebarOpen(false), [location.pathname]);
+
+  // Promoção de planos para admin em conta trial. Trial VENCIDO → popup INFECHÁVEL
+  // (só escolher um plano pago ou sair). Trial ATIVO → popup dispensável, uma vez
+  // por sessão (sessionStorage evita teimar ao navegar/refresh).
+  const TRIAL_PROMO_KEY = "aurora_trial_promo_seen";
+  const isTrialAdmin = !!user?.is_admin && user.role !== "master" && !!user.plan && isTrial(user.plan);
+  const trialExpired = isTrialAdmin && !!user.plan_expired;
+  useEffect(() => {
+    if (user?.must_set_password) return; // o popup de senha tem prioridade
+    if (trialExpired) { setTrialPromoOpen(true); return; }
+    if (isTrialAdmin && !sessionStorage.getItem(TRIAL_PROMO_KEY)) {
+      sessionStorage.setItem(TRIAL_PROMO_KEY, "1");
+      setTrialPromoOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Contador de notificações não lidas: carrega no início, atualiza a cada 45s e
   // ao receber o evento "notifications:changed" (disparado ao ler na central).
@@ -122,16 +147,49 @@ export function Layout() {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-border bg-surface">
+      {/* Barra superior (mobile/tablet <lg): hambúrguer + marca */}
+      <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface/95 px-3 backdrop-blur lg:hidden">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          aria-label={t("nav:openMenu")}
+          className="grid h-11 w-11 place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-text cursor-pointer"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <img src={logo} alt="" className="h-8 w-8 rounded-lg object-contain" />
+        <p className="text-sm font-semibold leading-tight">
+          Aurora Prisma <span className="bg-gradient-to-r from-primary via-cyan-400 to-accent bg-clip-text font-bold italic text-transparent">NetTools</span>
+        </p>
+      </header>
+
+      {/* Backdrop do drawer (mobile) */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} aria-hidden />
+      )}
+
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex h-screen w-[17rem] max-w-[85vw] shrink-0 flex-col border-r border-border bg-surface transition-transform duration-300 ease-out",
+          "lg:sticky lg:top-0 lg:z-auto lg:w-60 lg:max-w-none lg:translate-x-0 lg:shadow-none",
+          sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full",
+        )}
+      >
         <div className="flex items-center gap-2.5 px-5 py-5">
           <img src={logo} alt="Aurora Prisma NetTools" className="h-9 w-9 rounded-lg object-contain" />
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-semibold leading-tight">
               Aurora Prisma{" "}
               <span className="bg-gradient-to-r from-primary via-cyan-400 to-accent bg-clip-text font-bold italic text-transparent">NetTools</span>
             </p>
-            <p className="text-xs text-muted">{t("nav:brand.tagline")}</p>
+            <p className="truncate text-xs text-muted">{t("nav:brand.tagline")}</p>
           </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            aria-label={t("nav:closeMenu")}
+            className="ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-text cursor-pointer lg:hidden"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
@@ -177,11 +235,15 @@ export function Layout() {
 
         <div className="border-t border-border px-3 py-3.5">
           <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-sm font-semibold text-primary">
-              {initial}
-            </div>
+            {user?.photo ? (
+              <img src={user.photo} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />
+            ) : (
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-sm font-semibold text-primary">
+                {initial}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium leading-tight">{user?.username}</p>
+              <p className="truncate text-sm font-medium leading-tight">{user?.email}</p>
               <p className="mt-0.5 truncate text-xs leading-tight text-muted">
                 {t(`common:roles.${user?.role === "master" ? "master" : user?.role === "admin" ? "admin" : "operator"}`)}
               </p>
@@ -220,14 +282,20 @@ export function Layout() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-x-hidden">
+      <main className="min-w-0 flex-1 overflow-x-hidden pt-14 lg:pt-0">
         <div className="h-0.5 bg-gradient-to-r from-primary/0 via-accent/60 to-primary/0" />
-        <div className="px-6 py-6">
+        <div className="px-4 py-5 sm:px-6 sm:py-6">
           <Outlet />
         </div>
       </main>
 
       {upgradeOpen && <PlanUpgradeDialog onClose={() => setUpgradeOpen(false)} />}
+      {/* Admin em conta trial: vitrine de planos. Infechável se o trial venceu. */}
+      {trialPromoOpen && isTrialAdmin && (
+        <TrialPromoDialog expired={trialExpired} onClose={() => setTrialPromoOpen(false)} />
+      )}
+      {/* Convidado sem senha: popup infechável para criar a senha. */}
+      {user?.must_set_password && <SetPasswordDialog />}
     </div>
   );
 }

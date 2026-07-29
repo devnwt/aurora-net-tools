@@ -35,6 +35,7 @@ import { OltExplorer } from "@/pages/OltExplorer";
 import { Activity } from "@/pages/Activity";
 import { Copilot } from "@/pages/Copilot";
 import { Notifications } from "@/pages/Notifications";
+import { AcceptInvite } from "@/pages/AcceptInvite";
 import "./index.css";
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -46,7 +47,7 @@ function Protected({ children }: { children: React.ReactNode }) {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_relativeSplatPath: true }}>
       <AuthProvider>
         <ToastProvider>
         <ConfirmProvider>
@@ -54,6 +55,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/set-password" element={<AcceptInvite />} />
           <Route
             element={
               <Protected>

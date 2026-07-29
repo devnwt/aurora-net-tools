@@ -46,7 +46,10 @@
       "activateMsg": "¿Desea realmente activar al usuario \"{{name}}\"? Podrá iniciar sesión de nuevo.",
       "deactivateMsg": "¿Desea realmente desactivar al usuario \"{{name}}\"? No podrá iniciar sesión (no se pierde ningún dato).",
       "aria": "Activar/desactivar usuario"
-    }
+    },
+    "inviteSent": "Invitación enviada a {{email}}.",
+    "inviteHint": "El usuario recibirá un correo para crear su propia contraseña.",
+    "sendInvite": "Enviar invitación"
   },
   "apikeys": {
     "title": "Claves de API",

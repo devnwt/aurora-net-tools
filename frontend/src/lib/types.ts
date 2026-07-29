@@ -3,9 +3,11 @@ export type CredentialKind = "ssh" | "telnet" | "snmp" | "api" | "tl1";
 
 export interface AppUser {
   id: number;
-  username: string;
   email?: string | null;
+  name?: string | null;
   phone?: string | null;
+  document?: string | null;
+  photo?: string | null;
   is_admin: boolean;
   is_active?: boolean;
   role?: string;
@@ -24,6 +26,7 @@ export interface Plan {
   name: string;
   max_devices: number;
   max_users: number;
+  code?: string | null; // plan_code no hub de cobrança
 }
 // === Planos (autosserviço do admin da ORG — /plans) ===
 export interface PlanOption {

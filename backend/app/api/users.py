@@ -1,18 +1,48 @@
+import logging
 import re
+from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_admin
 from app.api.tenancy import is_master, plan_expired, scope
+from app.core.crypto import decrypt
 from app.core.db import get_session
-from app.core.security import hash_password, password_error
+from app.core.security import create_scoped_token, hash_password, password_error
 from app.models import Organization, Plan, User, UserGroup
 from app.schemas.user import UserCreate, UserOut, UserUpdate
-from app.services import notifications
+from app.services import integrations, notifications
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(require_admin)])
+log = logging.getLogger("aurora.users")
+
+_INVITE_PURPOSE = "invite"
+_INVITE_MINUTES = 60 * 24 * 3  # convite válido por 3 dias
+
+
+def _origin(request: Request) -> str:
+    raw = request.headers.get("origin") or request.headers.get("referer") or str(request.base_url)
+    p = urlsplit(raw)
+    return f"{p.scheme}://{p.netloc}" if p.scheme and p.netloc else str(request.base_url).rstrip("/")
+
+
+async def _send_invite(session: AsyncSession, request: Request, user: User) -> bool:
+    """Envia o convite (link p/ criar a senha). True se o e-mail saiu."""
+    cfg = await integrations.get_settings(session, None)  # SMTP global
+    if not (cfg and cfg.smtp_host):
+        log.warning("convite não enviado (SMTP global ausente) para %s", user.email)
+        return False
+    token = create_scoped_token(str(user.id), purpose=_INVITE_PURPOSE, minutes=_INVITE_MINUTES)
+    link = f"{_origin(request)}/set-password?token={token}"
+    text = (
+        "Você foi convidado(a) para a Aurora Prisma NetTools.\n\n"
+        f"Crie sua senha de acesso por este link:\n{link}\n\n"
+        f"O link expira em {_INVITE_MINUTES // 60} horas. Se não esperava este convite, ignore este e-mail."
+    )
+    ok, _ = await integrations.send_email(cfg, decrypt(cfg.smtp_password), user.email, "Crie sua senha — Aurora Prisma NetTools", text)
+    return ok
 
 ROLES = ("operator", "admin", "master")
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -77,11 +107,12 @@ async def list_users(session: AsyncSession = Depends(get_session), me: User = De
 
 
 @router.post("", response_model=UserOut, status_code=201)
-async def create_user(payload: UserCreate, session: AsyncSession = Depends(get_session), me: User = Depends(get_current_user)):
-    if (await session.execute(select(User).where(User.username == payload.username))).scalar_one_or_none():
-        raise HTTPException(400, "nome de usuário já existe")
-    _check_password(payload.password)
-    email = await _check_email(session, payload.email)
+async def create_user(payload: UserCreate, request: Request, session: AsyncSession = Depends(get_session), me: User = Depends(get_current_user)):
+    email = await _check_email(session, payload.email)  # e-mail é o identificador único
+    # Sem senha (padrão da UI) → convite por e-mail. Com senha → define direto (interno/testes).
+    invite = not (payload.password and payload.password.strip())
+    if not invite:
+        _check_password(payload.password)
 
     role = payload.role if payload.role in ROLES else "operator"
     if is_master(me):
@@ -101,10 +132,11 @@ async def create_user(payload: UserCreate, session: AsyncSession = Depends(get_s
                 raise HTTPException(403, f"limite de usuários do plano atingido ({count}/{limit})")
 
     u = User(
-        username=payload.username,
+        username=email,  # sem username próprio: espelha o e-mail (login é por e-mail)
         email=email,
         phone=(payload.phone or "").strip() or None,
-        password_hash=hash_password(payload.password),
+        # Convite: senha vazia = "pendente"; o usuário define a senha pelo link do e-mail.
+        password_hash=hash_password(payload.password) if not invite else "",
         role=role,
         org_id=org_id,
         is_admin=role in ("admin", "master"),
@@ -115,6 +147,8 @@ async def create_user(payload: UserCreate, session: AsyncSession = Depends(get_s
     await notifications.ensure_welcome(session, u)
     await session.commit()
     await session.refresh(u)
+    if invite:
+        await _send_invite(session, request, u)  # e-mail com link para criar a senha
     return u
 
 
