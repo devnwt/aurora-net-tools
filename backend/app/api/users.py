@@ -13,7 +13,7 @@ from app.core.db import get_session
 from app.core.security import create_scoped_token, hash_password, password_error
 from app.models import Organization, Plan, User, UserGroup
 from app.schemas.user import UserCreate, UserOut, UserUpdate
-from app.services import integrations, notifications
+from app.services import emailtpl, integrations, notifications, sessions
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(require_admin)])
 log = logging.getLogger("aurora.users")
@@ -41,7 +41,14 @@ async def _send_invite(session: AsyncSession, request: Request, user: User) -> b
         f"Crie sua senha de acesso por este link:\n{link}\n\n"
         f"O link expira em {_INVITE_MINUTES // 60} horas. Se não esperava este convite, ignore este e-mail."
     )
-    ok, _ = await integrations.send_email(cfg, decrypt(cfg.smtp_password), user.email, "Crie sua senha — Aurora Prisma NetTools", text)
+    html = emailtpl.render(
+        heading="Crie sua senha",
+        intro="Você foi convidado(a) para a Aurora Prisma NetTools. Clique no botão abaixo para criar sua senha de acesso.",
+        button_label="Criar minha senha",
+        button_url=link,
+        note=f"O link expira em {_INVITE_MINUTES // 60} horas. Se não esperava este convite, ignore este e-mail.",
+    )
+    ok, _ = await integrations.send_email(cfg, decrypt(cfg.smtp_password), user.email, "Crie sua senha — Aurora Prisma NetTools", text, html)
     return ok
 
 ROLES = ("operator", "admin", "master")
@@ -169,6 +176,7 @@ async def update_user(user_id: int, payload: UserUpdate, session: AsyncSession =
     if payload.password:
         _check_password(payload.password)
         u.password_hash = hash_password(payload.password)
+        await sessions.bump_token_version(u)
     if payload.is_active is not None and payload.is_active != u.is_active:
         if not payload.is_active:  # desativando
             if u.id == me.id:
@@ -177,6 +185,7 @@ async def update_user(user_id: int, payload: UserUpdate, session: AsyncSession =
             if u.role in ("admin", "master") and await _admin_count(session, u.org_id) <= 1:
                 if u.org_id is None or not is_master(me):
                     raise HTTPException(400, "não é possível desativar o último administrador da organização")
+            await sessions.bump_token_version(u)
         u.is_active = payload.is_active
     data = payload.model_dump(exclude_unset=True)
     if "phone" in data:

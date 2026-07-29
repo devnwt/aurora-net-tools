@@ -1,17 +1,24 @@
 const BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
-const TOKEN_KEY = "aurora_token";
+/** Header CSRF: pedidos com cookie HttpOnly sem Bearer exigem este valor. */
+const CLIENT_HEADER = "X-Aurora-Client";
+const CLIENT_WEB = "web";
 
-export const tokenStore = {
-  get: () => localStorage.getItem(TOKEN_KEY),
-  set: (t: string) => localStorage.setItem(TOKEN_KEY, t),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
-};
+/** Remove restos pré-AUTH-003 (tokens em localStorage). */
+function clearLegacyTokens() {
+  localStorage.removeItem("aurora_token");
+  localStorage.removeItem("aurora_refresh");
+}
 
-/** Resposta de /auth/login: token normal OU sinal de reativação (admin inativo). */
+clearLegacyTokens();
+
+/** Resposta de /auth/login: sessão via cookie (web) OU tokens no body (API). */
 export interface LoginResult {
+  ok?: boolean;
   access_token?: string;
+  refresh_token?: string;
   token_type?: string;
+  expires_in?: number;
   reactivate?: boolean;
   reactivate_token?: string;
   username?: string;
@@ -21,9 +28,7 @@ export interface LoginResult {
 
 export class ApiError extends Error {
   status: number;
-  /** Segundos até poder tentar de novo (header Retry-After), quando 429. */
   retryAfter?: number;
-  /** Tentativas restantes antes do bloqueio (header X-Login-Attempts-Left), no 401 do login. */
   attemptsLeft?: number;
   constructor(status: number, message: string, retryAfter?: number) {
     super(message);
@@ -32,17 +37,51 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers);
-  const token = tokenStore.get();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  if (options.body && !headers.has("Content-Type"))
-    headers.set("Content-Type", "application/json");
+function webHeaders(extra?: HeadersInit): Headers {
+  const headers = new Headers(extra);
+  headers.set(CLIENT_HEADER, CLIENT_WEB);
+  return headers;
+}
 
-  const res = await fetch(`${BASE}${path}`, { ...options, headers });
-  if (res.status === 401) {
-    tokenStore.clear();
-    if (!path.startsWith("/auth/login")) window.location.assign("/login");
+/** Uma renovação por vez — evita tempestade de /auth/refresh em 401 paralelo. */
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function tryRefresh(): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: webHeaders({ "Content-Type": "application/json" }),
+      body: "{}",
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function refreshOnce(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = tryRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+async function request<T>(path: string, options: RequestInit = {}, retried = false): Promise<T> {
+  const headers = webHeaders(options.headers);
+  if (options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const res = await fetch(`${BASE}${path}`, { ...options, headers, credentials: "include" });
+  if (res.status === 401 && !path.startsWith("/auth/")) {
+    if (!retried && (await refreshOnce())) {
+      return request<T>(path, options, true);
+    }
+    clearLegacyTokens();
+    window.location.assign("/login");
   }
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
@@ -62,44 +101,63 @@ export const api = {
   patch: <T>(p: string, body: unknown) =>
     request<T>(p, { method: "PATCH", body: JSON.stringify(body) }),
   del: (p: string) => request<void>(p, { method: "DELETE" }),
-  /** POST que retorna a Response crua para leitura em streaming (SSE). */
   postStream: (p: string, body: unknown) => {
-    const headers = new Headers({ "Content-Type": "application/json" });
-    const token = tokenStore.get();
-    if (token) headers.set("Authorization", `Bearer ${token}`);
-    return fetch(`${BASE}${p}`, { method: "POST", headers, body: JSON.stringify(body) });
+    const headers = webHeaders({ "Content-Type": "application/json" });
+    return fetch(`${BASE}${p}`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
   },
   async login(username: string, password: string) {
     const form = new URLSearchParams({ username, password });
     const res = await fetch(`${BASE}/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      credentials: "include",
+      headers: webHeaders({ "Content-Type": "application/x-www-form-urlencoded" }),
       body: form,
     });
     if (!res.ok) {
-      // Só 401 é credencial errada. Tratar 500/502/503 como "credenciais
-      // inválidas" manda procurar o problema no lugar errado — foi assim que
-      // um backend fora do ar já passou por senha errada.
       if (res.status === 429) {
-        // Rate limit / lockout: repassa o tempo de espera (Retry-After) para a
-        // UI localizar a mensagem. A causa (IP vs conta) não é revelada.
         const ra = parseInt(res.headers.get("Retry-After") ?? "", 10);
         throw new ApiError(429, "rate_limited", Number.isFinite(ra) ? ra : undefined);
       }
       if (res.status === 401) {
-        // Credencial inválida: repassa quantas tentativas restam (header) para a UI
-        // avisar ao chegar perto do bloqueio. A mensagem é localizada no Login.
         const left = parseInt(res.headers.get("X-Login-Attempts-Left") ?? "", 10);
         const e = new ApiError(401, "invalid_credentials");
         if (Number.isFinite(left)) e.attemptsLeft = left;
         throw e;
       }
-      // Demais status: a mensagem (humanizada, sem código técnico) é escolhida na
-      // tela de Login a partir do status; aqui só o preservamos.
       throw new ApiError(res.status, "login_error");
     }
-    const data = (await res.json()) as LoginResult;
-    if (data.access_token) tokenStore.set(data.access_token);
-    return data;
+    return (await res.json()) as LoginResult;
   },
+  async logout() {
+    try {
+      await fetch(`${BASE}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: webHeaders({ "Content-Type": "application/json" }),
+        body: "{}",
+      });
+    } catch {
+      /* limpa sessão local mesmo se a API falhar */
+    }
+    clearLegacyTokens();
+  },
+  async logoutAll() {
+    try {
+      await request("/auth/logout-all", { method: "POST", body: "{}" });
+    } catch {
+      /* ignore */
+    }
+    clearLegacyTokens();
+  },
+};
+
+/** @deprecated tokens não ficam mais no JS — mantido só p/ limpeza/migração. */
+export const tokenStore = {
+  get: () => null as string | null,
+  clear: clearLegacyTokens,
 };

@@ -72,14 +72,52 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
-# CORS — em produção restrinja allow_origins ao host do frontend (ver RUNBOOK).
+# CORS: same-origin via proxy não precisa de credentials. Dev cross-origin
+# (Vite) define CORS_ORIGINS=http://localhost:5173 e COOKIE_SECURE=false.
+_cors = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=_cors or ["*"],
+    allow_credentials=bool(_cors),
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def csrf_cookie_guard(request: Request, call_next):
+    """Bloqueia mutações autenticadas só por cookie sem header do SPA (CSRF).
+
+    Bearer / X-API-Key seguem sem o header (clientes de API). SameSite=Lax já
+    mitiga a maior parte; o header custom impede POSTs cross-site clássicos.
+    Fluxos públicos de auth (login/cadastro/reset) ficam de fora — o SPA ainda
+    envia o header, mas clientes/testes sem cookie jar limpo não quebram.
+    """
+    from app.core.cookies import ACCESS_COOKIE, CLIENT_HEADER, CLIENT_WEB, REFRESH_COOKIE
+
+    _csrf_exempt = {
+        "/auth/login",
+        "/auth/register",
+        "/auth/verify-email",
+        "/auth/complete-registration",
+        "/auth/resend-code",
+        "/auth/forgot-password",
+        "/auth/reset-password",
+        "/auth/accept-invite",
+        "/auth/reactivate",
+        "/auth/registration-status",
+    }
+    if request.method not in ("GET", "HEAD", "OPTIONS", "TRACE"):
+        if request.url.path not in _csrf_exempt:
+            has_bearer = bool(request.headers.get("authorization"))
+            has_api_key = bool(request.headers.get("x-api-key"))
+            has_cookie = bool(
+                request.cookies.get(ACCESS_COOKIE) or request.cookies.get(REFRESH_COOKIE)
+            )
+            if has_cookie and not has_bearer and not has_api_key:
+                if request.headers.get(CLIENT_HEADER, "").lower() != CLIENT_WEB:
+                    return JSONResponse({"detail": "CSRF rejeitado"}, status_code=403)
+    return await call_next(request)
 
 
 @app.middleware("http")

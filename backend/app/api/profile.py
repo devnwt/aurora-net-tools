@@ -13,6 +13,7 @@ from app.core.db import get_session
 from app.core.documents import document_error, normalize_document
 from app.core.security import hash_password, password_error, verify_password
 from app.models import User
+from app.services import sessions
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -95,6 +96,7 @@ async def change_password(
     if err:
         raise HTTPException(400, err)
     me.password_hash = hash_password(payload.new_password)
+    await sessions.bump_token_version(me)
     await session.commit()
     return {"ok": True}
 

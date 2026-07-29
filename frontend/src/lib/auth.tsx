@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { api, tokenStore, type LoginResult } from "./api";
+import { api, type LoginResult } from "./api";
 
 interface Me {
   id: number;
@@ -35,32 +35,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!tokenStore.get()) {
-      setLoading(false);
-      return;
-    }
+    // Sessão vem do cookie HttpOnly — tenta /auth/me; 401 → anônimo.
     api
       .get<Me>("/auth/me")
       .then(setUser)
-      .catch(() => tokenStore.clear())
+      .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, []);
 
   async function login(u: string, p: string) {
     const res = await api.login(u, p);
-    // Só carrega o usuário quando veio token; reativação é tratada pelo chamador.
-    if (res.access_token) setUser(await api.get<Me>("/auth/me"));
+    // Reativação: sem cookie ainda. Sessão normal: cookie já setado pelo Set-Cookie.
+    if (!res.reactivate) setUser(await api.get<Me>("/auth/me"));
     return res;
   }
 
   function logout() {
-    tokenStore.clear();
-    setUser(null);
-    window.location.assign("/login");
+    void api.logout().finally(() => {
+      setUser(null);
+      sessionStorage.removeItem("aurora_trial_promo_seen"); // cada novo login reabre o popup de planos
+      window.location.assign("/login");
+    });
   }
 
   async function refresh() {
-    if (!tokenStore.get()) return;
     try {
       setUser(await api.get<Me>("/auth/me"));
     } catch {

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { ApiError, api, tokenStore, type LoginResult } from "@/lib/api";
+import { ApiError, api, type LoginResult } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/lib/toast";
 import type { PlanOption } from "@/lib/types";
@@ -152,9 +152,8 @@ function WelcomeBack({ data, onBack }: { data: LoginResult; onBack: () => void }
     if (selected == null) return;
     setBusy(true);
     try {
-      const r = await api.post<{ access_token: string }>("/auth/reactivate", { reactivate_token: data.reactivate_token, plan_id: selected });
-      tokenStore.set(r.access_token);
-      window.location.assign("/"); // recarrega já autenticado
+      await api.post("/auth/reactivate", { reactivate_token: data.reactivate_token, plan_id: selected });
+      window.location.assign("/");
     } catch (e) {
       toast.error(e instanceof ApiError ? e : t("auth:reactivate.failed"), { title: t("auth:reactivate.failed") });
       setBusy(false);

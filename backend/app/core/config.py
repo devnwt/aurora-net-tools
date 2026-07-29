@@ -13,7 +13,15 @@ class Settings(BaseSettings):
     app_secret_key: str  # chave Fernet para cifrar segredos (obrigatória)
     jwt_secret: str = "change-me"
     jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 480
+    # Access token curto; renovação via refresh_token (Redis). Logout/reset invalidam.
+    jwt_expire_minutes: int = 15
+    jwt_refresh_expire_days: int = 7
+    # Cookies HttpOnly (AUTH-003). cookie_secure=True exige HTTPS no browser.
+    cookie_secure: bool = False
+    cookie_samesite: str = "lax"  # lax | strict | none
+    cookie_path: str = "/"
+    # Origens CORS com credenciais (vírgula). Vazio = same-origin via proxy (* sem credentials).
+    cors_origins: str = ""
     admin_username: str = "admin"
     admin_email: str = ""  # login por e-mail do Master (semeado no 1º boot)
     admin_password: str = ""
