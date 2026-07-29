@@ -32,6 +32,7 @@ async def org_setup(client, _schema):
     async with SessionLocal() as s:
         free = await get_or_create(s, Plan, Plan.name == "PlanFree", name="PlanFree", max_devices=5, max_users=3)
         pro = await get_or_create(s, Plan, Plan.name == "PlanPro", name="PlanPro", max_devices=50, max_users=20)
+        basic = await get_or_create(s, Plan, Plan.name == "PlanBasic", name="PlanBasic", max_devices=20, max_users=10)
         acme = await get_or_create(s, Organization, Organization.name == "AcmeCo", name="AcmeCo", plan_id=free.id)
         other = await get_or_create(s, Organization, Organization.name == "OtherCo", name="OtherCo", plan_id=pro.id)
         acme.plan_id = free.id  # reset: cada teste começa com a Acme no Free, sem vencimento
@@ -44,7 +45,7 @@ async def org_setup(client, _schema):
         await get_or_create(s, User, User.username == "acme_op", username="acme_op", email="acme_op@t.test",
                             password_hash=hash_password("senha123"), role="operator", org_id=acme.id)
         await s.commit()
-        ids = {"free": free.id, "pro": pro.id, "acme": acme.id, "other": other.id}
+        ids = {"free": free.id, "pro": pro.id, "basic": basic.id, "acme": acme.id, "other": other.id}
 
     async def refetch_other_plan():
         async with SessionLocal() as s:
@@ -69,7 +70,9 @@ async def test_admin_sees_current_and_usage(client, org_setup):
     client.headers["Authorization"] = f"Bearer {tok}"
 
     plans = (await client.get("/plans")).json()
-    assert {p["name"] for p in plans} >= {"PlanFree", "PlanPro"}
+    names = {p["name"] for p in plans}
+    assert names >= {"PlanPro", "PlanBasic"}  # planos pagos são ofertados
+    assert "PlanFree" not in names  # o plano de teste não entra na oferta (só na criação)
 
     cur = (await client.get("/plans/current")).json()
     assert cur["has_org"] is True
@@ -161,13 +164,14 @@ async def test_expired_plan_blocks_creation(client, org_setup):
     assert r.status_code == 403
     assert "expirado" in r.json()["detail"].lower()
 
-    # Re-selecionar um plano limpa o vencimento passado e reativa.
-    sel = (await client.post("/plans/select", json={"plan_id": org_setup["free"]})).json()
+    # Re-selecionar um plano (pago) limpa o vencimento passado e reativa.
+    sel = (await client.post("/plans/select", json={"plan_id": org_setup["pro"]})).json()
     assert sel["status"] == "active" and sel["expired"] is False
 
 
 async def test_paid_plan_defaults_to_one_month(client, org_setup):
-    """Assinar um plano pago grava vencimento padrão de ~1 mês; o trial, ~1 semana."""
+    """Assinar um plano pago grava vencimento padrão de ~1 mês. (O trial ~1 semana é
+    gravado na criação da conta; o trial não é selecionável via /plans/select.)"""
     from datetime import UTC, datetime
 
     tok = await _login(client, "acme_admin", "senha123")
@@ -180,47 +184,28 @@ async def test_paid_plan_defaults_to_one_month(client, org_setup):
     days_paid = (datetime.fromisoformat(paid["expires_at"]) - datetime.now(UTC)).days
     assert 27 <= days_paid <= 32, days_paid
 
-    # Plano de teste (PlanFree casa pela palavra "free") → ~7 dias.
-    trial = (await client.post("/plans/select", json={"plan_id": org_setup["free"]})).json()
-    days_trial = (datetime.fromisoformat(trial["expires_at"]) - datetime.now(UTC)).days
-    assert 5 <= days_trial <= 8, days_trial
 
-
-async def test_expired_trial_cannot_be_reselected(client, org_setup):
-    """Passada a janela de elegibilidade (trial_expires_at no passado), o plano de
-    teste some da oferta e não pode ser escolhido; planos pagos seguem disponíveis."""
-    from datetime import UTC, datetime, timedelta
-
+async def test_trial_only_at_creation_and_never_reselected(client, org_setup):
+    """O trial é concedido só na CRIAÇÃO da conta: não é ofertado em /plans, não pode
+    ser (re)selecionado, e depois de ativar um plano pago não há como voltar a ele
+    (trial_available vira False)."""
     tok = await _login(client, "acme_admin", "senha123")
     client.headers["Authorization"] = f"Bearer {tok}"
 
-    # Elegibilidade ao trial vencida (PlanFree casa com a regra de trial pelo nome).
-    await _set_org(org_setup["acme"], trial_expires_at=datetime.now(UTC) - timedelta(days=1))
-
+    # Acme começa no trial (PlanFree): elegível, mas o trial não aparece na oferta.
     cur = (await client.get("/plans/current")).json()
-    assert cur["trial_available"] is False
+    assert cur["trial_available"] is True
+    assert "PlanFree" not in {p["name"] for p in (await client.get("/plans")).json()}
 
-    # Escolher o plano de teste é bloqueado...
+    # (Re)selecionar o plano de teste é sempre bloqueado.
     blocked = await client.post("/plans/select", json={"plan_id": org_setup["free"]})
     assert blocked.status_code == 400
     assert "teste" in blocked.json()["detail"].lower()
 
-    # ...mas um plano pago segue permitido.
-    ok = await client.post("/plans/select", json={"plan_id": org_setup["pro"]})
-    assert ok.status_code == 200
-
-
-async def test_trial_available_while_within_window(client, org_setup):
-    """Dentro da janela (trial_expires_at no futuro), o trial segue disponível."""
-    from datetime import UTC, datetime, timedelta
-
-    tok = await _login(client, "acme_admin", "senha123")
-    client.headers["Authorization"] = f"Bearer {tok}"
-    await _set_org(org_setup["acme"], trial_expires_at=datetime.now(UTC) + timedelta(days=3))
-
-    cur = (await client.get("/plans/current")).json()
-    assert cur["trial_available"] is True
-    assert (await client.post("/plans/select", json={"plan_id": org_setup["free"]})).status_code == 200
+    # Ativado um plano pago → trial_available False e não dá para voltar ao trial.
+    assert (await client.post("/plans/select", json={"plan_id": org_setup["pro"]})).status_code == 200
+    assert (await client.get("/plans/current")).json()["trial_available"] is False
+    assert (await client.post("/plans/select", json={"plan_id": org_setup["free"]})).status_code == 400
 
 
 async def test_plan_change_emits_welcome_notification(client, org_setup):
@@ -250,8 +235,8 @@ async def test_plan_change_emits_welcome_notification(client, org_setup):
     await client.post("/plans/select", json={"plan_id": org_setup["pro"]})
     assert len(welcomes((await client.get("/notifications")).json())) == 1
 
-    # Trocar para outro plano gera novo aviso.
-    await client.post("/plans/select", json={"plan_id": org_setup["free"]})
+    # Trocar para outro plano (pago) gera novo aviso.
+    await client.post("/plans/select", json={"plan_id": org_setup["basic"]})
     assert len(welcomes((await client.get("/notifications")).json())) == 2
 
 

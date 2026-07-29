@@ -103,11 +103,11 @@ class RefreshIn(BaseModel):
 @router.post("/refresh")
 async def refresh_tokens(
     request: Request,
-    body: RefreshIn = RefreshIn(),
+    body: RefreshIn | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> JSONResponse:
     """Troca refresh por novo par (rotação). Lê body ou cookie HttpOnly."""
-    rt = read_refresh_token(request, body.refresh_token)
+    rt = read_refresh_token(request, body.refresh_token if body else None)
     if not rt:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "refresh inválido ou expirado")
     rec = await sessions.revoke_refresh(rt)
@@ -127,7 +127,7 @@ class LogoutIn(BaseModel):
 @router.post("/logout")
 async def logout(
     request: Request,
-    body: LogoutIn = LogoutIn(),
+    body: LogoutIn | None = None,
     token: str | None = Depends(oauth2_scheme),
     user: User = Depends(get_current_user),
 ) -> JSONResponse:
@@ -138,7 +138,7 @@ async def logout(
         claims = sessions.decode_access_claims(raw)
         if claims:
             await sessions.deny_access(claims.jti, claims.exp)
-    rt = read_refresh_token(request, body.refresh_token)
+    rt = read_refresh_token(request, body.refresh_token if body else None)
     if rt:
         await sessions.revoke_refresh(rt)
     resp = JSONResponse({"ok": True})
