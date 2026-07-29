@@ -178,8 +178,8 @@ async def checkout(
     try:
         data = await billing.create_charge(
             plan_code=plan.code,
-            external_id=f"cliente-{org.id}",
-            external_reference=f"assinatura-{org.id}-{plan.id}",
+            external_id=str(org.id),  # id do cliente no nosso sistema (a ORG)
+            external_reference=f"assinatura-{org.id}-{plan.id}",  # referência livre (org+plano) p/ o webhook
             customer=customer,
         )
     except billing.BillingError as exc:
