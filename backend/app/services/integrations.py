@@ -34,8 +34,11 @@ async def get_or_create_settings(session: AsyncSession, org_id: int | None) -> O
     return row
 
 
-async def send_email(cfg: OrgSettings, password: str, to: str, subject: str, body: str) -> tuple[bool, str]:
-    """Envia um e-mail via SMTP configurado. (ok, detalhe)."""
+async def send_email(
+    cfg: OrgSettings, password: str, to: str, subject: str, body: str, html: str | None = None
+) -> tuple[bool, str]:
+    """Envia um e-mail via SMTP configurado. `body` é o texto puro (fallback) e
+    `html`, se fornecido, é a versão HTML (multipart/alternative). (ok, detalhe)."""
     import asyncio
 
     def _run() -> tuple[bool, str]:
@@ -45,6 +48,16 @@ async def send_email(cfg: OrgSettings, password: str, to: str, subject: str, bod
             msg["From"] = cfg.smtp_from or cfg.smtp_username
             msg["To"] = to
             msg.set_content(body)
+            if html:
+                msg.add_alternative(html, subtype="html")
+                # Anexa o logo da marca inline (CID) referenciado no HTML.
+                from app.services import emailtpl
+
+                data = emailtpl.logo_bytes()
+                if data:
+                    msg.get_payload()[-1].add_related(
+                        data, maintype="image", subtype="png", cid=f"<{emailtpl.LOGO_CID}>"
+                    )
             if cfg.smtp_use_tls:
                 with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=15) as s:
                     s.starttls(context=ssl.create_default_context())
