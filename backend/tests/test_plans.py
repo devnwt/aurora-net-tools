@@ -225,7 +225,7 @@ async def test_trial_available_while_within_window(client, org_setup):
 
 async def test_plan_change_emits_welcome_notification(client, org_setup):
     """Trocar de plano gera uma notificação de boas-vindas ao novo plano (1x por plano)."""
-    from sqlalchemy import delete, select
+    from sqlalchemy import delete
 
     from app.core.db import SessionLocal
     from app.models import Notification
