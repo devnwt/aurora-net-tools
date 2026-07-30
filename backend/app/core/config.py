@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     # Reconciliação de pagamentos (consulta o hub p/ confirmar cobranças pendentes).
     billing_reconcile_enabled: bool = True
     billing_reconcile_seconds: int = 120
+    # Dedup de checkout: reaproveita uma cobrança pending recente do mesmo (org, plano)
+    # em vez de criar outra (evita cobrança duplicada em duplo-clique / volta do browser).
+    billing_checkout_reuse_minutes: int = 30
+    # Alerta: se o reconciliador falhar N ciclos seguidos (hub indisponível), avisa por
+    # e-mail. Destinatário: billing_alert_email ou, vazio, o admin_email (Master).
+    billing_alert_fail_cycles: int = 3
+    billing_alert_email: str = ""
 
     # Proteção de login (rate limiting + lockout + backoff, contadores no Redis).
     # Desligado automaticamente quando testing=True (ver loginguard._enabled).
