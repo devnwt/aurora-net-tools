@@ -95,6 +95,13 @@ sudo deploy/install.sh
 - **CORS**: same-origin via proxy. Em dev cross-origin (Vite), defina `CORS_ORIGINS`.
 - Em produção: sirva atrás de TLS (reverse proxy), troque as senhas do `.env`, e não exponha a porta 8000 publicamente (o frontend já faz proxy de `/api` e `/mcp`).
 
+## Observabilidade
+
+- Logs JSONL + UI Master em **Observabilidade** (`LOG_DIR`).
+- **Prometheus:** `GET /api/metrics` (RED + `aurora_dependency_up` postgres/redis). Desliga com `METRICS_ENABLED=false`.
+- **Health:** `GET /api/health` → `status: ok|degraded`.
+- **Alertas leves:** veja [`monitor/README.md`](monitor/README.md) (Uptime Kuma opcional via `docker-compose.monitor.yml`).
+
 ## Banco de dados
 
 ```bash

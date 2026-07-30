@@ -90,6 +90,8 @@ class Settings(BaseSettings):
     log_file_level: str = "WARNING"  # o que vai pro arquivo (stdout continua INFO)
     log_max_bytes: int = 10 * 1024 * 1024  # rotação por tamanho
     log_backup_count: int = 5  # events.jsonl.1 .. .5 (~60MB no pior caso)
+    # Prometheus /metrics (RED + gauges Postgres/Redis). Desligue só se necessário.
+    metrics_enabled: bool = True
 
     # Testes — usa NullPool para evitar conexões presas a um event loop
     testing: bool = False
