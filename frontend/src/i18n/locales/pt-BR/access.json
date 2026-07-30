@@ -18,6 +18,8 @@
       "message": "Excluir {{who}}?\n\nEsta ação é permanente e não pode ser desfeita."
     },
     "deleteFailed": "Não foi possível excluir: {{error}}",
+    "deleteDone": "Usuário excluído.",
+    "owner": "Dono",
     "editTitle": "Editar {{name}}",
     "emailLabel": "E-mail (login)",
     "emailPlaceholder": "voce@empresa.com",

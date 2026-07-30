@@ -25,7 +25,7 @@ const EMPTY_FORM: UserForm = { email: "", phone: "", role: "operator", is_active
 
 export function Users() {
   const { t } = useTranslation();
-  const { alert } = useConfirm();
+  const { confirm, alert } = useConfirm();
   const toast = useToast();
   const { user: me } = useAuth();
   const isMaster = me?.role === "master";
@@ -135,6 +135,28 @@ export function Users() {
     }
   }
 
+  // Exclui um usuário (só da própria empresa; o backend barra o dono e a si mesmo).
+  async function deleteUser(u: AppUser) {
+    const ok = await confirm({
+      title: t("access:users.delete.title"),
+      message: t("access:users.delete.message", { who: u.email ?? "" }),
+      confirmText: t("common:actions.delete"),
+      tone: "danger",
+    });
+    if (!ok) return;
+    try {
+      await api.del(`/users/${u.id}`);
+      setItems((list) => list.filter((x) => x.id !== u.id));
+      toast.success(t("access:users.deleteDone"));
+    } catch (e) {
+      await alert({
+        title: t("access:errorTitle"),
+        message: e instanceof ApiError ? e.message : String(e),
+        tone: "danger",
+      });
+    }
+  }
+
   // Papéis que o ator pode atribuir (Master só por Master).
   const roleOptions: Role[] = isMaster ? ["operator", "admin", "master"] : ["operator", "admin"];
 
@@ -146,7 +168,9 @@ export function Users() {
         return (
           <tr key={u.id} className="hover:bg-surface-2 transition-colors duration-200">
             <Td className="font-medium">
-              {u.email || <span className="text-danger/70">{t("access:users.noEmail")}</span>} {u.id === me?.id && <Badge tone="muted">{t("access:users.you")}</Badge>}
+              {u.email || <span className="text-danger/70">{t("access:users.noEmail")}</span>}{" "}
+              {u.id === me?.id && <Badge tone="muted">{t("access:users.you")}</Badge>}{" "}
+              {u.is_owner && <Badge tone="accent">{t("access:users.owner")}</Badge>}
             </Td>
             <Td className="font-mono text-muted">{u.phone || "—"}</Td>
             <Td><Badge tone={r === "master" ? "accent" : r === "admin" ? "primary" : "muted"}>{t(`common:roles.${r}`)}</Badge></Td>
@@ -167,6 +191,12 @@ export function Users() {
             </Td>
             <Td className="text-right">
               <Button variant="ghost" onClick={() => openEdit(u)}>{t("common:actions.edit")}</Button>
+              {/* Dono (admin criador), Master e a própria conta não têm excluir — o dono sai só pela Danger Zone; o Master nunca. */}
+              {!u.is_owner && r !== "master" && u.id !== me?.id && (
+                <Button variant="ghost" className="text-danger hover:bg-danger/10" onClick={() => deleteUser(u)}>
+                  {t("common:actions.delete")}
+                </Button>
+              )}
             </Td>
           </tr>
         );

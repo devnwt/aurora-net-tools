@@ -207,6 +207,16 @@ async def delete_user(user_id: int, me: User = Depends(get_current_user), sessio
     u = await _get(session, user_id, me)
     if u.id == me.id:
         raise HTTPException(400, "não é possível excluir a si mesmo")
+    if u.role == "master":
+        # O Master (superadmin do sistema) nunca é excluído.
+        raise HTTPException(403, "O usuário Master não pode ser excluído.")
+    if u.is_owner:
+        # Admin criador da conta: só sai pela Danger Zone (que exclui a empresa inteira).
+        raise HTTPException(
+            403,
+            "O administrador criador da conta não pode ser excluído aqui — "
+            "exclua a empresa pela Danger Zone nas Configurações.",
+        )
     if u.role in ("admin", "master") and await _admin_count(session, u.org_id) <= 1:
         # Nunca deixar o sistema sem Master; mas o Master (super admin) pode excluir
         # administradores de uma ORG — inclusive o último dela (a ORG fica sem admin).

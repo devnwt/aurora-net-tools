@@ -9,6 +9,8 @@ export interface AppUser {
   document?: string | null;
   photo?: string | null;
   is_admin: boolean;
+  /** Admin criador da conta (dono da ORG): não pode ser excluído pela lista. */
+  is_owner?: boolean;
   is_active?: boolean;
   role?: string;
   org_id?: number | null;

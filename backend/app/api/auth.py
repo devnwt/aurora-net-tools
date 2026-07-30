@@ -417,7 +417,9 @@ async def _create_account(session: AsyncSession, *, org_name: str, name: str | N
     )
     session.add(org)
     await session.flush()
-    user = User(username=email, email=email, name=name, document=document, password_hash=password_hash, role="admin", is_admin=True, org_id=org.id)
+    # is_owner=True: é o admin CRIADOR da conta — não pode ser excluído pela lista
+    # de usuários, só via Danger Zone (que exclui a empresa inteira).
+    user = User(username=email, email=email, name=name, document=document, password_hash=password_hash, role="admin", is_admin=True, is_owner=True, org_id=org.id)
     session.add(user)
     await session.flush()  # garante user.id para a notificação de boas-vindas
     await notifications.ensure_welcome(session, user)

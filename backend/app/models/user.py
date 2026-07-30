@@ -16,6 +16,9 @@ class User(Base, TimestampMixin):
     name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Admin CRIADOR da conta (dono da ORG): não pode ser excluído pela lista de
+    # usuários — só via Danger Zone (que exclui a empresa inteira).
+    is_owner: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"), nullable=False)
     # Conta ativa: inativa (False) não consegue autenticar (login e token bloqueados).
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"), nullable=False)
     # Incrementado em logout-all / reset / troca de senha / desativação → invalida JWTs.
