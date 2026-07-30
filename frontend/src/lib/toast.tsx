@@ -137,7 +137,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   // que chama useToast() re-renderiza a cada toast exibido ou fechado.
   const value = useMemo<ToastCtx>(
     () => ({
-      error: (e, opts) => show("error", errorMessage(e), opts),
+      error: (e, opts) => {
+        // Bloqueio de plano (SEM PLANO): o popup infechável já cobre a tela — não
+        // polui com toast de "falha ao carregar" em cada request barrado.
+        if (e instanceof ApiError && e.code === "plan_required") return;
+        show("error", errorMessage(e), opts);
+      },
       success: (m, opts) => show("success", m, opts),
       warning: (m, opts) => show("warning", m, opts),
       info: (m, opts) => show("info", m, opts),

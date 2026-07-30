@@ -30,6 +30,8 @@ export class ApiError extends Error {
   status: number;
   retryAfter?: number;
   attemptsLeft?: number;
+  /** Código de erro estruturado do backend (ex.: "plan_required"). */
+  code?: string;
   constructor(status: number, message: string, retryAfter?: number) {
     super(message);
     this.status = status;
@@ -87,7 +89,11 @@ async function request<T>(path: string, options: RequestInit = {}, retried = fal
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
     const detail = data?.detail ?? res.statusText;
-    throw new ApiError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
+    const isObj = detail && typeof detail === "object";
+    // detail estruturado {code, message} (ex.: plan_required) → mensagem amigável + code.
+    const err = new ApiError(res.status, isObj ? (detail.message ?? JSON.stringify(detail)) : detail);
+    if (isObj && typeof detail.code === "string") err.code = detail.code;
+    throw err;
   }
   return data as T;
 }
