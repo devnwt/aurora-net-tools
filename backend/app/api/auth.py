@@ -236,6 +236,8 @@ async def me(
         "plan_expires_at": plan_expires_at,
         # Convidado que ainda não definiu senha (password_hash vazio) → popup infechável.
         "must_set_password": not bool(user.password_hash),
+        # Link de suporte (WhatsApp) exposto ao app; vazio = botão oculto.
+        "support_whatsapp_url": settings.support_whatsapp_url,
     }
 
 

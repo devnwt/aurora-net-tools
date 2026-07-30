@@ -17,6 +17,8 @@ interface Me {
   plan_expires_at?: string | null;
   /** Convidado que ainda não definiu senha → popup infechável. */
   must_set_password?: boolean;
+  /** Link de suporte (WhatsApp) vindo do backend; vazio/ausente = botão oculto. */
+  support_whatsapp_url?: string | null;
 }
 
 interface AuthCtx {
@@ -54,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void api.logout().finally(() => {
       setUser(null);
       sessionStorage.removeItem("aurora_trial_promo_seen"); // cada novo login reabre o popup de planos
+      localStorage.removeItem("aurora_pay_pending"); // não vaza validação de pagamento p/ outra conta
       window.location.assign("/login");
     });
   }

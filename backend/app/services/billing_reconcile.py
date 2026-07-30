@@ -21,7 +21,7 @@ from app.api.tenancy import new_plan_expiry
 from app.core.config import get_settings
 from app.core.db import SessionLocal
 from app.models import Charge, Organization, Plan, User
-from app.services import billing, integrations, notifications
+from app.services import billing, emailtpl, integrations, notifications
 
 settings = get_settings()
 log = logging.getLogger("aurora.billing")
@@ -138,14 +138,24 @@ async def _alert_reconciler_down(fails: int, exc: Exception) -> None:
             return
         from app.core.crypto import decrypt
 
-        subject = "⚠️ Reconciliação de pagamentos falhando — Aurora Prisma NetTools"
+        subject = "Reconciliação de pagamentos falhando — Aurora Prisma NetTools"
+        intro = (
+            f"O reconciliador de pagamentos falhou {fails} ciclos seguidos e pode não estar "
+            "confirmando cobranças pagas automaticamente."
+        )
+        note = (
+            f"Último erro: {exc}\n\n"
+            "Verifique a disponibilidade do hub de cobrança e os logs do serviço."
+        )
+        # Fallback texto puro (multipart/alternative) — o HTML da marca é a versão principal.
         text = (
             f"O reconciliador de pagamentos falhou {fails} ciclos seguidos.\n"
             f"Último erro: {exc}\n\n"
             "Cobranças pagas podem não estar sendo confirmadas automaticamente. "
             "Verifique a disponibilidade do hub de cobrança e os logs do serviço."
         )
-        ok, detail = await integrations.send_email(cfg, decrypt(cfg.smtp_password), to, subject, text)
+        html = emailtpl.render(heading="Reconciliação de pagamentos falhando", intro=intro, note=note)
+        ok, detail = await integrations.send_email(cfg, decrypt(cfg.smtp_password), to, subject, text, html)
         if ok:
             log.info("alerta do reconciliador enviado para %s", to)
         else:
