@@ -17,6 +17,8 @@ interface Me {
   plan_expires_at?: string | null;
   /** Convidado que ainda não definiu senha → popup infechável. */
   must_set_password?: boolean;
+  /** Link de suporte (WhatsApp) vindo do backend; vazio/ausente = botão oculto. */
+  support_whatsapp_url?: string | null;
 }
 
 interface AuthCtx {

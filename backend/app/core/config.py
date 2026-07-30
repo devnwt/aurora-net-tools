@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_email: str = ""  # login por e-mail do Master (semeado no 1º boot)
     admin_password: str = ""
+    # Link de suporte (ex.: https://wa.me/55DDDNUMERO). Vazio = botão de suporte oculto.
+    support_whatsapp_url: str = ""
 
     # Backend / MCP
     host: str = "0.0.0.0"
