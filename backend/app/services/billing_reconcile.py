@@ -20,8 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.tenancy import new_plan_expiry
 from app.core.config import get_settings
 from app.core.db import SessionLocal
-from app.models import Charge, Organization, Plan
-from app.services import billing
+from app.models import Charge, Organization, Plan, User
+from app.services import billing, integrations, notifications
 
 settings = get_settings()
 log = logging.getLogger("aurora.billing")
@@ -55,6 +55,8 @@ async def _apply(session: AsyncSession, charge: Charge, status: str, paid_at: da
             org.plan_expires_at = new_plan_expiry(plan)  # plano pago: +1 mês
             org.plan_canceled = False
             log.info("cobrança %s PAGA → plano '%s' ativado na ORG %s", charge.hub_charge_id, plan.name, org.id)
+            # Recibo/notificação de pagamento confirmado (1x por cobrança).
+            await notifications.emit_payment_confirmed(session, org, plan, charge.hub_charge_id)
 
     elif status in _REFUNDED and prev not in _REFUNDED:
         org = await session.get(Organization, charge.org_id) if charge.org_id else None
@@ -78,13 +80,17 @@ async def reconcile_once(session: AsyncSession, org_id: int | None = None) -> in
     charges = (await session.execute(select(Charge).where(*conds))).scalars().all()
 
     changed = 0
+    attempted = 0
+    hub_errors = 0
     for c in charges:
+        attempted += 1
         try:
             data = await billing.get_charge(c.hub_charge_id)
         except billing.ChargeNotFound:
             log.warning("reconciliação: cobrança %s não existe mais no hub", c.hub_charge_id)
             continue
         except billing.BillingError as exc:
+            hub_errors += 1
             log.warning("reconciliação: falha ao consultar %s: %s", c.hub_charge_id, exc)
             continue
         status = str(data.get("status") or c.status)
@@ -94,6 +100,10 @@ async def reconcile_once(session: AsyncSession, org_id: int | None = None) -> in
             changed += 1
     if changed:
         await session.commit()
+    # Havia cobranças a consultar e TODAS falharam → hub indisponível: sinaliza para
+    # o loop contar como ciclo com falha (e disparar o alerta ao ultrapassar o limite).
+    if attempted and hub_errors == attempted:
+        raise billing.BillingError(f"hub indisponível na reconciliação ({hub_errors}/{attempted} falharam)")
     return changed
 
 
@@ -109,9 +119,46 @@ async def reconcile_org(session: AsyncSession, org_id: int) -> int:
         return 0
 
 
+async def _alert_reconciler_down(fails: int, exc: Exception) -> None:
+    """Avisa o admin geral por e-mail que a reconciliação está falhando (hub fora do
+    ar → pagamentos podem não confirmar sozinhos). Best-effort, nunca levanta."""
+    try:
+        to = settings.billing_alert_email or settings.admin_email
+        async with SessionLocal() as session:
+            if not to:  # cai no e-mail do Master (admin geral) gravado no banco
+                to = (await session.execute(
+                    select(User.email).where(User.role == "master", User.email.is_not(None)).limit(1)
+                )).scalar_one_or_none()
+            cfg = await integrations.get_settings(session, None)  # SMTP global
+        if not to:
+            log.warning("alerta do reconciliador não enviado: sem destinatário (admin_email/Master vazios)")
+            return
+        if not (cfg and cfg.smtp_host):
+            log.warning("alerta do reconciliador não enviado: SMTP global não configurado")
+            return
+        from app.core.crypto import decrypt
+
+        subject = "⚠️ Reconciliação de pagamentos falhando — Aurora Prisma NetTools"
+        text = (
+            f"O reconciliador de pagamentos falhou {fails} ciclos seguidos.\n"
+            f"Último erro: {exc}\n\n"
+            "Cobranças pagas podem não estar sendo confirmadas automaticamente. "
+            "Verifique a disponibilidade do hub de cobrança e os logs do serviço."
+        )
+        ok, detail = await integrations.send_email(cfg, decrypt(cfg.smtp_password), to, subject, text)
+        if ok:
+            log.info("alerta do reconciliador enviado para %s", to)
+        else:
+            log.warning("falha ao enviar alerta do reconciliador: %s", detail)
+    except Exception as e:  # nunca deixa o alerta derrubar o loop
+        log.warning("erro ao tentar alertar sobre o reconciliador: %s", e)
+
+
 async def run_billing_reconciler() -> None:
     log.info("reconciliador de cobranças iniciado (intervalo=%ss)", settings.billing_reconcile_seconds)
     await asyncio.sleep(12)  # deixa o app subir
+    fails = 0
+    alerted = False
     while True:
         try:
             if billing.enabled():
@@ -119,6 +166,14 @@ async def run_billing_reconciler() -> None:
                     n = await reconcile_once(session)
                     if n:
                         log.info("reconciliação: %s cobrança(s) atualizada(s)", n)
+            fails = 0
+            if alerted:  # recuperou depois de um período de falhas
+                log.info("reconciliador de cobranças recuperado")
+                alerted = False
         except Exception as exc:
-            log.warning("ciclo de reconciliação falhou: %s", exc)
+            fails += 1
+            log.warning("ciclo de reconciliação falhou (%s seguida[s]): %s", fails, exc)
+            if fails >= settings.billing_alert_fail_cycles and not alerted:
+                await _alert_reconciler_down(fails, exc)
+                alerted = True  # não repete o alerta a cada ciclo enquanto durar a falha
         await asyncio.sleep(settings.billing_reconcile_seconds)
