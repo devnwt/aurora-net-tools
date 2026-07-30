@@ -73,10 +73,13 @@ export function PlanShowcaseCard({ plan, index, recommended, yourPlan, reserveRi
         </div>
 
         <h3 className={cn("relative font-semibold", compact ? "text-lg" : "text-xl")}>{plan.name}</h3>
+        {plan.description && (
+          <p className={cn("relative text-muted", compact ? "mt-0.5 text-xs" : "mt-1 text-sm")}>{plan.description}</p>
+        )}
 
         {/* Preço (promo: "de" riscado + desconto, "por" em destaque). Trial = grátis. */}
         {(() => {
-          const pr = pricingFor(plan.name);
+          const pr = pricingFor(plan);
           const disc = pr ? discountPct(pr) : null;
           return (
             <div className={cn("relative", compact ? "mt-2" : "mt-3")}>

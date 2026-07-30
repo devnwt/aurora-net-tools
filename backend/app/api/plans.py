@@ -33,6 +33,10 @@ class PlanOut(BaseModel):
     name: str
     max_devices: int
     max_users: int
+    price_cents: int | None = None
+    promo_price_cents: int | None = None
+    description: str | None = None
+    sort_order: int = 0
 
 
 class Usage(BaseModel):
@@ -102,7 +106,7 @@ async def _current(session: AsyncSession, user: User) -> CurrentPlan:
 async def list_plans(session: AsyncSession = Depends(get_session)):
     """Planos disponíveis para escolha/upgrade. O plano de TESTE não entra: ele só
     é concedido na criação da conta e nunca pode ser (re)selecionado."""
-    rows = (await session.execute(select(Plan).order_by(Plan.max_devices, Plan.name))).scalars().all()
+    rows = (await session.execute(select(Plan).order_by(Plan.sort_order, Plan.max_devices, Plan.name))).scalars().all()
     return [p for p in rows if not is_trial_plan(p)]
 
 

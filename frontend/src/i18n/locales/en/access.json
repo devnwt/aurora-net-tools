@@ -18,6 +18,8 @@
       "message": "Delete {{who}}?\n\nThis action is permanent and cannot be undone."
     },
     "deleteFailed": "Could not delete: {{error}}",
+    "deleteDone": "User deleted.",
+    "owner": "Owner",
     "editTitle": "Edit {{name}}",
     "emailLabel": "Email (login)",
     "emailPlaceholder": "you@company.com",

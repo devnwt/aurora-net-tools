@@ -18,6 +18,8 @@
       "message": "¿Eliminar {{who}}?\n\nEsta acción es permanente y no se puede deshacer."
     },
     "deleteFailed": "No se pudo eliminar: {{error}}",
+    "deleteDone": "Usuario eliminado.",
+    "owner": "Dueño",
     "editTitle": "Editar {{name}}",
     "emailLabel": "Correo (inicio de sesión)",
     "emailPlaceholder": "tu@empresa.com",

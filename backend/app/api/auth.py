@@ -186,13 +186,19 @@ async def logout_all(
     return resp
 
 
+def _plan_card(p) -> dict:
+    """Dados do card de um plano (limites + infos de exibição definidas pelo Master)."""
+    return {
+        "id": p.id, "name": p.name, "max_devices": p.max_devices, "max_users": p.max_users,
+        "price_cents": p.price_cents, "promo_price_cents": p.promo_price_cents,
+        "description": p.description, "sort_order": p.sort_order,
+    }
+
+
 async def _plan_list(session: AsyncSession) -> list[dict]:
     # Sem o plano de teste: o trial vale só na criação da conta (não reativa no trial).
-    rows = (await session.execute(select(Plan).order_by(Plan.max_devices, Plan.name))).scalars().all()
-    return [
-        {"id": p.id, "name": p.name, "max_devices": p.max_devices, "max_users": p.max_users}
-        for p in rows if not is_trial_plan(p)
-    ]
+    rows = (await session.execute(select(Plan).order_by(Plan.sort_order, Plan.max_devices, Plan.name))).scalars().all()
+    return [_plan_card(p) for p in rows if not is_trial_plan(p)]
 
 
 class ReactivateIn(BaseModel):
@@ -385,9 +391,9 @@ async def public_plans(session: AsyncSession = Depends(get_session)) -> dict:
     cfg = await integrations.get_settings(session, None)
     if not (cfg and cfg.registration_enabled):
         return {"plans": [], "default_plan_id": None}
-    rows = (await session.execute(select(Plan).order_by(Plan.max_devices, Plan.name))).scalars().all()
+    rows = (await session.execute(select(Plan).order_by(Plan.sort_order, Plan.max_devices, Plan.name))).scalars().all()
     return {
-        "plans": [{"id": p.id, "name": p.name, "max_devices": p.max_devices, "max_users": p.max_users} for p in rows],
+        "plans": [_plan_card(p) for p in rows],
         "default_plan_id": cfg.registration_plan_id,
     }
 
@@ -417,7 +423,9 @@ async def _create_account(session: AsyncSession, *, org_name: str, name: str | N
     )
     session.add(org)
     await session.flush()
-    user = User(username=email, email=email, name=name, document=document, password_hash=password_hash, role="admin", is_admin=True, org_id=org.id)
+    # is_owner=True: é o admin CRIADOR da conta — não pode ser excluído pela lista
+    # de usuários, só via Danger Zone (que exclui a empresa inteira).
+    user = User(username=email, email=email, name=name, document=document, password_hash=password_hash, role="admin", is_admin=True, is_owner=True, org_id=org.id)
     session.add(user)
     await session.flush()  # garante user.id para a notificação de boas-vindas
     await notifications.ensure_welcome(session, user)

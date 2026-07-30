@@ -205,6 +205,10 @@ class PlanIn(BaseModel):
     max_devices: int = 10
     max_users: int = 5
     code: str | None = None  # plan_code no hub de cobrança
+    price_cents: int | None = None  # preço regular ("de"), em centavos
+    promo_price_cents: int | None = None  # preço promocional ("por"), em centavos
+    description: str | None = None
+    sort_order: int = 0
 
 
 class PlanPatch(BaseModel):
@@ -212,15 +216,23 @@ class PlanPatch(BaseModel):
     max_devices: int | None = None
     max_users: int | None = None
     code: str | None = None
+    price_cents: int | None = None
+    promo_price_cents: int | None = None
+    description: str | None = None
+    sort_order: int | None = None
 
 
 def _plan(p: Plan) -> dict:
-    return {"id": p.id, "name": p.name, "max_devices": p.max_devices, "max_users": p.max_users, "code": p.code}
+    return {
+        "id": p.id, "name": p.name, "max_devices": p.max_devices, "max_users": p.max_users, "code": p.code,
+        "price_cents": p.price_cents, "promo_price_cents": p.promo_price_cents,
+        "description": p.description, "sort_order": p.sort_order,
+    }
 
 
 @router.get("/plans")
 async def list_plans(session: AsyncSession = Depends(get_session)):
-    rows = (await session.execute(select(Plan).order_by(Plan.name))).scalars().all()
+    rows = (await session.execute(select(Plan).order_by(Plan.sort_order, Plan.name))).scalars().all()
     return [_plan(p) for p in rows]
 
 

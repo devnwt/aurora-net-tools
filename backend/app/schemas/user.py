@@ -10,6 +10,7 @@ class UserOut(BaseModel):
     document: str | None = None
     photo: str | None = None
     is_admin: bool
+    is_owner: bool = False
     is_active: bool = True
     role: str
     org_id: int | None = None

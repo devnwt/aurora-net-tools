@@ -9,6 +9,8 @@ export interface AppUser {
   document?: string | null;
   photo?: string | null;
   is_admin: boolean;
+  /** Admin criador da conta (dono da ORG): não pode ser excluído pela lista. */
+  is_owner?: boolean;
   is_active?: boolean;
   role?: string;
   org_id?: number | null;
@@ -27,6 +29,10 @@ export interface Plan {
   max_devices: number;
   max_users: number;
   code?: string | null; // plan_code no hub de cobrança
+  price_cents?: number | null; // preço regular ("de"), em centavos
+  promo_price_cents?: number | null; // preço promocional ("por"), em centavos
+  description?: string | null;
+  sort_order?: number;
 }
 // === Planos (autosserviço do admin da ORG — /plans) ===
 export interface PlanOption {
@@ -34,6 +40,11 @@ export interface PlanOption {
   name: string;
   max_devices: number;
   max_users: number;
+  /** Infos do card definidas pelo Master. Preços em centavos. */
+  price_cents?: number | null;
+  promo_price_cents?: number | null;
+  description?: string | null;
+  sort_order?: number;
 }
 export type PlanStatus = "none" | "active" | "canceled" | "expired";
 export interface CurrentPlan {
