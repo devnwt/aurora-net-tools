@@ -4,7 +4,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -36,6 +36,7 @@ from app.api import (
 from app.api import (
     settings as settings_api,
 )
+from app.api.deps import require_active_plan
 from app.core.config import get_settings
 from app.core.logging import bind_request, configure_logging, current_request_id
 from app.core.metrics import setup_metrics, update_dependency_gauges
@@ -174,30 +175,36 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     return JSONResponse(status_code=500, content=body)
 
 
+# Rotas SEMPRE acessíveis (mesmo SEM PLANO): login, planos (pagar), perfil,
+# notificações, saúde e a administração master.
 app.include_router(health.router)
 app.include_router(auth.router)
-app.include_router(credentials.router)
-app.include_router(groups.router)
-app.include_router(controllers.router)
-app.include_router(devices.router)
-app.include_router(racks.router)
-app.include_router(copilot.router)
-app.include_router(mikrotik.router)
-app.include_router(scan.router)
-app.include_router(templates.router)
-app.include_router(settings_api.router)
-app.include_router(users.router)
-app.include_router(user_groups.router)
-app.include_router(backups.router)
-app.include_router(apikeys.router)
-app.include_router(webhooks.router)
 app.include_router(admin.router)
-app.include_router(audit.router)
-app.include_router(observability.router)
 app.include_router(plans.router)
 app.include_router(org.router)
 app.include_router(notifications.router)
 app.include_router(profile.router)
+
+# Rotas de DADOS: bloqueadas quando a ORG está SEM PLANO ATIVO (sem plano ou
+# vencido) — o guard devolve 403 {code: plan_required} e o front abre o popup.
+_gated = [Depends(require_active_plan)]
+app.include_router(credentials.router, dependencies=_gated)
+app.include_router(groups.router, dependencies=_gated)
+app.include_router(controllers.router, dependencies=_gated)
+app.include_router(devices.router, dependencies=_gated)
+app.include_router(racks.router, dependencies=_gated)
+app.include_router(copilot.router, dependencies=_gated)
+app.include_router(mikrotik.router, dependencies=_gated)
+app.include_router(scan.router, dependencies=_gated)
+app.include_router(templates.router, dependencies=_gated)
+app.include_router(settings_api.router, dependencies=_gated)
+app.include_router(users.router, dependencies=_gated)
+app.include_router(user_groups.router, dependencies=_gated)
+app.include_router(backups.router, dependencies=_gated)
+app.include_router(apikeys.router, dependencies=_gated)
+app.include_router(webhooks.router, dependencies=_gated)
+app.include_router(audit.router, dependencies=_gated)
+app.include_router(observability.router, dependencies=_gated)
 
 # Prometheus RED + /metrics (depois das rotas, para rotular handlers corretamente).
 if settings.metrics_enabled:

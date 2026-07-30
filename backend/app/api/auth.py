@@ -10,7 +10,14 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, oauth2_scheme
-from app.api.tenancy import is_trial_plan, new_plan_expiry, plan_expired, trial_available, trial_deadline
+from app.api.tenancy import (
+    is_trial_plan,
+    needs_plan,
+    new_plan_expiry,
+    plan_expired,
+    trial_available,
+    trial_deadline,
+)
 from app.core.config import get_settings
 from app.core.cookies import (
     clear_auth_cookies,
@@ -29,7 +36,15 @@ from app.core.security import (
     verify_password,
 )
 from app.models import Organization, Plan, User
-from app.services import emailtpl, emailverify, integrations, loginguard, notifications, sessions
+from app.services import (
+    billing_reconcile,
+    emailtpl,
+    emailverify,
+    integrations,
+    loginguard,
+    notifications,
+    sessions,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
@@ -80,19 +95,31 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Conta desativada. Fale com o administrador da sua organização.",
         )
-    # Nenhum usuário de ORG fica sem plano: sem plano no login → entra no Trial.
-    # (Só o Master, que não tem ORG, pode ficar sem plano.)
+    # Valida o plano A CADA login. Master (sem ORG) não tem plano e é ignorado.
     if user.org_id is not None:
+        # 1) Reconcilia cobranças pendentes com o hub: um pagamento já confirmado ativa
+        #    o plano na hora (sem esperar o poller) e um estorno revoga. Nunca levanta.
+        await billing_reconcile.reconcile_org(session, user.org_id)
         org = (await session.execute(select(Organization).where(Organization.id == user.org_id))).scalar_one_or_none()
-        if org is not None and org.plan_id is None:
-            plans = (await session.execute(select(Plan))).scalars().all()
-            trial = next((p for p in plans if is_trial_plan(p)), None)
-            if trial is not None:
-                org.plan_id = trial.id
-                org.plan_expires_at = new_plan_expiry(trial)
-                if org.trial_expires_at is None:
-                    org.trial_expires_at = trial_deadline()
+        if org is not None:
+            if plan_expired(org):
+                # 2) Plano/trial VENCIDO → SEM PLANO: zera o plano. O acesso passa a
+                #    exigir uma nova assinatura (o guard bloqueia as rotas de dados).
+                org.plan_id = None
+                org.plan_expires_at = None
                 await session.commit()
+            elif org.plan_id is None and org.trial_expires_at is None:
+                # 3) Conta legada que NUNCA teve trial → concede o trial (uma única vez).
+                #    Contas novas já recebem o trial no cadastro, então não recaem aqui.
+                trial = next(
+                    (p for p in (await session.execute(select(Plan))).scalars().all() if is_trial_plan(p)),
+                    None,
+                )
+                if trial is not None:
+                    org.plan_id = trial.id
+                    org.plan_expires_at = new_plan_expiry(trial)
+                    org.trial_expires_at = trial_deadline()
+                    await session.commit()
     return token_response(request, await sessions.issue_token_pair(user))
 
 
@@ -212,11 +239,13 @@ async def me(
     # Master não tem ORG: plan_name=None e nada expira.
     plan_name = None
     is_expired = False
+    no_plan = False
     plan_expires_at: str | None = None
     if user.org_id is not None:
         org = (await session.execute(select(Organization).where(Organization.id == user.org_id))).scalar_one_or_none()
         if org is not None:
             is_expired = plan_expired(org)
+            no_plan = needs_plan(org)  # SEM PLANO ATIVO (sem plano ou vencido) → bloqueio
             plan_expires_at = org.plan_expires_at.isoformat() if org.plan_expires_at else None
             if org.plan_id is not None:
                 plan_name = (await session.execute(select(Plan.name).where(Plan.id == org.plan_id))).scalar_one_or_none()
@@ -233,6 +262,7 @@ async def me(
         "org_id": user.org_id,
         "plan": plan_name,
         "plan_expired": is_expired,
+        "needs_plan": no_plan,  # SEM PLANO ATIVO → popup infechável + rotas de dados bloqueadas
         "plan_expires_at": plan_expires_at,
         # Convidado que ainda não definiu senha (password_hash vazio) → popup infechável.
         "must_set_password": not bool(user.password_hash),
@@ -340,7 +370,12 @@ async def reset_password(body: ResetIn, request: Request, session: AsyncSession 
 @router.get("/registration-status")
 async def registration_status(session: AsyncSession = Depends(get_session)) -> dict:
     cfg = await integrations.get_settings(session, None)
-    return {"enabled": bool(cfg and cfg.registration_enabled)}
+    # support_whatsapp_url é público: a tela de login precisa dele (ex.: no popup
+    # de conta bloqueada) antes de autenticar.
+    return {
+        "enabled": bool(cfg and cfg.registration_enabled),
+        "support_whatsapp_url": settings.support_whatsapp_url,
+    }
 
 
 @router.get("/plans")

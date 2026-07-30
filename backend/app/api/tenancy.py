@@ -73,6 +73,16 @@ def plan_expired(org: Organization | None) -> bool:
     return org.plan_expires_at <= datetime.now(UTC)
 
 
+def needs_plan(org: Organization | None) -> bool:
+    """True se a ORG está SEM PLANO ATIVO: sem plano (plan_id nulo) OU plano/trial
+    vencido. É a base do bloqueio — nesse estado a conta loga, mas só acessa o
+    essencial (login, planos, perfil, notificações) até assinar. Master (org=None)
+    nunca é bloqueado."""
+    if org is None:
+        return False
+    return org.plan_id is None or plan_expired(org)
+
+
 def plan_status(org: Organization | None) -> str:
     """Estado do plano para exibição: none | active | canceled | expired."""
     if org is None or org.plan_id is None:

@@ -14,6 +14,8 @@ interface Me {
   plan?: string | null;
   /** Plano (trial) vencido → popup de planos infechável no login. */
   plan_expired?: boolean;
+  /** SEM PLANO ATIVO (sem plano ou vencido) → popup infechável + rotas bloqueadas. */
+  needs_plan?: boolean;
   plan_expires_at?: string | null;
   /** Convidado que ainda não definiu senha → popup infechável. */
   must_set_password?: boolean;

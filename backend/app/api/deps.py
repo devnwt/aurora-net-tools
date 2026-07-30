@@ -5,11 +5,12 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.tenancy import needs_plan
 from app.core.cookies import read_access_token
 from app.core.db import get_session
 from app.core.logging import bind_user
 from app.core.security import hash_api_key
-from app.models import ApiKey, User
+from app.models import ApiKey, Organization, User
 from app.services import sessions
 
 # auto_error=False: sem bearer, deixamos cookie ou X-API-Key autenticar.
@@ -73,4 +74,21 @@ async def require_master(user: User = Depends(get_current_user)) -> User:
     """Somente Master (administração do sistema)."""
     if user.role != "master":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="requer administrador master")
+    return user
+
+
+async def require_active_plan(
+    user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
+) -> User:
+    """Bloqueia rotas de dados quando a ORG está SEM PLANO ATIVO (sem plano ou
+    vencido). Master e usuários sem ORG passam. O front trata o código
+    'plan_required' abrindo o popup de pagamento (que já bloqueia a tela)."""
+    if user.role == "master" or user.org_id is None:
+        return user
+    org = await session.get(Organization, user.org_id)
+    if needs_plan(org):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "plan_required", "message": "Plano da organização inativo — assine para continuar."},
+        )
     return user
