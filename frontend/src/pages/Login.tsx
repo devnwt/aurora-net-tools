@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ShieldAlert } from "lucide-react";
 import { ApiError, api, type LoginResult } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/lib/toast";
@@ -11,6 +11,7 @@ import { Button, Input, Spinner } from "@/components/ui";
 import { FloatingInput } from "@/components/FloatingInput";
 import { AuthShell } from "@/components/AuthShell";
 import { PlanShowcaseCard } from "@/components/PlanShowcaseCard";
+import { WhatsAppSupport } from "@/components/WhatsAppSupport";
 
 export function Login() {
   const { login } = useAuth();
@@ -26,9 +27,15 @@ export function Login() {
   const [note, setNote] = useState("");
   const [regEnabled, setRegEnabled] = useState(false);
   const [reactivate, setReactivate] = useState<LoginResult | null>(null);
+  const [supportUrl, setSupportUrl] = useState("");
+  // Conta/IP bloqueado (429): segundos até liberar (0 = sem tempo informado). null = fechado.
+  const [locked, setLocked] = useState<number | null>(null);
 
   useEffect(() => {
-    api.get<{ enabled: boolean }>("/auth/registration-status").then((r) => setRegEnabled(r.enabled)).catch(() => {});
+    api
+      .get<{ enabled: boolean; support_whatsapp_url?: string }>("/auth/registration-status")
+      .then((r) => { setRegEnabled(r.enabled); setSupportUrl(r.support_whatsapp_url || ""); })
+      .catch(() => {});
   }, []);
 
   // Vindo da exclusão da empresa (Danger Zone): confirma o sucesso após o redirect.
@@ -52,15 +59,9 @@ export function Login() {
       nav("/");
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
-        // Bloqueado (rate limit/lockout): mensagem com o tempo de espera, quando
-        // informado. Não revela se o bloqueio é por IP ou conta.
-        const secs = err.retryAfter ?? 0;
-        const msg = secs >= 60
-          ? t("auth:login.rateLimitedMin", { minutes: Math.ceil(secs / 60) })
-          : secs > 0
-            ? t("auth:login.rateLimitedSec", { seconds: secs })
-            : t("auth:login.rateLimited");
-        toast.error(msg, { title: t("auth:login.rateLimitedTitle") });
+        // Bloqueado (rate limit/lockout): abre um popup explicando + opção de suporte.
+        // Não revela se o bloqueio é por IP ou conta.
+        setLocked(err.retryAfter ?? 0);
       } else if (err instanceof ApiError && err.status === 401) {
         // Credencial inválida. Perto do bloqueio (poucas tentativas), avisa em tom
         // de alerta com a contagem; caso contrário, mensagem simples.
@@ -103,7 +104,35 @@ export function Login() {
   }
 
   return (
-    <AuthShell subtitle={forgot ? t("auth:subtitle.forgot") : t("auth:subtitle.login")}>
+    <>
+      {locked !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#11161F] p-6 text-center shadow-2xl">
+            <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-danger/15 text-danger">
+              <ShieldAlert className="h-6 w-6" />
+            </div>
+            <h2 className="text-lg font-semibold text-white">{t("auth:login.rateLimitedTitle")}</h2>
+            <p className="mt-2 text-sm text-white/60">
+              {locked >= 60
+                ? t("auth:login.rateLimitedMin", { minutes: Math.ceil(locked / 60) })
+                : locked > 0
+                  ? t("auth:login.rateLimitedSec", { seconds: locked })
+                  : t("auth:login.rateLimited")}
+            </p>
+            <p className="mt-2 text-xs text-white/40">{t("auth:login.lockedHelp")}</p>
+            <div className="mt-6 flex items-center justify-center gap-2">
+              <WhatsAppSupport url={supportUrl} label={t("plans:supportWhatsapp")} />
+              <button
+                onClick={() => setLocked(null)}
+                className="rounded-lg px-3 py-1.5 text-xs text-white/60 hover:bg-white/10 hover:text-white cursor-pointer"
+              >
+                {t("auth:login.lockedUnderstood")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <AuthShell subtitle={forgot ? t("auth:subtitle.forgot") : t("auth:subtitle.login")}>
       {forgot ? (
         <form onSubmit={onForgot} className="mt-4 space-y-4 rounded-2xl border border-primary/30 bg-black/30 p-6 shadow-lg shadow-primary/10 ring-1 ring-primary/10 backdrop-blur-md">
           <p className="text-xs text-white/60">{t("auth:forgot.hint")}</p>
@@ -128,7 +157,8 @@ export function Login() {
           </div>
         </form>
       )}
-    </AuthShell>
+      </AuthShell>
+    </>
   );
 }
 
