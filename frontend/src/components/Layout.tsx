@@ -164,18 +164,18 @@ export function Layout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Plano é POR EMPRESA. QUALQUER usuário da empresa (não o Master) com plano
-  // VENCIDO (trial ou pago) é BLOQUEADO por um popup INFECHÁVEL: o admin escolhe/paga
+  // Plano é POR EMPRESA. QUALQUER usuário da empresa (não o Master) SEM PLANO ATIVO
+  // (sem plano ou vencido) é BLOQUEADO por um popup INFECHÁVEL: o admin escolhe/paga
   // um plano; o operador vê só o aviso (não paga) e pode sair. Trial ATIVO → popup
   // dispensável só p/ o admin, 1x por sessão.
   const TRIAL_PROMO_KEY = "aurora_trial_promo_seen";
   const isOrgUser = !!user && user.role !== "master" && user.org_id != null;
   const isOrgAdmin = isOrgUser && !!user!.is_admin;
   const isTrialAdmin = isOrgAdmin && !!user!.plan && isTrial(user!.plan!);
-  const planExpired = isOrgUser && !!user!.plan_expired; // qualquer usuário da empresa
+  const needsPlan = isOrgUser && !!user!.needs_plan; // SEM PLANO ATIVO → bloqueia a empresa
   useEffect(() => {
     if (user?.must_set_password) return; // o popup de senha tem prioridade
-    if (planExpired) { setTrialPromoOpen(true); return; } // bloqueio infechável (empresa inteira)
+    if (needsPlan) { setTrialPromoOpen(true); return; } // bloqueio infechável (empresa inteira)
     if (isTrialAdmin && !sessionStorage.getItem(TRIAL_PROMO_KEY)) {
       sessionStorage.setItem(TRIAL_PROMO_KEY, "1");
       setTrialPromoOpen(true);
@@ -346,9 +346,9 @@ export function Layout() {
 
       {upgradeOpen && <PlanUpgradeDialog onClose={() => setUpgradeOpen(false)} />}
       {/* Admin em conta trial: vitrine de planos. Infechável se o trial venceu. */}
-      {trialPromoOpen && (isTrialAdmin || planExpired) && (
+      {trialPromoOpen && (isTrialAdmin || needsPlan) && (
         <TrialPromoDialog
-          expired={planExpired}
+          expired={needsPlan}
           trial={isTrialAdmin}
           canPay={isOrgAdmin}
           onClose={() => setTrialPromoOpen(false)}

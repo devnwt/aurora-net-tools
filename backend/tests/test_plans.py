@@ -159,10 +159,12 @@ async def test_expired_plan_blocks_creation(client, org_setup):
     cur = (await client.get("/plans/current")).json()
     assert cur["status"] == "expired" and cur["expired"] is True
 
-    # Criar device é bloqueado com mensagem de plano expirado.
+    # Criar device é bloqueado: SEM PLANO ATIVO (vencido) → o guard require_active_plan
+    # barra as rotas de dados antes do endpoint, com o código plan_required.
     r = await client.post("/devices", json={"name": "d", "ip": "10.20.30.40", "device_type": "routeros"})
     assert r.status_code == 403
-    assert "expirado" in r.json()["detail"].lower()
+    detail = r.json()["detail"]
+    assert isinstance(detail, dict) and detail.get("code") == "plan_required"
 
     # Re-selecionar um plano (pago) limpa o vencimento passado e reativa.
     sel = (await client.post("/plans/select", json={"plan_id": org_setup["pro"]})).json()
