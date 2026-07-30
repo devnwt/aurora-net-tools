@@ -38,6 +38,7 @@ from app.api import (
 )
 from app.core.config import get_settings
 from app.core.logging import bind_request, configure_logging, current_request_id
+from app.core.metrics import setup_metrics, update_dependency_gauges
 from app.mcp.auth import MCPAuthMiddleware
 from app.mcp.server import mcp
 from app.services.billing_reconcile import run_billing_reconciler
@@ -82,6 +83,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def refresh_metrics_deps(request: Request, call_next):
+    """Atualiza gauges Postgres/Redis no scrape de /metrics (baixo custo)."""
+    if settings.metrics_enabled and request.url.path == "/metrics":
+        await update_dependency_gauges()
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -189,6 +198,10 @@ app.include_router(plans.router)
 app.include_router(org.router)
 app.include_router(notifications.router)
 app.include_router(profile.router)
+
+# Prometheus RED + /metrics (depois das rotas, para rotular handlers corretamente).
+if settings.metrics_enabled:
+    setup_metrics(app)
 
 # MCP built-in montado em settings.mcp_path (decisão §5), atrás do auth por X-API-Key
 # que fixa o principal (ORG) para as tools escoparem por tenant.

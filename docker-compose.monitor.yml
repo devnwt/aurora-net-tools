@@ -1,0 +1,25 @@
+# Monitoramento opcional (OBS-001) — NÃO entra no deploy padrão.
+#
+# Sobe junto com a stack:
+#   docker compose -f docker-compose.yml -f docker-compose.monitor.yml up -d
+#
+# Ou só o Kuma (rede da stack já existente — use o mesmo project name):
+#   docker compose -f docker-compose.monitor.yml up -d
+#
+# UI: http://localhost:${KUMA_PORT:-3001}
+# Configure um monitor HTTP GET → http://proxy:8090/api/health
+# (keyword/JSON: "status":"ok") e alertas e-mail/Telegram.
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    volumes:
+      - kuma_data:/app/data
+    ports:
+      - "${KUMA_PORT:-3001}:3001"
+    # Mesma rede do compose principal quando usado com -f docker-compose.yml -f ...
+    # Assim o Kuma alcança http://proxy:8090/api/health pelo nome do serviço.
+
+volumes:
+  kuma_data:

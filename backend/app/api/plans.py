@@ -8,7 +8,7 @@ Sem billing: trocar de plano só reescreve `organization.plan_id` e passa a vale
 na próxima criação de device/usuário (a checagem de limite já existente).
 """
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -18,11 +18,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_admin
 from app.api.tenancy import is_trial_plan, new_plan_expiry, plan_expired, plan_status, trial_available
+from app.core.config import get_settings
 from app.core.db import get_session
 from app.core.documents import format_document
 from app.models import Charge, Device, Organization, Plan, User
 from app.services import billing, billing_reconcile, notifications
 
+settings = get_settings()
 router = APIRouter(prefix="/plans", tags=["plans"], dependencies=[Depends(require_admin)])
 
 
@@ -185,6 +187,23 @@ async def checkout(
         raise HTTPException(400, "informe seu CPF/CNPJ em Meu Perfil antes de contratar um plano")
     if not user.email:
         raise HTTPException(400, "cadastre um e-mail antes de contratar um plano")
+    # Dedup: se já existe uma cobrança PENDING recente do mesmo (org, plano) com
+    # link válido, reaproveita — evita criar cobrança duplicada no hub em duplo-clique
+    # ou quando o usuário volta pelo navegador e tenta contratar de novo.
+    reuse_after = datetime.now(UTC) - timedelta(minutes=settings.billing_checkout_reuse_minutes)
+    existing = (await session.execute(
+        select(Charge)
+        .where(
+            Charge.org_id == org.id,
+            Charge.plan_id == plan.id,
+            Charge.status == "pending",
+            Charge.checkout_url.is_not(None),
+            Charge.created_at >= reuse_after,
+        )
+        .order_by(Charge.created_at.desc())
+    )).scalars().first()
+    if existing and existing.checkout_url:
+        return CheckoutOut(payment_url=existing.checkout_url)
     customer = {
         "document": format_document(user.document),
         "name": user.name or org.name,
@@ -212,6 +231,7 @@ async def checkout(
             status=str(data.get("status") or "pending"),
             amount_cents=data.get("amount_cents"),
             external_reference=f"assinatura-{org.id}-{plan.id}",
+            checkout_url=url,  # guardado p/ reaproveitar em nova tentativa (dedup)
         ))
         await session.commit()
     return CheckoutOut(payment_url=url)

@@ -26,4 +26,7 @@ class Charge(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(24), default="pending", index=True)
     amount_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     external_reference: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # URL de pagamento devolvida pelo hub — guardada p/ reaproveitar em nova
+    # tentativa de checkout do mesmo (org, plano) e evitar cobrança duplicada.
+    checkout_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

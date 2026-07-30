@@ -111,21 +111,23 @@ export function Layout() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [trialPromoOpen, setTrialPromoOpen] = useState(false);
   const [payWatching, setPayWatching] = useState(false);
+  const [payValidating, setPayValidating] = useState(false);
   const [unread, setUnread] = useState(0);
   // Drawer da sidebar no mobile (<lg). Fecha ao trocar de rota.
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   useEffect(() => setSidebarOpen(false), [location.pathname]);
 
-  // Payment watcher: ao voltar do checkout, fica OBSERVANDO o pagamento — consulta
-  // /plans/current (que reconcilia ao vivo com o hub) a cada 5s até o plano ativar,
-  // então avisa e atualiza. Cobre o caso do usuário estar com o app aberto; o poller
-  // do backend cobre o resto.
+  // Payment watcher: ao voltar do checkout, VALIDA a operação — consulta
+  // /plans/current (que reconcilia ao vivo com o hub) até o plano ativar. Começa
+  // com um overlay bloqueante "Validando operação" (~30s); se demorar mais, cai
+  // para um banner discreto e segue observando em segundo plano (o poller do
+  // backend cobre o resto). Cobre o caso do usuário estar com o app aberto.
   useEffect(() => {
     const pending = localStorage.getItem("aurora_pay_pending");
     if (!pending || !user?.is_admin) return;
     const planId = Number(pending);
-    setPayWatching(true);
+    setPayValidating(true);
     let tries = 0;
     const iv = window.setInterval(async () => {
       tries++;
@@ -134,18 +136,24 @@ export function Layout() {
         if (cur.plan_id === planId) {
           window.clearInterval(iv);
           localStorage.removeItem("aurora_pay_pending");
+          setPayValidating(false);
           setPayWatching(false);
           toast.success(t("plans:paymentConfirmed"));
           void refresh(); // atualiza o plano no menu
           return;
         }
       } catch { /* ignora — tenta de novo */ }
-      if (tries >= 48) { // ~4 min
+      if (tries === 10) { // ~30s bloqueando → libera a tela e observa discreto
+        setPayValidating(false);
+        setPayWatching(true);
+      }
+      if (tries >= 60) { // ~3 min total
         window.clearInterval(iv);
         localStorage.removeItem("aurora_pay_pending");
+        setPayValidating(false);
         setPayWatching(false);
       }
-    }, 5000);
+    }, 3000);
     return () => window.clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -335,7 +343,19 @@ export function Layout() {
       )}
       {/* Convidado sem senha: popup infechável para criar a senha. */}
       {user?.must_set_password && <SetPasswordDialog />}
-      {/* Observando o pagamento (após o checkout) até a confirmação do hub. */}
+      {/* Ao voltar do checkout: overlay bloqueante validando a operação (~30s). */}
+      {payValidating && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-bg/80 backdrop-blur-sm">
+          <div className="mx-4 flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl border border-border bg-surface px-8 py-10 text-center shadow-xl">
+            <Spinner className="h-9 w-9" />
+            <div className="space-y-1.5">
+              <p className="text-lg font-semibold text-text">{t("plans:paymentValidating")}</p>
+              <p className="text-sm text-muted">{t("plans:paymentValidatingHint")}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Se a validação demora, segue observando o pagamento em segundo plano. */}
       {payWatching && (
         <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2.5 rounded-xl border border-border bg-surface px-4 py-3 shadow-lg">
           <Spinner className="h-4 w-4" />

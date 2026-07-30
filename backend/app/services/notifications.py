@@ -91,6 +91,23 @@ async def emit_plan_welcome(session, org, plan) -> int:
     return created
 
 
+async def emit_payment_confirmed(session, org, plan, ref: str) -> int:
+    """Recibo de pagamento confirmado para todos os usuários da ORG. Uma vez por
+    cobrança (dedup pela ref da cobrança), então cada pagamento gera um aviso.
+    Chamado quando a reconciliação confirma o `paid`. Não faz commit."""
+    if org is None or plan is None:
+        return 0
+    title = "Pagamento confirmado"
+    body = f"Recebemos o pagamento do plano {plan.name}. Seu acesso está liberado. Obrigado!"
+    dedup_key = f"payment-confirmed:{ref}"
+    users = (await session.execute(select(User).where(User.org_id == org.id))).scalars().all()
+    created = 0
+    for u in users:
+        if await _emit(session, user_id=u.id, org_id=org.id, kind="payment_confirmed", title=title, body=body, dedup_key=dedup_key):
+            created += 1
+    return created
+
+
 def _bucket(expiry: datetime, now: datetime) -> str | None:
     """Faixa de proximidade do vencimento (ou None se ainda faltam >7 dias).
 

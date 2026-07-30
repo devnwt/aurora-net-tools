@@ -60,5 +60,7 @@
   "freePeriod": "for 1 week",
   "checkoutRedirectHint": "You'll be taken to the secure payment page.",
   "paymentWatching": "Confirming your payment…",
-  "paymentConfirmed": "Payment confirmed! Plan activated."
+  "paymentConfirmed": "Payment confirmed! Plan activated.",
+  "paymentValidating": "Validating operation",
+  "paymentValidatingHint": "We're confirming your payment with the provider. This takes a few seconds…"
 }
