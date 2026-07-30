@@ -54,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void api.logout().finally(() => {
       setUser(null);
       sessionStorage.removeItem("aurora_trial_promo_seen"); // cada novo login reabre o popup de planos
+      localStorage.removeItem("aurora_pay_pending"); // não vaza validação de pagamento p/ outra conta
       window.location.assign("/login");
     });
   }

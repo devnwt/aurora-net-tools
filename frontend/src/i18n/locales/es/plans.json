@@ -56,6 +56,8 @@
   "trialExpiredSubtitle": "Elige un plan de pago para seguir creando dispositivos y usando todas las funciones.",
   "planExpiredTitle": "Tu plan ha expirado",
   "planExpiredSubtitle": "Renueva eligiendo un plan para seguir usando todas las funciones.",
+  "planExpiredMemberTitle": "Plan de la empresa expirado",
+  "planExpiredMemberSubtitle": "El plan de tu empresa ha expirado. Contacta al administrador para renovar y restaurar el acceso.",
   "trialExpiredLogout": "Salir",
   "perMonth": "/mes",
   "free": "Gratis",

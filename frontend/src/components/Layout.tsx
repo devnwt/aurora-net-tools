@@ -125,7 +125,13 @@ export function Layout() {
   // backend cobre o resto). Cobre o caso do usuário estar com o app aberto.
   useEffect(() => {
     const pending = localStorage.getItem("aurora_pay_pending");
-    if (!pending || !user?.is_admin) return;
+    // Só o admin de uma EMPRESA valida pagamento. Master (sem org, não paga) nunca
+    // entra aqui — se houver flag antigo no navegador, limpa e sai.
+    if (!user?.is_admin || user.role === "master" || user.org_id == null) {
+      if (user?.role === "master") localStorage.removeItem("aurora_pay_pending");
+      return;
+    }
+    if (!pending) return;
     const planId = Number(pending);
     setPayValidating(true);
     let tries = 0;
@@ -158,17 +164,18 @@ export function Layout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Popup de planos do admin da ORG. QUALQUER plano VENCIDO (trial ou pago) →
-  // popup INFECHÁVEL (só escolher um plano pago ou sair). Trial ATIVO → popup
-  // dispensável, aberto a cada login (uma vez por sessão; o logout limpa a marca,
-  // então cada novo login reabre — mas navegar no app não reabre).
+  // Plano é POR EMPRESA. QUALQUER usuário da empresa (não o Master) com plano
+  // VENCIDO (trial ou pago) é BLOQUEADO por um popup INFECHÁVEL: o admin escolhe/paga
+  // um plano; o operador vê só o aviso (não paga) e pode sair. Trial ATIVO → popup
+  // dispensável só p/ o admin, 1x por sessão.
   const TRIAL_PROMO_KEY = "aurora_trial_promo_seen";
-  const isOrgAdmin = !!user?.is_admin && user.role !== "master" && !!user.plan;
-  const isTrialAdmin = isOrgAdmin && isTrial(user!.plan!);
-  const planExpired = isOrgAdmin && !!user?.plan_expired; // trial OU pago vencido
+  const isOrgUser = !!user && user.role !== "master" && user.org_id != null;
+  const isOrgAdmin = isOrgUser && !!user!.is_admin;
+  const isTrialAdmin = isOrgAdmin && !!user!.plan && isTrial(user!.plan!);
+  const planExpired = isOrgUser && !!user!.plan_expired; // qualquer usuário da empresa
   useEffect(() => {
     if (user?.must_set_password) return; // o popup de senha tem prioridade
-    if (planExpired) { setTrialPromoOpen(true); return; } // infechável (trial ou pago vencido)
+    if (planExpired) { setTrialPromoOpen(true); return; } // bloqueio infechável (empresa inteira)
     if (isTrialAdmin && !sessionStorage.getItem(TRIAL_PROMO_KEY)) {
       sessionStorage.setItem(TRIAL_PROMO_KEY, "1");
       setTrialPromoOpen(true);
@@ -340,7 +347,12 @@ export function Layout() {
       {upgradeOpen && <PlanUpgradeDialog onClose={() => setUpgradeOpen(false)} />}
       {/* Admin em conta trial: vitrine de planos. Infechável se o trial venceu. */}
       {trialPromoOpen && (isTrialAdmin || planExpired) && (
-        <TrialPromoDialog expired={planExpired} trial={isTrialAdmin} onClose={() => setTrialPromoOpen(false)} />
+        <TrialPromoDialog
+          expired={planExpired}
+          trial={isTrialAdmin}
+          canPay={isOrgAdmin}
+          onClose={() => setTrialPromoOpen(false)}
+        />
       )}
       {/* Convidado sem senha: popup infechável para criar a senha. */}
       {user?.must_set_password && <SetPasswordDialog />}

@@ -56,6 +56,8 @@
   "trialExpiredSubtitle": "Choose a paid plan to keep creating devices and using all features.",
   "planExpiredTitle": "Your plan has expired",
   "planExpiredSubtitle": "Renew by choosing a plan to keep using all features.",
+  "planExpiredMemberTitle": "Company plan expired",
+  "planExpiredMemberSubtitle": "Your company's plan has expired. Contact the administrator to renew and restore access.",
   "trialExpiredLogout": "Log out",
   "perMonth": "/mo",
   "free": "Free",

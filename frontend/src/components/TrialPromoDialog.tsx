@@ -22,7 +22,8 @@ import { Button, Spinner } from "@/components/ui";
 import { PlanShowcaseCard } from "@/components/PlanShowcaseCard";
 
 export function TrialPromoDialog(
-  { expired, trial = true, onClose }: { expired: boolean; trial?: boolean; onClose: () => void },
+  { expired, trial = true, canPay = true, onClose }:
+    { expired: boolean; trial?: boolean; canPay?: boolean; onClose: () => void },
 ) {
   const { t } = useTranslation();
   const toast = useToast();
@@ -32,10 +33,37 @@ export function TrialPromoDialog(
   const [applying, setApplying] = useState<number | null>(null);
 
   useEffect(() => {
+    if (!canPay) return; // operador não paga: /plans é admin-only, não busca
     Promise.all([api.get<PlanOption[]>("/plans"), api.get<CurrentPlan>("/plans/current")])
       .then(([ps, c]) => { setPlans(ps); setCur(c); })
       .catch(() => setPlans([]));
-  }, []);
+  }, [canPay]);
+
+  // Usuário da empresa SEM permissão de pagar (operador) com plano vencido: bloqueia
+  // com um aviso da situação e a opção de sair (o plano é responsabilidade do admin).
+  if (!canPay) {
+    return (
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="dlg-panel w-full max-w-md rounded-2xl border border-border bg-surface p-6 text-center shadow-2xl">
+          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-danger/15 text-danger">
+            <Sparkles className="h-6 w-6" />
+          </div>
+          <h2 className="text-lg font-semibold">{t("plans:planExpiredMemberTitle")}</h2>
+          <p className="mt-2 text-sm text-muted">{t("plans:planExpiredMemberSubtitle")}</p>
+          <button
+            onClick={logout}
+            className="mx-auto mt-6 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted hover:bg-surface-2 hover:text-text cursor-pointer"
+          >
+            <LogOut className="h-3.5 w-3.5" /> {t("plans:trialExpiredLogout")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const trialAvailable = cur?.trial_available !== false;
   const list = plans ?? [];
