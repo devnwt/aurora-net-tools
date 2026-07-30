@@ -54,6 +54,8 @@
   "trialPromoLater": "Not now",
   "trialExpiredTitle": "Your trial has ended",
   "trialExpiredSubtitle": "Choose a paid plan to keep creating devices and using all features.",
+  "planExpiredTitle": "Your plan has expired",
+  "planExpiredSubtitle": "Renew by choosing a plan to keep using all features.",
   "trialExpiredLogout": "Log out",
   "perMonth": "/mo",
   "free": "Free",

@@ -158,16 +158,17 @@ export function Layout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Conta FREE (trial) do admin: mostra os planos disponíveis AO LOGAR. Trial
-  // VENCIDO → popup INFECHÁVEL (só escolher um plano pago ou sair). Trial ATIVO →
-  // popup dispensável, aberto a cada login (uma vez por sessão; o logout limpa a
-  // marca, então cada novo login reabre — mas navegar no app não reabre).
+  // Popup de planos do admin da ORG. QUALQUER plano VENCIDO (trial ou pago) →
+  // popup INFECHÁVEL (só escolher um plano pago ou sair). Trial ATIVO → popup
+  // dispensável, aberto a cada login (uma vez por sessão; o logout limpa a marca,
+  // então cada novo login reabre — mas navegar no app não reabre).
   const TRIAL_PROMO_KEY = "aurora_trial_promo_seen";
-  const isTrialAdmin = !!user?.is_admin && user.role !== "master" && !!user.plan && isTrial(user.plan);
-  const trialExpired = isTrialAdmin && !!user.plan_expired;
+  const isOrgAdmin = !!user?.is_admin && user.role !== "master" && !!user.plan;
+  const isTrialAdmin = isOrgAdmin && isTrial(user!.plan!);
+  const planExpired = isOrgAdmin && !!user?.plan_expired; // trial OU pago vencido
   useEffect(() => {
     if (user?.must_set_password) return; // o popup de senha tem prioridade
-    if (trialExpired) { setTrialPromoOpen(true); return; }
+    if (planExpired) { setTrialPromoOpen(true); return; } // infechável (trial ou pago vencido)
     if (isTrialAdmin && !sessionStorage.getItem(TRIAL_PROMO_KEY)) {
       sessionStorage.setItem(TRIAL_PROMO_KEY, "1");
       setTrialPromoOpen(true);
@@ -338,8 +339,8 @@ export function Layout() {
 
       {upgradeOpen && <PlanUpgradeDialog onClose={() => setUpgradeOpen(false)} />}
       {/* Admin em conta trial: vitrine de planos. Infechável se o trial venceu. */}
-      {trialPromoOpen && isTrialAdmin && (
-        <TrialPromoDialog expired={trialExpired} onClose={() => setTrialPromoOpen(false)} />
+      {trialPromoOpen && (isTrialAdmin || planExpired) && (
+        <TrialPromoDialog expired={planExpired} trial={isTrialAdmin} onClose={() => setTrialPromoOpen(false)} />
       )}
       {/* Convidado sem senha: popup infechável para criar a senha. */}
       {user?.must_set_password && <SetPasswordDialog />}

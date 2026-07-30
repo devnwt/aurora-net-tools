@@ -54,6 +54,8 @@
   "trialPromoLater": "Ahora no",
   "trialExpiredTitle": "Tu periodo de prueba ha terminado",
   "trialExpiredSubtitle": "Elige un plan de pago para seguir creando dispositivos y usando todas las funciones.",
+  "planExpiredTitle": "Tu plan ha expirado",
+  "planExpiredSubtitle": "Renueva eligiendo un plan para seguir usando todas las funciones.",
   "trialExpiredLogout": "Salir",
   "perMonth": "/mes",
   "free": "Gratis",

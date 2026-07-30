@@ -21,7 +21,9 @@ import { isTrial } from "@/lib/plans";
 import { Button, Spinner } from "@/components/ui";
 import { PlanShowcaseCard } from "@/components/PlanShowcaseCard";
 
-export function TrialPromoDialog({ expired, onClose }: { expired: boolean; onClose: () => void }) {
+export function TrialPromoDialog(
+  { expired, trial = true, onClose }: { expired: boolean; trial?: boolean; onClose: () => void },
+) {
   const { t } = useTranslation();
   const toast = useToast();
   const { logout } = useAuth();
@@ -87,10 +89,14 @@ export function TrialPromoDialog({ expired, onClose }: { expired: boolean; onClo
             </div>
             <div>
               <h2 className="text-base font-semibold">
-                {expired ? t("plans:trialExpiredTitle") : t("plans:trialPromoTitle")}
+                {expired
+                  ? t(trial ? "plans:trialExpiredTitle" : "plans:planExpiredTitle")
+                  : t("plans:trialPromoTitle")}
               </h2>
               <p className="mt-0.5 text-xs text-muted">
-                {expired ? t("plans:trialExpiredSubtitle") : t("plans:trialPromoSubtitle")}
+                {expired
+                  ? t(trial ? "plans:trialExpiredSubtitle" : "plans:planExpiredSubtitle")
+                  : t("plans:trialPromoSubtitle")}
               </p>
             </div>
           </div>
