@@ -23,10 +23,17 @@ export interface PlanPricing {
   original?: number;
 }
 
-export function pricingFor(name: string): PlanPricing | null {
-  if (isTrial(name)) return null;
-  if (isMaxPlan(name)) return { price: 549.99, original: 700 }; // Pro Max
-  return { price: 150, original: 199 }; // demais planos pagos (ex.: Lite)
+export function pricingFor(plan: PlanOption): PlanPricing | null {
+  if (isTrial(plan.name)) return null;
+  // Valores definidos pelo Master (em centavos). promo = "por"; price = "de".
+  const promo = plan.promo_price_cents;
+  const reg = plan.price_cents;
+  if (promo != null && reg != null) return { price: promo / 100, original: reg / 100 };
+  if (reg != null) return { price: reg / 100 };
+  if (promo != null) return { price: promo / 100 };
+  // Fallback (planos ainda sem preço cadastrado): heurística por nome.
+  if (isMaxPlan(plan.name)) return { price: 549.99, original: 700 };
+  return { price: 150, original: 199 };
 }
 
 /** Formata em Real. Sem centavos quando o valor é inteiro (R$ 150 · R$ 549,99). */
