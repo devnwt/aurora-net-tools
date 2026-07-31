@@ -117,12 +117,15 @@ export function AdminOrgs() {
             </label>
             <span className="text-xs text-muted">Quem se cadastra cria a própria organização + admin.</span>
             {reg.enabled && (
-              <div className="ml-auto flex items-center gap-2 text-xs text-muted">
-                Plano padrão:
-                <Select value={reg.plan_id != null ? String(reg.plan_id) : ""} onChange={(e) => saveReg({ ...reg, plan_id: e.target.value ? Number(e.target.value) : null })} className="w-40">
-                  <option value="">— sem plano —</option>
-                  {plans.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.max_devices} dev)</option>)}
-                </Select>
+              <div className="ml-auto flex flex-col items-end gap-1">
+                <div className="flex items-center gap-2 text-xs text-muted">
+                  Plano padrão:
+                  <Select value={reg.plan_id != null ? String(reg.plan_id) : ""} onChange={(e) => saveReg({ ...reg, plan_id: e.target.value ? Number(e.target.value) : null })} className="w-40">
+                    <option value="">— sem plano —</option>
+                    {plans.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.max_devices} dev)</option>)}
+                  </Select>
+                </div>
+                <span className="text-[11px] text-muted/70">A conta nova recebe este plano por 7 dias (trial); depois expira e é preciso assinar.</span>
               </div>
             )}
           </div>

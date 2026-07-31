@@ -22,7 +22,7 @@ from app.core.config import get_settings
 from app.core.db import get_session
 from app.core.documents import format_document
 from app.models import Charge, Device, Organization, Plan, User
-from app.services import billing, billing_reconcile, notifications
+from app.services import billing, billing_reconcile, integrations, notifications
 
 settings = get_settings()
 router = APIRouter(prefix="/plans", tags=["plans"], dependencies=[Depends(require_admin)])
@@ -102,12 +102,25 @@ async def _current(session: AsyncSession, user: User) -> CurrentPlan:
     )
 
 
+async def _default_plan_id(session: AsyncSession) -> int | None:
+    """ID do plano PADRÃO do cadastro público (o trial gratuito): dado na criação por
+    7 dias e NÃO ofertado nos cards de assinatura, mesmo que seu nome não seja 'trial'."""
+    cfg = await integrations.get_settings(session, None)
+    return cfg.registration_plan_id if cfg else None
+
+
+def _is_free_trial(plan, default_id: int | None) -> bool:
+    """Plano de teste: por nome (trial/grátis/free) OU o plano padrão do cadastro."""
+    return is_trial_plan(plan) or (default_id is not None and plan.id == default_id)
+
+
 @router.get("", response_model=list[PlanOut])
 async def list_plans(session: AsyncSession = Depends(get_session)):
-    """Planos disponíveis para escolha/upgrade. O plano de TESTE não entra: ele só
-    é concedido na criação da conta e nunca pode ser (re)selecionado."""
+    """Planos disponíveis para ASSINAR. O plano de teste (por nome OU o plano padrão
+    do cadastro) não entra: ele só é concedido na criação e nunca é (re)assinado."""
+    default_id = await _default_plan_id(session)
     rows = (await session.execute(select(Plan).order_by(Plan.sort_order, Plan.max_devices, Plan.name))).scalars().all()
-    return [p for p in rows if not is_trial_plan(p)]
+    return [p for p in rows if not _is_free_trial(p, default_id)]
 
 
 @router.get("/current", response_model=CurrentPlan)
@@ -137,9 +150,9 @@ async def select_plan(
     org = (await session.execute(select(Organization).where(Organization.id == user.org_id))).scalar_one_or_none()
     if org is None:
         raise HTTPException(404, "organização não encontrada")
-    # O trial é concedido só na CRIAÇÃO da conta: nunca é possível (re)selecioná-lo,
-    # nem voltar a ele depois de ativar um plano.
-    if is_trial_plan(plan):
+    # O trial (por nome OU o plano padrão do cadastro) é concedido só na CRIAÇÃO da
+    # conta: nunca é possível (re)selecioná-lo, nem voltar a ele depois de assinar.
+    if _is_free_trial(plan, await _default_plan_id(session)):
         raise HTTPException(400, "o plano de teste vale só na criação da conta e não pode ser selecionado novamente")
     # Só troca o vínculo; devices/usuários existentes não são tocados. Um plano
     # abaixo do uso atual é permitido (fica "acima do limite" e só bloqueia novas
@@ -182,7 +195,7 @@ async def checkout(
     plan = await _plan(session, payload.plan_id)
     if plan is None:
         raise HTTPException(404, "plano não encontrado")
-    if is_trial_plan(plan):
+    if _is_free_trial(plan, await _default_plan_id(session)):
         raise HTTPException(400, "o plano de teste não requer pagamento")
     if not plan.code:
         raise HTTPException(400, "este plano ainda não está disponível para contratação — contate o suporte")

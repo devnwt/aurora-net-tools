@@ -198,9 +198,12 @@ def _plan_card(p) -> dict:
 
 
 async def _plan_list(session: AsyncSession) -> list[dict]:
-    # Sem o plano de teste: o trial vale só na criação da conta (não reativa no trial).
+    # Sem o plano de teste (por nome OU o plano padrão do cadastro): o trial vale só
+    # na criação da conta (não reativa no trial).
+    cfg = await integrations.get_settings(session, None)
+    default_id = cfg.registration_plan_id if cfg else None
     rows = (await session.execute(select(Plan).order_by(Plan.sort_order, Plan.max_devices, Plan.name))).scalars().all()
-    return [_plan_card(p) for p in rows if not is_trial_plan(p)]
+    return [_plan_card(p) for p in rows if not is_trial_plan(p) and p.id != default_id]
 
 
 class ReactivateIn(BaseModel):
@@ -422,14 +425,15 @@ async def _create_account(session: AsyncSession, *, org_name: str, name: str | N
     plan = None
     if plan_id is not None:
         plan = (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
-    # trial_expires_at é gravado SEMPRE: fixa a janela de 1 semana em que a conta
-    # pode escolher o trial. O vencimento do plano depende do tipo (trial 1 semana,
-    # pago 1 mês, sem plano nenhum).
+    # O plano padrão do cadastro público é dado como TRIAL: qualquer que seja o plano
+    # escolhido no Super Admin, a conta nova o recebe por 7 DIAS a partir da criação
+    # (vencido → SEM PLANO, precisa assinar). trial_expires_at fixa a mesma janela.
+    deadline = trial_deadline()
     org = Organization(
         name=org_name,
         plan_id=plan.id if plan else None,
-        plan_expires_at=new_plan_expiry(plan),
-        trial_expires_at=trial_deadline(),
+        plan_expires_at=deadline if plan else None,
+        trial_expires_at=deadline,
     )
     session.add(org)
     await session.flush()
