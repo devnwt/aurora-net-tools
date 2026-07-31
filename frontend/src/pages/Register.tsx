@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, Check, X } from "lucide-react";
+import { ArrowRight, Check, Eye, EyeOff, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import type { PlanOption } from "@/lib/types";
 import { isTrial } from "@/lib/plans";
@@ -24,18 +24,35 @@ type FieldState = "" | "ok" | "err";
 
 /** Input com validação visual: borda verde quando OK, vermelha quando inválido,
  * neutra quando vazio — com ícone à direita. */
-function ValidatedInput({ state, className, ...props }: { state: FieldState } & React.InputHTMLAttributes<HTMLInputElement>) {
+function ValidatedInput({ state, className, reveal, type, ...props }: { state: FieldState; reveal?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
+  const { t } = useTranslation();
+  const [show, setShow] = useState(false);
+  const marked = state === "ok" || state === "err"; // tem ícone de validação à direita
+  const effType = reveal ? (show ? "text" : "password") : type;
   return (
     <div className="relative">
       <Input
         {...props}
+        type={effType}
         className={cn(
           "transition-colors",
-          state === "ok" && "border-emerald-500 pr-9 focus-visible:ring-emerald-500",
-          state === "err" && "border-danger pr-9 focus-visible:ring-danger",
+          state === "ok" && "border-emerald-500 focus-visible:ring-emerald-500",
+          state === "err" && "border-danger focus-visible:ring-danger",
+          reveal ? (marked ? "pr-16" : "pr-10") : (marked ? "pr-9" : undefined),
           className,
         )}
       />
+      {reveal && (
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={() => setShow((s) => !s)}
+          aria-label={t(show ? "common:a11y.hidePassword" : "common:a11y.showPassword")}
+          className={cn("absolute top-1/2 -translate-y-1/2 rounded-md p-1 text-muted hover:text-text cursor-pointer", marked ? "right-8" : "right-2")}
+        >
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      )}
       {state === "ok" && <Check className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500" />}
       {state === "err" && <X className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-danger" />}
     </div>
@@ -211,7 +228,7 @@ export function Register() {
             </div>
             <div className="space-y-1">
               <label className="text-xs text-white/60">{t("auth:register.password")}</label>
-              <ValidatedInput state={st.pw} type="password" autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
+              <ValidatedInput state={st.pw} type="password" reveal autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
             </div>
             <div className="space-y-1">
               <label className="text-xs text-white/60">{t("auth:register.confirmPassword")}</label>

@@ -184,7 +184,7 @@ export function Login() {
       ) : (
         <form onSubmit={onSubmit} className="mt-4 flex aspect-square w-full max-w-sm flex-col justify-center space-y-5 rounded-2xl border-t-4 border-t-blue-500 bg-black/30 p-8 shadow-lg shadow-primary/10 backdrop-blur-md">
           <FloatingInput id="u" label={t("auth:login.identifier")} type="email" autoComplete="email" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
-          <FloatingInput id="p" label={t("auth:login.password")} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <FloatingInput id="p" label={t("auth:login.password")} type="password" reveal autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-white/70">
             <input
               type="checkbox"

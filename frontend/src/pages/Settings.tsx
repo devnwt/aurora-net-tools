@@ -11,6 +11,7 @@ import { useLocale } from "@/i18n/useLocale";
 import { isSupportedLocale, type SupportedLocale } from "@/i18n/config";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge, Button, Card, Input, Modal, Select, Spinner, Toggle } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 import { MaskedInput } from "@/components/MaskedInput";
 import { maskCpfCnpj } from "@/lib/masks";
 import { normalizeDoc, isValidCpfCnpj } from "@/lib/documents";
@@ -750,11 +751,11 @@ function ProfileTab() {
         <div className="space-y-3">
           <div className="space-y-1">
             <label className="text-xs text-muted">{t("profile:password.current")}</label>
-            <Input type="password" autoComplete="current-password" value={oldPw} onChange={(e) => setOldPw(e.target.value)} />
+            <PasswordInput autoComplete="current-password" value={oldPw} onChange={(e) => setOldPw(e.target.value)} />
           </div>
           <div className="space-y-1">
             <label className="text-xs text-muted">{t("profile:password.new")}</label>
-            <Input type="password" autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)}
+            <PasswordInput autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)}
               className={cn(newPw && (passwordError(newPw) ? "border-danger" : "border-emerald-500"))} />
             <p className={cn("text-[11px]", newPw && passwordError(newPw) ? "text-danger" : newPw ? "text-emerald-500" : "text-muted")}>{t(PASSWORD_HINT_KEY)}</p>
           </div>
