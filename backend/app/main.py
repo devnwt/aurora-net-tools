@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
                 task.cancel()
 
 
-app = FastAPI(title=settings.app_name, lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
 
 # CORS: same-origin via proxy não precisa de credentials. Dev cross-origin
 # (Vite) define CORS_ORIGINS=http://localhost:5173 e COOKIE_SECURE=false.
