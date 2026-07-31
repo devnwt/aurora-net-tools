@@ -8,13 +8,17 @@
 :8090 {
 	encode zstd gzip
 
-	# Headers de segurança (AUTH-003 / SEC-001). CSP alinhada ao SPA Vite.
+	# Headers de segurança (AUTH-003 / SEC-001).
+	# CSP alinhada ao que o SPA realmente carrega: Fira via Google Fonts
+	# (index.html), fundo Unsplash do login (index.css) e tiles OSM (DeviceMap).
+	# Uma CSP só com 'self' bloqueava esses CDNs — DevTools marcava font/img
+	# em vermelho e a UI caía no fallback do sistema.
 	header {
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://images.unsplash.com https://*.tile.openstreetmap.org; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.tile.openstreetmap.org; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 	}
 
 	# --- Copilot streaming (SSE) — sem buffer, conexão longa ---
