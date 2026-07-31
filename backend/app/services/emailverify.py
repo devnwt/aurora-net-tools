@@ -10,6 +10,7 @@ numérico de 6 dígitos; a senha fica em hash; há limite de tentativas.
 import json
 import logging
 import secrets
+import time
 
 from app.core.redis import redis_client
 
@@ -21,6 +22,7 @@ CODE_TTL = 120       # 2 min de validade do código
 VERIFIED_TTL = 900   # 15 min após verificado (para concluir a escolha do plano)
 MAX_ATTEMPTS = 5
 CODE_LEN = 6
+RESEND_COOLDOWN = 60  # intervalo mínimo (s) entre reenvios — evita spam de e-mail
 
 
 def _key(email: str) -> str:
@@ -36,7 +38,8 @@ async def start(email: str, payload: dict, *, needs_code: bool) -> str | None:
     (e-mail ainda NÃO verificado, validade CODE_TTL); senão marca como verificado
     (sem SMTP/testes) já com a janela maior."""
     code = generate_code() if needs_code else None
-    data = {**payload, "verified": not needs_code, "code": code, "attempts": 0}
+    data = {**payload, "verified": not needs_code, "code": code, "attempts": 0,
+            "sent_at": int(time.time()) if needs_code else 0}
     ttl = CODE_TTL if needs_code else VERIFIED_TTL
     await redis_client.set(_key(email), json.dumps(data), ex=ttl)
     return code
@@ -51,17 +54,21 @@ async def clear(email: str) -> None:
     await redis_client.delete(_key(email))
 
 
-async def resend(email: str) -> str | None:
-    """Gera um código novo para um cadastro pendente ainda não verificado."""
+async def resend(email: str) -> tuple[str | None, int]:
+    """Gera um código novo para um cadastro pendente. Retorna (code, retry_after):
+    - code=str, retry_after=0  → novo código gerado (pode reenviar).
+    - code=None, retry_after>0 → em cooldown; aguarde `retry_after` segundos.
+    - code=None, retry_after=0 → não há cadastro pendente."""
     data = await get(email)
     if data is None:
-        return None
+        return None, 0
+    remaining = RESEND_COOLDOWN - (int(time.time()) - int(data.get("sent_at", 0)))
+    if remaining > 0:
+        return None, remaining
     code = generate_code()
-    data["code"] = code
-    data["attempts"] = 0
-    data["verified"] = False
+    data.update(code=code, attempts=0, verified=False, sent_at=int(time.time()))
     await redis_client.set(_key(email), json.dumps(data), ex=CODE_TTL)
-    return code
+    return code, 0
 
 
 async def verify(email: str, code: str) -> str:

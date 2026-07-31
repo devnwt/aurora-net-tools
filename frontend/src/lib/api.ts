@@ -116,8 +116,8 @@ export const api = {
       body: JSON.stringify(body),
     });
   },
-  async login(username: string, password: string) {
-    const form = new URLSearchParams({ username, password });
+  async login(username: string, password: string, remember = true) {
+    const form = new URLSearchParams({ username, password, remember: remember ? "true" : "false" });
     const res = await fetch(`${BASE}/auth/login`, {
       method: "POST",
       credentials: "include",
