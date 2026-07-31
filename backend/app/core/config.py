@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     # App
     app_name: str = "Aurora Nettools"
-    app_version: str = "1.0.0"
+    app_version: str = "1.0.1"
     app_secret_key: str  # chave Fernet para cifrar segredos (obrigatória)
     jwt_secret: str = "change-me"
     jwt_algorithm: str = "HS256"
