@@ -124,6 +124,7 @@ export function Register() {
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<"form" | "verify">("form");
   const [codeTtl, setCodeTtl] = useState(120); // validade do código (seg), vinda do servidor
+  const [emailSent, setEmailSent] = useState(true); // se o código foi realmente enviado por e-mail
 
   useEffect(() => {
     api.get<{ enabled: boolean }>("/auth/registration-status").then((r) => setEnabled(r.enabled)).catch(() => setEnabled(false));
@@ -159,12 +160,16 @@ export function Register() {
     setErr("");
     setBusy(true);
     try {
-      const r = await api.post<{ verification?: boolean; expires_in?: number }>("/auth/register", {
+      const r = await api.post<{ verification?: boolean; expires_in?: number; email_sent?: boolean }>("/auth/register", {
         org_name: f.org_name, name: f.name.trim(), email: f.email, document: f.document, password: f.password,
       });
       setCodeTtl(r.expires_in ?? 120);
-      if (r.verification) setStep("verify");
-      else await finish();
+      if (r.verification) {
+        setEmailSent(r.email_sent ?? false); // se o e-mail falhou, a tela de código mostra o retry
+        setStep("verify");
+      } else {
+        await finish();
+      }
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : String(e));
     } finally {
@@ -173,7 +178,7 @@ export function Register() {
   }
 
   if (step === "verify")
-    return <VerifyCode email={f.email} expiresIn={codeTtl} onBack={() => setStep("form")} onVerified={finish} />;
+    return <VerifyCode email={f.email} expiresIn={codeTtl} emailSent={emailSent} onBack={() => setStep("form")} onVerified={finish} />;
 
   return (
     <AuthShell subtitle={t("auth:subtitle.register")}>
@@ -224,16 +229,26 @@ export function Register() {
 
 /** Passo 2: confirma o e-mail com o código de 6 dígitos (OTP). Ao confirmar, cria a
  * conta no trial e vai para a home. O código tem validade (contador regressivo). */
-function VerifyCode({ email, expiresIn, onBack, onVerified }: { email: string; expiresIn: number; onBack: () => void; onVerified: () => Promise<void> }) {
+const RESEND_COOLDOWN = 60; // s entre reenvios (espelha o backend) — evita spam de e-mail
+
+function VerifyCode(
+  { email, expiresIn, emailSent, onBack, onVerified }:
+    { email: string; expiresIn: number; emailSent: boolean; onBack: () => void; onVerified: () => Promise<void> },
+) {
   const { t } = useTranslation();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [resent, setResent] = useState(false);
   const [seconds, setSeconds] = useState(expiresIn);
+  const [sent, setSent] = useState(emailSent);          // e-mail realmente enviado?
+  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN); // s até poder reenviar
 
   useEffect(() => {
-    const id = window.setInterval(() => setSeconds((s) => (s > 0 ? s - 1 : 0)), 1000);
+    const id = window.setInterval(() => {
+      setSeconds((s) => (s > 0 ? s - 1 : 0));
+      setCooldown((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -255,14 +270,18 @@ function VerifyCode({ email, expiresIn, onBack, onVerified }: { email: string; e
   }
 
   async function resend() {
+    if (cooldown > 0) return; // trava o reenvio até o cooldown zerar (timing óbvio)
     setErr("");
     setResent(false);
     try {
-      const r = await api.post<{ expires_in?: number }>("/auth/resend-code", { email });
-      setSeconds(r.expires_in ?? 120); // reinicia o contador
+      const r = await api.post<{ expires_in?: number; email_sent?: boolean; cooldown?: number }>("/auth/resend-code", { email });
+      setSeconds(r.expires_in ?? 120); // reinicia a validade do código
+      setCooldown(r.cooldown ?? RESEND_COOLDOWN); // reinicia o cooldown do reenvio
+      setSent(r.email_sent ?? false);
       setCode("");
-      setResent(true);
+      if (r.email_sent) setResent(true); // só confirma "reenviado" se saiu de fato
     } catch (e) {
+      if (e instanceof ApiError && e.status === 429) setCooldown(e.retryAfter ?? RESEND_COOLDOWN);
       setErr(e instanceof ApiError ? e.message : String(e));
     }
   }
@@ -274,6 +293,11 @@ function VerifyCode({ email, expiresIn, onBack, onVerified }: { email: string; e
           <h2 className="text-xl font-semibold text-white">{t("auth:register.verify.title")}</h2>
           <p className="mt-1 text-sm text-white/60">{t("auth:register.verify.subtitle", { email })}</p>
         </div>
+        {!sent && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-center text-xs text-amber-200">
+            {t("auth:register.verify.emailFailed")}
+          </div>
+        )}
         <OtpInput value={code} onChange={setCode} disabled={busy || expired} error={!!err || expired} />
         <p className={cn("text-center text-xs tabular-nums", expired ? "text-danger" : "text-white/50")}>
           {expired ? t("auth:register.verify.expired") : t("auth:register.verify.expiresIn", { time: mmss })}
@@ -285,7 +309,14 @@ function VerifyCode({ email, expiresIn, onBack, onVerified }: { email: string; e
         </Button>
         <div className="flex items-center justify-between text-xs">
           <button type="button" onClick={onBack} className="text-white/60 hover:text-white cursor-pointer">{t("auth:register.verify.back")}</button>
-          <button type="button" onClick={resend} className="text-primary hover:underline cursor-pointer">{t("auth:register.verify.resend")}</button>
+          <button
+            type="button"
+            onClick={resend}
+            disabled={cooldown > 0}
+            className={cn(cooldown > 0 ? "cursor-not-allowed text-white/30" : "cursor-pointer text-primary hover:underline")}
+          >
+            {cooldown > 0 ? t("auth:register.verify.resendIn", { seconds: cooldown }) : t("auth:register.verify.resend")}
+          </button>
         </div>
       </form>
     </AuthShell>

@@ -52,6 +52,7 @@ log = logging.getLogger("aurora.auth")
 
 _RESET_PURPOSE = "pwreset"
 _RESET_MINUTES = 30
+_RESET_COOLDOWN = 60  # intervalo sugerido (s) para reenviar o link de redefinição
 
 
 @router.post("/login")
@@ -325,26 +326,34 @@ async def forgot_password(body: ForgotIn, request: Request, session: AsyncSessio
         user = (await session.execute(
             select(User).where(or_(User.username == ident, func.lower(User.email) == ident.lower()))
         )).scalars().first()
-    # Resposta genérica (não revela se a conta existe).
-    if user and user.email:
-        cfg = await integrations.get_settings(session, None)  # SMTP global
-        if cfg and cfg.smtp_host:
-            token = create_scoped_token(str(user.id), _RESET_PURPOSE, _RESET_MINUTES)
-            link = f"{_origin(request)}/reset-password?token={token}"
-            text = (
-                "Recebemos um pedido para redefinir a sua senha na Aurora Prisma NetTools.\n\n"
-                f"Abra este link para escolher uma nova senha:\n{link}\n\n"
-                f"O link expira em {_RESET_MINUTES} minutos. Se não foi você, ignore este e-mail."
-            )
-            html = emailtpl.render(
-                heading="Redefinir senha",
-                intro="Recebemos um pedido para redefinir a sua senha na Aurora Prisma NetTools. Clique no botão abaixo para escolher uma nova senha.",
-                button_label="Redefinir minha senha",
-                button_url=link,
-                note=f"O link expira em {_RESET_MINUTES} minutos. Se não foi você, ignore este e-mail.",
-            )
-            await integrations.send_email(cfg, decrypt(cfg.smtp_password), user.email, "Redefinição de senha — Aurora Prisma NetTools", text, html)
-    return {"ok": True, "detail": "Se houver uma conta com e-mail cadastrado, enviamos um link de redefinição."}
+    # Resposta genérica (não revela se a conta existe). email_sent é um "blend"
+    # anti-enumeração: com SMTP disponível, reportamos enviado mesmo sem conta —
+    # só vira false quando o SMTP está fora/indisponível (problema global, sem leak).
+    cfg = await integrations.get_settings(session, None)  # SMTP global
+    smtp_ok = bool(cfg and cfg.smtp_host)
+    email_sent = smtp_ok
+    if user and user.email and smtp_ok:
+        token = create_scoped_token(str(user.id), _RESET_PURPOSE, _RESET_MINUTES)
+        link = f"{_origin(request)}/reset-password?token={token}"
+        text = (
+            "Recebemos um pedido para redefinir a sua senha na Aurora Prisma NetTools.\n\n"
+            f"Abra este link para escolher uma nova senha:\n{link}\n\n"
+            f"O link expira em {_RESET_MINUTES} minutos. Se não foi você, ignore este e-mail."
+        )
+        html = emailtpl.render(
+            heading="Redefinir senha",
+            intro="Recebemos um pedido para redefinir a sua senha na Aurora Prisma NetTools. Clique no botão abaixo para escolher uma nova senha.",
+            button_label="Redefinir minha senha",
+            button_url=link,
+            note=f"O link expira em {_RESET_MINUTES} minutos. Se não foi você, ignore este e-mail.",
+        )
+        email_sent, _detail = await integrations.send_email(cfg, decrypt(cfg.smtp_password), user.email, "Redefinição de senha — Aurora Prisma NetTools", text, html)
+    return {
+        "ok": True,
+        "email_sent": email_sent,
+        "cooldown": _RESET_COOLDOWN,
+        "detail": "Se houver uma conta com e-mail cadastrado, enviamos um link de redefinição.",
+    }
 
 
 class ResetIn(BaseModel):
@@ -486,18 +495,25 @@ async def register(body: RegisterIn, request: Request, session: AsyncSession = D
     document = normalize_document(body.document)
     await _validate_registration(session, cfg, org_name, name, email, document, body.password)
 
-    needs_code = settings.email_verification_enabled and bool(cfg and cfg.smtp_host) and not settings.testing
+    # A verificação por e-mail é exigida sempre que habilitada — NÃO depende de o
+    # envio dar certo. Assim uma falha de SMTP nunca "libera" o cadastro sem validar.
+    needs_code = settings.email_verification_enabled and not settings.testing
     code = await emailverify.start(email, {
         "org_name": org_name, "name": name, "email": email, "document": document,
         "password_hash": hash_password(body.password),
     }, needs_code=needs_code)
+    email_sent = False
     if needs_code:
-        ok, detail = await _send_verification_email(cfg, email, code)
-        if not ok:
-            await emailverify.clear(email)
-            log.warning("falha ao enviar código de verificação para %s: %s", email, detail)
-            raise HTTPException(502, "não foi possível enviar o e-mail de confirmação — tente novamente em instantes")
-    return {"verification": needs_code, "email": email, "expires_in": emailverify.CODE_TTL}
+        # Tenta enviar o código. Se falhar (SMTP fora/indisponível), NÃO cria a conta
+        # nem libera acesso: mantém a pendência e sinaliza email_sent=false — o front
+        # mostra a tela de código com reenvio (a validação continua obrigatória).
+        if cfg and cfg.smtp_host:
+            email_sent, detail = await _send_verification_email(cfg, email, code)
+            if not email_sent:
+                log.warning("falha ao enviar código de verificação para %s: %s", email, detail)
+        else:
+            log.warning("cadastro de %s: SMTP não configurado — código não enviado", email)
+    return {"verification": needs_code, "email": email, "expires_in": emailverify.CODE_TTL, "email_sent": email_sent}
 
 
 class VerifyEmailIn(BaseModel):
@@ -561,14 +577,21 @@ async def resend_code(body: ResendCodeIn, request: Request, session: AsyncSessio
     """Reenvia o código para um cadastro pendente."""
     await loginguard.guard_auth_endpoint(request)
     email = body.email.strip().lower()
-    code = await emailverify.resend(email)
-    if code is None:
+    code, retry_after = await emailverify.resend(email)
+    if code is None and retry_after == 0:
         raise HTTPException(400, "não há cadastro pendente para este e-mail — refaça o cadastro")
+    if code is None:  # em cooldown — evita reenvio em rajada
+        raise HTTPException(
+            429, f"aguarde {retry_after}s para reenviar o código",
+            headers={"Retry-After": str(retry_after)},
+        )
     cfg = await integrations.get_settings(session, None)
-    if not (cfg and cfg.smtp_host):
-        raise HTTPException(400, "envio de e-mail indisponível")
-    ok, detail = await _send_verification_email(cfg, email, code)
-    if not ok:
-        log.warning("falha ao reenviar código para %s: %s", email, detail)
-        raise HTTPException(502, "não foi possível reenviar o e-mail — tente novamente em instantes")
-    return {"ok": True, "expires_in": emailverify.CODE_TTL}
+    email_sent = False
+    if cfg and cfg.smtp_host:
+        email_sent, detail = await _send_verification_email(cfg, email, code)
+        if not email_sent:
+            log.warning("falha ao reenviar código para %s: %s", email, detail)
+    else:
+        log.warning("reenvio de código para %s: SMTP não configurado", email)
+    # Não derruba (502): devolve email_sent para o front decidir mostrar erro/retry.
+    return {"ok": True, "email_sent": email_sent, "expires_in": emailverify.CODE_TTL, "cooldown": emailverify.RESEND_COOLDOWN}

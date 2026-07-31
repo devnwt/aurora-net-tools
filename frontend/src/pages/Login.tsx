@@ -25,6 +25,9 @@ export function Login() {
   const [forgot, setForgot] = useState(false);
   const [ident, setIdent] = useState("");
   const [note, setNote] = useState("");
+  // Esqueci a senha: se o e-mail saiu (null = ainda não pediu) e cooldown p/ reenviar.
+  const [forgotSent, setForgotSent] = useState<boolean | null>(null);
+  const [forgotCd, setForgotCd] = useState(0);
   const [regEnabled, setRegEnabled] = useState(false);
   const [reactivate, setReactivate] = useState<LoginResult | null>(null);
   const [supportUrl, setSupportUrl] = useState("");
@@ -36,6 +39,12 @@ export function Login() {
       .get<{ enabled: boolean; support_whatsapp_url?: string }>("/auth/registration-status")
       .then((r) => { setRegEnabled(r.enabled); setSupportUrl(r.support_whatsapp_url || ""); })
       .catch(() => {});
+  }, []);
+
+  // Cooldown do reenvio do "esqueci a senha" (conta regressiva óbvia).
+  useEffect(() => {
+    const id = window.setInterval(() => setForgotCd((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => window.clearInterval(id);
   }, []);
 
   // Vindo da exclusão da empresa (Danger Zone): confirma o sucesso após o redirect.
@@ -91,13 +100,17 @@ export function Login() {
 
   async function onForgot(e: React.FormEvent) {
     e.preventDefault();
+    if (forgotCd > 0) return; // respeita o cooldown do reenvio
     setBusy(true);
     setNote("");
     try {
-      const r = await api.post<{ detail: string }>("/auth/forgot-password", { identifier: ident });
+      const r = await api.post<{ detail: string; email_sent?: boolean; cooldown?: number }>("/auth/forgot-password", { identifier: ident });
       setNote(r.detail);
-    } catch {
+      setForgotSent(r.email_sent ?? true);
+      setForgotCd(r.cooldown ?? 60);
+    } catch (err) {
       setNote(t("auth:forgot.fallbackNote"));
+      if (err instanceof ApiError && err.status === 429) setForgotCd(err.retryAfter ?? 60);
     } finally {
       setBusy(false);
     }
@@ -141,8 +154,17 @@ export function Login() {
             <Input id="id" value={ident} onChange={(e) => setIdent(e.target.value)} autoFocus />
           </div>
           {note && <p className="text-sm text-ok">{note}</p>}
-          <Button type="submit" className="w-full justify-center" disabled={busy || !ident}>{busy ? t("auth:forgot.submitting") : t("auth:forgot.submit")}</Button>
-          <button type="button" onClick={() => { setForgot(false); setNote(""); }} className="w-full text-center text-xs text-white/60 hover:text-white cursor-pointer">{t("auth:forgot.back")}</button>
+          {forgotSent === false && <p className="text-xs text-amber-300">{t("auth:forgot.emailFailed")}</p>}
+          <Button type="submit" className="w-full justify-center" disabled={busy || !ident || forgotCd > 0}>
+            {busy
+              ? t("auth:forgot.submitting")
+              : forgotCd > 0
+                ? t("auth:forgot.resendIn", { seconds: forgotCd })
+                : forgotSent !== null
+                  ? t("auth:forgot.resend")
+                  : t("auth:forgot.submit")}
+          </Button>
+          <button type="button" onClick={() => { setForgot(false); setNote(""); setForgotSent(null); setForgotCd(0); }} className="w-full text-center text-xs text-white/60 hover:text-white cursor-pointer">{t("auth:forgot.back")}</button>
         </form>
       ) : (
         <form onSubmit={onSubmit} className="mt-4 flex aspect-square w-full max-w-sm flex-col justify-center space-y-5 rounded-2xl border-t-4 border-t-blue-500 bg-black/30 p-8 shadow-lg shadow-primary/10 backdrop-blur-md">
