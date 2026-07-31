@@ -164,7 +164,12 @@ export function Login() {
             <Input id="id" value={ident} onChange={(e) => setIdent(e.target.value)} autoFocus />
           </div>
           {note && <p className="text-sm text-ok">{note}</p>}
-          {forgotSent === false && <p className="text-xs text-amber-300">{t("auth:forgot.emailFailed")}</p>}
+          {forgotSent === false && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-amber-300">{t("auth:forgot.emailFailed")}</p>
+              {supportUrl && <WhatsAppSupport url={supportUrl} label={t("plans:supportWhatsapp")} />}
+            </div>
+          )}
           <Button type="submit" className="w-full justify-center" disabled={busy || !ident || forgotCd > 0}>
             {busy
               ? t("auth:forgot.submitting")

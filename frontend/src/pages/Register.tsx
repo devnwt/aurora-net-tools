@@ -7,6 +7,7 @@ import type { PlanOption } from "@/lib/types";
 import { isTrial } from "@/lib/plans";
 import { Button, Input, Spinner } from "@/components/ui";
 import { AuthShell } from "@/components/AuthShell";
+import { WhatsAppSupport } from "@/components/WhatsAppSupport";
 import { PASSWORD_HINT_KEY, passwordError } from "@/lib/password";
 import { maskCpfCnpj } from "@/lib/masks";
 import { isValidCpfCnpj } from "@/lib/documents";
@@ -125,9 +126,12 @@ export function Register() {
   const [step, setStep] = useState<"form" | "verify">("form");
   const [codeTtl, setCodeTtl] = useState(120); // validade do código (seg), vinda do servidor
   const [emailSent, setEmailSent] = useState(true); // se o código foi realmente enviado por e-mail
+  const [supportUrl, setSupportUrl] = useState(""); // link de suporte (WhatsApp), do backend
 
   useEffect(() => {
-    api.get<{ enabled: boolean }>("/auth/registration-status").then((r) => setEnabled(r.enabled)).catch(() => setEnabled(false));
+    api.get<{ enabled: boolean; support_whatsapp_url?: string }>("/auth/registration-status")
+      .then((r) => { setEnabled(r.enabled); setSupportUrl(r.support_whatsapp_url || ""); })
+      .catch(() => setEnabled(false));
   }, []);
 
   // Estado visual por campo (verde OK / vermelho inválido / neutro vazio).
@@ -178,7 +182,7 @@ export function Register() {
   }
 
   if (step === "verify")
-    return <VerifyCode email={f.email} expiresIn={codeTtl} emailSent={emailSent} onBack={() => setStep("form")} onVerified={finish} />;
+    return <VerifyCode email={f.email} expiresIn={codeTtl} emailSent={emailSent} supportUrl={supportUrl} onBack={() => setStep("form")} onVerified={finish} />;
 
   return (
     <AuthShell subtitle={t("auth:subtitle.register")}>
@@ -232,8 +236,8 @@ export function Register() {
 const RESEND_COOLDOWN = 60; // s entre reenvios (espelha o backend) — evita spam de e-mail
 
 function VerifyCode(
-  { email, expiresIn, emailSent, onBack, onVerified }:
-    { email: string; expiresIn: number; emailSent: boolean; onBack: () => void; onVerified: () => Promise<void> },
+  { email, expiresIn, emailSent, supportUrl, onBack, onVerified }:
+    { email: string; expiresIn: number; emailSent: boolean; supportUrl: string; onBack: () => void; onVerified: () => Promise<void> },
 ) {
   const { t } = useTranslation();
   const [code, setCode] = useState("");
@@ -296,6 +300,11 @@ function VerifyCode(
         {!sent && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-center text-xs text-amber-200">
             {t("auth:register.verify.emailFailed")}
+            {supportUrl && (
+              <div className="mt-2 flex justify-center">
+                <WhatsAppSupport url={supportUrl} label={t("plans:supportWhatsapp")} />
+              </div>
+            )}
           </div>
         )}
         <OtpInput value={code} onChange={setCode} disabled={busy || expired} error={!!err || expired} />
