@@ -334,7 +334,6 @@ export function Layout() {
               )}
             </div>
           )}
-          <p className="mt-3 text-center text-[10px] font-medium tracking-wide text-muted/60">v{__APP_VERSION__}</p>
         </div>
       </aside>
 
