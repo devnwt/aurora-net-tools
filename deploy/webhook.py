@@ -36,12 +36,31 @@ DEPLOY_SCRIPT = os.environ.get("AURORA_DEPLOY_SCRIPT", os.path.join(HERE, "deplo
 REGISTRY = os.environ.get("AURORA_REGISTRY", "registry.aurora.app.br/aurora-nettools")
 PATH = "/harbor-webhook"
 
-# A stack só sobe inteira: o deploy espera as três existirem no registry.
-REQUIRED_REPOS = ("backend", "frontend", "proxy")
+
+def _required_repos() -> tuple[str, ...]:
+    """Repositórios que precisam existir no registry antes de implantar.
+
+    Lidos do compose de deploy, que é exatamente o que o `deploy.sh` vai puxar.
+    Uma lista fixa aqui ficou para trás quando o serviço 'backup' entrou no
+    compose: o webhook liberaria o deploy sem esperar aquela imagem e o `pull`
+    abortaria a release inteira. Se o arquivo não for legível, cai na tripla
+    histórica — melhor esperar de menos do que não subir.
+    """
+    compose = os.path.join(os.path.dirname(HERE), "docker-compose.harbor.yml")
+    try:
+        with open(compose, encoding="utf-8") as fh:
+            found = re.findall(r"}/([a-z0-9_-]+):\$\{IMAGE_TAG", fh.read())
+    except OSError:
+        found = []
+    return tuple(sorted(set(found))) or ("backend", "frontend", "proxy")
+
+
+# A stack só sobe inteira: o deploy espera todas existirem no registry.
+REQUIRED_REPOS = _required_repos()
 # Tag de release é o SHA curto que o workflow publica. 'latest' é alias móvel e
 # é ignorado de propósito — implantá-lo apagaria o alvo do rollback.
 TAG_RE = re.compile(r"^[0-9a-f]{7,40}$")
-# Quanto esperar as três imagens aparecerem (o push das 3 não é atômico).
+# Quanto esperar as imagens aparecerem (o push do conjunto não é atômico).
 WAIT_ALL_TIMEOUT = int(os.environ.get("AURORA_WAIT_TIMEOUT", "900"))
 DEPLOY_TIMEOUT = int(os.environ.get("AURORA_DEPLOY_TIMEOUT", "1800"))
 
@@ -69,8 +88,8 @@ def manifest_exists(repo: str, tag: str) -> bool:
 class Deployer:
     """Serializa os deploys e absorve os webhooks duplicados.
 
-    O push-harbor.sh publica 3 repositórios × 2 tags, então o Harbor dispara
-    vários eventos para a MESMA release. Aqui eles viram um deploy só:
+    O push-harbor.sh publica vários repositórios × 2 tags, então o Harbor
+    dispara vários eventos para a MESMA release. Aqui eles viram um deploy só:
     - enquanto um deploy roda, os eventos que chegam só atualizam o 'pendente';
     - o pendente guarda a tag MAIS NOVA (se duas releases entram em sequência,
       a antiga é descartada em vez de ser implantada depois da nova);
@@ -113,7 +132,7 @@ class Deployer:
                     self._running = None
 
     def _deploy(self, tag: str) -> None:
-        # O push das 3 imagens não é atômico: o evento do backend pode chegar
+        # O push do conjunto não é atômico: o evento do backend pode chegar
         # antes do frontend estar no registry. Sem esta espera, o deploy puxaria
         # uma tag que ainda não existe e abortaria à toa.
         log.info("[%s] aguardando as %d imagens no registry...", tag, len(REQUIRED_REPOS))
@@ -240,7 +259,13 @@ def main() -> None:
     if not os.access(DEPLOY_SCRIPT, os.X_OK):
         raise SystemExit(f"{DEPLOY_SCRIPT} não existe ou não é executável.")
 
-    log.info("ouvindo em %s:%d%s  (registry: %s)", BIND, PORT, PATH, REGISTRY)
+    # Registrar os repositórios no boot torna o log a primeira coisa a consultar
+    # quando um deploy automático não sai: dá para ver se a lista bate com o
+    # compose sem precisar reproduzir um push.
+    log.info(
+        "ouvindo em %s:%d%s  (registry: %s, repos: %s)",
+        BIND, PORT, PATH, REGISTRY, ", ".join(REQUIRED_REPOS),
+    )
     ThreadingHTTPServer((BIND, PORT), Handler).serve_forever()
 
 

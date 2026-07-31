@@ -51,7 +51,13 @@ RestartSec=5s
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
-ProtectHome=yes
+# read-only, não 'yes': com /home vazio o serviço não enxerga o
+# ~/.docker/config.json do usuário e o `docker manifest inspect` responde como
+# se a imagem não existisse. O sintoma é traiçoeiro — o webhook fica esperando
+# imagens que estão no registry e desiste no timeout, enquanto o MESMO comando
+# rodado à mão funciona (sem sandbox). Ler basta: as credenciais são de leitura
+# e o DAC continua limitando o serviço ao que o usuário 'deploy' já podia ler.
+ProtectHome=read-only
 ReadWritePaths=/opt/aurora-net-tools
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
