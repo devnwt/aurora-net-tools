@@ -27,6 +27,10 @@ export function AuthShell({ subtitle, children, wide = false }: { subtitle: stri
           {children}
         </div>
       </div>
+      {/* Versão do app — discreta, no canto inferior direito da tela de login. */}
+      <span className="pointer-events-none absolute bottom-3 right-4 z-10 select-none text-[10px] tracking-wide text-white/20">
+        v{__APP_VERSION__}
+      </span>
     </div>
   );
 }
