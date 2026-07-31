@@ -2,7 +2,7 @@ import logging
 import re
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
@@ -59,6 +59,7 @@ _RESET_COOLDOWN = 60  # intervalo sugerido (s) para reenviar o link de redefini�
 async def login(
     request: Request,
     form: OAuth2PasswordRequestForm = Depends(),
+    remember: bool = Form(True),  # "Lembrar de mim": mantém a sessão após fechar o navegador
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     # Login é APENAS por e-mail (o campo do form chama-se "username" por padrão do
@@ -121,7 +122,7 @@ async def login(
                     org.plan_expires_at = new_plan_expiry(trial)
                     org.trial_expires_at = trial_deadline()
                     await session.commit()
-    return token_response(request, await sessions.issue_token_pair(user))
+    return token_response(request, await sessions.issue_token_pair(user), remember=remember)
 
 
 class RefreshIn(BaseModel):

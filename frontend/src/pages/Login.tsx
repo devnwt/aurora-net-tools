@@ -19,8 +19,15 @@ export function Login() {
   const { t } = useTranslation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true); // "Lembrar de mim": pré-preenche e-mail + mantém a sessão
   const [busy, setBusy] = useState(false);
   const toast = useToast();
+
+  // Pré-preenche o e-mail lembrado do último login (facilita reentrar).
+  useEffect(() => {
+    const saved = localStorage.getItem("aurora_remember_email");
+    if (saved) { setUsername(saved); setRemember(true); }
+  }, []);
 
   const [forgot, setForgot] = useState(false);
   const [ident, setIdent] = useState("");
@@ -59,7 +66,10 @@ export function Login() {
     e.preventDefault();
     setBusy(true);
     try {
-      const res = await login(username, password);
+      const res = await login(username, password, remember);
+      // Lembrar (ou esquecer) o e-mail para o próximo login.
+      if (remember) localStorage.setItem("aurora_remember_email", username);
+      else localStorage.removeItem("aurora_remember_email");
       // Admin de empresa inativo: em vez de erro, entra no fluxo "bem-vindo de volta".
       if (res.reactivate) {
         setReactivate(res);
@@ -170,6 +180,15 @@ export function Login() {
         <form onSubmit={onSubmit} className="mt-4 flex aspect-square w-full max-w-sm flex-col justify-center space-y-5 rounded-2xl border-t-4 border-t-blue-500 bg-black/30 p-8 shadow-lg shadow-primary/10 backdrop-blur-md">
           <FloatingInput id="u" label={t("auth:login.identifier")} type="email" autoComplete="email" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
           <FloatingInput id="p" label={t("auth:login.password")} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-white/70">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4 cursor-pointer rounded border-white/30 bg-transparent accent-primary"
+            />
+            {t("auth:login.rememberMe")}
+          </label>
           <Button type="submit" className="w-full justify-center py-2.5" disabled={busy}>
             {busy ? <Spinner className="border-primary-fg/40 border-t-primary-fg" /> : t("auth:login.submit")}
           </Button>

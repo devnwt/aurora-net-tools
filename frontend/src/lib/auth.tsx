@@ -26,7 +26,7 @@ interface Me {
 interface AuthCtx {
   user: Me | null;
   loading: boolean;
-  login: (u: string, p: string) => Promise<LoginResult>;
+  login: (u: string, p: string, remember?: boolean) => Promise<LoginResult>;
   logout: () => void;
   /** Recarrega /auth/me (ex.: após definir a senha inicial ou atualizar o perfil). */
   refresh: () => Promise<void>;
@@ -47,8 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  async function login(u: string, p: string) {
-    const res = await api.login(u, p);
+  async function login(u: string, p: string, remember = true) {
+    const res = await api.login(u, p, remember);
     // Reativação: sem cookie ainda. Sessão normal: cookie já setado pelo Set-Cookie.
     if (!res.reactivate) setUser(await api.get<Me>("/auth/me"));
     return res;
