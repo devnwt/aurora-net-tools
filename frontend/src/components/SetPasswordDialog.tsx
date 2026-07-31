@@ -9,6 +9,7 @@ import { KeyRound } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button, Input, Spinner } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 import { PASSWORD_HINT_KEY, passwordError } from "@/lib/password";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +51,7 @@ export function SetPasswordDialog() {
         <div className="space-y-3">
           <div className="space-y-1">
             <label className="text-xs text-muted">{t("profile:setPassword.new")}</label>
-            <Input type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus
+            <PasswordInput autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus
               className={cn(pw && (pwErr ? "border-danger focus-visible:ring-danger" : "border-emerald-500 focus-visible:ring-emerald-500"))} />
             <p className={cn("text-[11px]", pw && pwErr ? "text-danger" : pw && !pwErr ? "text-emerald-500" : "text-muted")}>{t(PASSWORD_HINT_KEY)}</p>
           </div>

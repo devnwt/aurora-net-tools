@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "@/lib/api";
 import { Button, Input } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 import { AuthShell } from "@/components/AuthShell";
 import { PASSWORD_HINT_KEY, passwordError } from "@/lib/password";
 
@@ -46,7 +47,7 @@ export function ResetPassword() {
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-1">
               <label htmlFor="pw" className="text-xs text-white/60">{t("auth:reset.newPassword")}</label>
-              <Input id="pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
+              <PasswordInput id="pw" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
               <p className={`text-[11px] ${pw && passwordError(pw) ? "text-danger" : "text-white/40"}`}>{t(PASSWORD_HINT_KEY)}</p>
             </div>
             <div className="space-y-1">

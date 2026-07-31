@@ -76,6 +76,8 @@
   "a11y": {
     "close": "Fechar",
     "loading": "carregando",
+    "showPassword": "Mostrar senha",
+    "hidePassword": "Ocultar senha",
     "notifications": "Notificações",
     "closeNotification": "Fechar notificação",
     "repeated": "repetido {{count}} vezes"

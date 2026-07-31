@@ -5,6 +5,7 @@ import type { Credential } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Table, Td, Th } from "@/components/Table";
 import { Badge, Button, Card, EmptyState, Input, Select, Spinner } from "@/components/ui";
+import { PasswordInput } from "@/components/PasswordInput";
 import { useConfirm } from "@/lib/confirm";
 
 const BLANK = { name: "", kind: "ssh", username: "", secret: "" };
@@ -111,7 +112,7 @@ export function Credentials() {
               <label htmlFor="cs" className="text-xs text-muted">
                 {t("credentials:form.secretLabel")} {editingId && <span className="text-muted">{t("credentials:form.keepSecret")}</span>}
               </label>
-              <Input id="cs" type="password" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
+              <PasswordInput id="cs" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
             </div>
             <div className="flex gap-2">
               <Button type="submit" className="flex-1" disabled={saving}>{saving ? t("common:actions.saving") : editingId ? t("common:actions.save") : t("common:actions.create")}</Button>
