@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Building2, Plus } from "lucide-react";
+import { Building2, KeyRound, Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { Device, DeviceStatusInfo, Group, OrgMeta } from "@/lib/types";
@@ -158,7 +158,21 @@ export function Devices() {
       {loading ? (
         <div className="flex justify-center py-12"><Spinner className="h-6 w-6" /></div>
       ) : filtered.length === 0 ? (
-        <EmptyState title={t("devices:list.emptyTitle")} hint={t("devices:list.emptyHint")} />
+        devices.length === 0 ? (
+          // Sem NENHUM device: orienta configurar as Credenciais de acesso primeiro.
+          <EmptyState
+            title={t("devices:list.emptyTitle")}
+            hint={t("devices:list.emptyCredentialsHint")}
+            action={
+              <Link to="/credentials">
+                <Button><KeyRound className="h-4 w-4" /> {t("devices:list.emptyCredentialsAction")}</Button>
+              </Link>
+            }
+          />
+        ) : (
+          // Há devices, mas os filtros zeraram o resultado.
+          <EmptyState title={t("devices:list.emptyTitle")} hint={t("devices:list.emptyFilteredHint")} />
+        )
       ) : isMaster ? (
         // Master: uma seção por empresa (com contagem) e os sites dentro dela.
         <div className="space-y-8">

@@ -90,11 +90,12 @@ export function Badge({ children, tone = "muted", title }: { children: ReactNode
   return <span title={title} className={cn("inline-flex items-center rounded px-2 py-0.5 text-xs font-medium", tones[tone])}>{children}</span>;
 }
 
-export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+export function EmptyState({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-1 py-12 text-center">
       <p className="text-sm font-medium text-text">{title}</p>
-      {hint && <p className="text-xs text-muted">{hint}</p>}
+      {hint && <p className="max-w-md text-xs text-muted">{hint}</p>}
+      {action && <div className="mt-3">{action}</div>}
     </div>
   );
 }

@@ -73,7 +73,7 @@ const groups: { key: string; items: NavItem[] }[] = [
       { to: "/commands", key: "commands", icon: Terminal },
       { to: "/templates", key: "templates", icon: FileText },
       { to: "/upgrades", key: "upgrades", icon: ArrowUpCircle },
-      { to: "/scan", key: "scan", icon: Globe },
+      { to: "/scan", key: "scan", icon: Globe, masterOnly: true },
       { to: "/topology", key: "topology", icon: Workflow },
       { to: "/backups", key: "backups", icon: Archive },
       { to: "/logs", key: "logs", icon: ScrollText },
