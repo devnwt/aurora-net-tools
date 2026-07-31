@@ -83,6 +83,9 @@ export function TrialPromoDialog(
 
   const trialAvailable = cur?.trial_available !== false;
   const list = plans ?? [];
+  // Cards visíveis (esconde o trial quando vencido). >3 → rola na horizontal.
+  const cards = list.filter((p) => !(expired && isTrial(p.name)));
+  const scrollCards = cards.length > 3;
   const reserveRibbon = list.some((p) => isTrial(p.name));
   const topId = list.filter((p) => !isTrial(p.name)).reduce<PlanOption | null>((m, p) => (!m || p.max_devices > m.max_devices ? p : m), null)?.id;
 
@@ -163,10 +166,13 @@ export function TrialPromoDialog(
           ) : list.length === 0 ? (
             <p className="text-sm text-muted">{t("plans:empty")}</p>
           ) : (
-            <div className="grid w-full grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-3">
-              {/* Trial expirado: esconde o card de teste (não pode mais ser escolhido).
-                  SempreDHOW os pagos para forçar a decisão. */}
-              {list.filter((p) => !(expired && isTrial(p.name))).map((p, i) => (
+            <div className={
+              scrollCards
+                ? "grid w-full grid-flow-col auto-cols-[14rem] items-stretch gap-3 overflow-x-auto pb-2 sm:auto-cols-[16rem] sm:gap-4"
+                : "grid w-full grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-3"
+            }>
+              {/* Trial expirado: esconde o card de teste; >3 planos rolam na horizontal. */}
+              {cards.map((p, i) => (
                 <PlanShowcaseCard
                   key={p.id}
                   plan={p}

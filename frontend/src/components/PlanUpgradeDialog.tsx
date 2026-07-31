@@ -39,6 +39,7 @@ export function PlanUpgradeDialog({ onClose }: { onClose: () => void }) {
 
   const trialAvailable = cur?.trial_available !== false;
   const list = plans ?? [];
+  const scrollCards = list.length > 3; // >3 planos → rola na horizontal
   const reserveRibbon = list.some((p) => isTrial(p.name));
   const topId = list.filter((p) => !isTrial(p.name)).reduce<PlanOption | null>((m, p) => (!m || p.max_devices > m.max_devices ? p : m), null)?.id;
   // Plano em aplicação é pago? (define o texto do loading: checkout x aplicar direto)
@@ -102,7 +103,11 @@ export function PlanUpgradeDialog({ onClose }: { onClose: () => void }) {
           {plans === null ? (
             <Spinner className="h-6 w-6" />
           ) : (
-            <div className="grid w-full grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-3">
+            <div className={
+              scrollCards
+                ? "grid w-full grid-flow-col auto-cols-[14rem] items-stretch gap-3 overflow-x-auto pb-2 sm:auto-cols-[16rem] sm:gap-4"
+                : "grid w-full grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-3"
+            }>
               {list.map((p, i) => (
                 <PlanShowcaseCard
                   key={p.id}
