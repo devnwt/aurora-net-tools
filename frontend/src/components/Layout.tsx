@@ -111,29 +111,26 @@ export function Layout() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [trialPromoOpen, setTrialPromoOpen] = useState(false);
   const [payWatching, setPayWatching] = useState(false);
-  const [payValidating, setPayValidating] = useState(false);
   const [unread, setUnread] = useState(0);
   // Drawer da sidebar no mobile (<lg). Fecha ao trocar de rota.
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   useEffect(() => setSidebarOpen(false), [location.pathname]);
 
-  // Payment watcher: ao voltar do checkout, VALIDA a operação — consulta
-  // /plans/current (que reconcilia ao vivo com o hub) até o plano ativar. Começa
-  // com um overlay bloqueante "Validando operação" (~30s); se demorar mais, cai
-  // para um banner discreto e segue observando em segundo plano (o poller do
-  // backend cobre o resto). Cobre o caso do usuário estar com o app aberto.
+  // Payment watcher: ao voltar do checkout, valida em SEGUNDO PLANO (assíncrono) —
+  // consulta /plans/current (reconcilia ao vivo com o hub) SEM bloquear a tela. Mostra
+  // só um aviso discreto "em processamento" + um toast, e confirma quando o plano ativa
+  // (o poller do backend cobre o resto). Só o admin de uma EMPRESA valida; Master nunca.
   useEffect(() => {
     const pending = localStorage.getItem("aurora_pay_pending");
-    // Só o admin de uma EMPRESA valida pagamento. Master (sem org, não paga) nunca
-    // entra aqui — se houver flag antigo no navegador, limpa e sai.
     if (!user?.is_admin || user.role === "master" || user.org_id == null) {
       if (user?.role === "master") localStorage.removeItem("aurora_pay_pending");
       return;
     }
     if (!pending) return;
     const planId = Number(pending);
-    setPayValidating(true);
+    setPayWatching(true);
+    toast.info(t("plans:paymentProcessing")); // avisa que está processando (não bloqueia o app)
     let tries = 0;
     const iv = window.setInterval(async () => {
       tries++;
@@ -142,24 +139,18 @@ export function Layout() {
         if (cur.plan_id === planId) {
           window.clearInterval(iv);
           localStorage.removeItem("aurora_pay_pending");
-          setPayValidating(false);
           setPayWatching(false);
           toast.success(t("plans:paymentConfirmed"));
           void refresh(); // atualiza o plano no menu
           return;
         }
       } catch { /* ignora — tenta de novo */ }
-      if (tries === 10) { // ~30s bloqueando → libera a tela e observa discreto
-        setPayValidating(false);
-        setPayWatching(true);
-      }
-      if (tries >= 60) { // ~3 min total
+      if (tries >= 36) { // ~3 min (5s × 36) — o poller do backend confirma o resto
         window.clearInterval(iv);
         localStorage.removeItem("aurora_pay_pending");
-        setPayValidating(false);
         setPayWatching(false);
       }
-    }, 3000);
+    }, 5000);
     return () => window.clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -356,19 +347,7 @@ export function Layout() {
       )}
       {/* Convidado sem senha: popup infechável para criar a senha. */}
       {user?.must_set_password && <SetPasswordDialog />}
-      {/* Ao voltar do checkout: overlay bloqueante validando a operação (~30s). */}
-      {payValidating && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-bg/80 backdrop-blur-sm">
-          <div className="mx-4 flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl border border-border bg-surface px-8 py-10 text-center shadow-xl">
-            <Spinner className="h-9 w-9" />
-            <div className="space-y-1.5">
-              <p className="text-lg font-semibold text-text">{t("plans:paymentValidating")}</p>
-              <p className="text-sm text-muted">{t("plans:paymentValidatingHint")}</p>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Se a validação demora, segue observando o pagamento em segundo plano. */}
+      {/* Validação do pagamento em SEGUNDO PLANO: aviso discreto, não bloqueia o app. */}
       {payWatching && (
         <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2.5 rounded-xl border border-border bg-surface px-4 py-3 shadow-lg">
           <Spinner className="h-4 w-4" />
