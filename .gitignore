@@ -50,3 +50,4 @@ tmp/
 # === MIBs (assets grandes/estáticos ~339MB) — fora do git p/ manter o repo leve.
 # O build da imagem lê do disco (não do git); quem clonar precisa provê-los.
 backend/mibs/
+.cursor/skills/*

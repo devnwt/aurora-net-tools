@@ -64,7 +64,8 @@
   "free": "Gratis",
   "freePeriod": "por 1 semana",
   "checkoutRedirectHint": "Serás llevado al entorno de pago seguro.",
-  "paymentWatching": "Confirmando su pago…",
+  "paymentWatching": "Verificando el pago…",
+  "paymentProcessing": "Verificando el pago. Puedes seguir usando la app — te avisaremos cuando se confirme.",
   "paymentConfirmed": "¡Pago confirmado! Plan activado.",
   "paymentValidating": "Validando operación",
   "paymentValidatingHint": "Estamos confirmando su pago con el proveedor. Esto tarda unos segundos…"
